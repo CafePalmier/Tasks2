@@ -1084,6 +1084,10 @@
     { "id": "task-103", "title": "Milk + cream pitchers — clean + put in fridge", "category": "closing", "period": "daily", "timeTag": "4:00PM+", "isActive": true, "area": "Bar", "order": 11 },
     { "id": "task-104", "title": "Slowly put pastries away", "category": "closing", "period": "daily", "timeTag": "4:30PM+", "isActive": true, "area": "Bar", "order": 13 },
     { "id": "task-105", "title": "Clean filter coffees", "category": "closing", "period": "daily", "timeTag": "4:30PM+", "isActive": true, "area": "Bar", "order": 14 },
-    { "id": "task-106", "title": "Clean bins", "category": "closing", "period": "daily", "timeTag": "4:30PM+", "isActive": true, "area": "Bar", "order": 17 }
+    { "id": "task-106", "title": "Clean bins", "category": "closing", "period": "daily", "timeTag": "4:30PM+", "isActive": true, "area": "Bar", "order": 17 },
+    { "id": "task-107", "title": "Refill coffee cards", "category": "stocking", "period": "daily", "description": "", "urgentOn": [], "isActive": true, "lastCompletedAt": null, "area": "General", "order": 107 },
+    { "id": "task-108", "title": "Sweep closet", "category": "closing", "period": "daily", "description": "", "urgentOn": [], "isActive": true, "lastCompletedAt": null, "area": "General", "order": 108 },
+    { "id": "task-109", "title": "Wipe down fridges", "category": "closing", "period": "daily", "description": "", "urgentOn": [], "isActive": true, "lastCompletedAt": null, "area": "General", "order": 109 },
+    { "id": "task-110", "title": "Refill cookies", "category": "closing", "period": "daily", "description": "", "urgentOn": [], "isActive": true, "lastCompletedAt": null, "area": "General", "order": 110 }
   ]
 }

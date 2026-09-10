@@ -5,6 +5,7 @@ const path = require('path');
 const PORT = process.env.PORT || 3000;
 const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
+const ROOT_ASSETS_DIR = path.join(ROOT_DIR, 'Assets');
 const DATA_DIR = path.join(ROOT_DIR, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'tasks.json');
 
@@ -251,6 +252,11 @@ function buildTaskPayload(tasks, now = new Date()) {
 
 function getFileFromPath(requestPath) {
   const safePath = requestPath === '/' ? '/index.html' : requestPath;
+
+  if (safePath.startsWith('/Assets/')) {
+    return path.join(ROOT_ASSETS_DIR, safePath.slice('/Assets/'.length));
+  }
+
   return path.join(PUBLIC_DIR, safePath);
 }
 
@@ -373,7 +379,7 @@ const server = http.createServer(async (req, res) => {
   const requestPath = pathname === '/' ? '/index.html' : pathname;
   const filePath = getFileFromPath(requestPath);
 
-  if (filePath.startsWith(PUBLIC_DIR)) {
+  if (filePath.startsWith(PUBLIC_DIR) || filePath.startsWith(ROOT_ASSETS_DIR)) {
     serveFile(res, filePath);
     return;
   }
