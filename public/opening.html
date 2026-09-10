@@ -3,27 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cafe Palmier Today's List</title>
+    <title>Cafe Palmier Opening List</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body data-page="today">
+  <body data-page="opening">
     <header class="topbar">
       <div class="brand-wrap">
         <img class="brand-logo" src="./assets/logo-eng.png" alt="Cafe Palmier logo" />
       </div>
       <nav class="nav">
         <a class="nav-link" href="./index.html">Available Tasks</a>
-        <a class="nav-link" href="./opening.html">Opening List</a>
-        <a class="nav-link active" href="./today.html">Today's List</a>
+        <a class="nav-link active" href="./opening.html">Opening List</a>
+        <a class="nav-link" href="./today.html">Today's List</a>
         <a class="nav-link" href="./closing.html">Closing List</a>
         <a class="nav-link" href="./admin.html">Admin</a>
       </nav>
     </header>
 
     <main class="page-shell">
-      <section class="panel-card">
-        <div id="todayList" class="task-groups"></div>
-      </section>
+      <section id="openingList" class="panel-card"></section>
     </main>
 
     <script src="./app.js"></script>

@@ -10,11 +10,12 @@ const DATA_FILE = path.join(DATA_DIR, 'tasks.json');
 
 const PERIOD_ORDER = { daily: 0, weekly: 1, monthly: 2, yearly: 3 };
 const CATEGORY_ORDER = {
-  cleaning: 0,
-  stocking: 1,
-  prep: 2,
-  closing: 3,
-  general: 4
+  opening: 0,
+  cleaning: 1,
+  stocking: 2,
+  prep: 3,
+  closing: 4,
+  general: 5
 };
 
 const DEFAULT_TASKS = [
@@ -73,7 +74,15 @@ const DEFAULT_TASKS = [
   { id: 'task-49', title: 'Replace green trays on trolley', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 49 },
   { id: 'task-50', title: 'Dump 3 litres of water down milk drain', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 50 },
   { id: 'task-51', title: 'Plug in scales', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 51 },
-  { id: 'task-52', title: 'Check you did everything on the closing list', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 52 }
+  { id: 'task-52', title: 'Check you did everything on the closing list', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 52 },
+  { id: 'task-opening-1', title: 'Fill coffee urns with hot water, then coffee', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 53 },
+  { id: 'task-opening-2', title: 'Turn Open sign on', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 54 },
+  { id: 'task-opening-3', title: 'Turn espresso machine on', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 55 },
+  { id: 'task-opening-4', title: 'Turn espresso machine light on', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 56 },
+  { id: 'task-opening-5', title: 'Unlock doors', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 57 },
+  { id: 'task-opening-6', title: 'Put chairs down', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 58 },
+  { id: 'task-opening-7', title: 'Dial espresso', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 59 },
+  { id: 'task-opening-8', title: 'Turn fridge lights on', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 60 }
 ];
 
 function ensureDataFile() {
@@ -107,11 +116,12 @@ function saveTasks(tasks) {
 }
 
 function normalizeTask(task, idx) {
+  const category = task.category || 'general';
   return {
     id: task.id || `task-${Date.now()}-${idx}`,
     title: String(task.title || 'Untitled task').trim(),
-    category: task.category || 'general',
-    period: task.period || 'daily',
+    category,
+    period: ['opening', 'closing'].includes(category) ? 'daily' : (task.period || 'daily'),
     description: task.description || '',
     urgentOn: Array.isArray(task.urgentOn) ? task.urgentOn.map((day) => String(day).trim()) : [],
     isActive: task.isActive !== false,

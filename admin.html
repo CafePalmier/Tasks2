@@ -13,6 +13,7 @@
       </div>
       <nav class="nav">
         <a class="nav-link" href="./index.html">Available Tasks</a>
+        <a class="nav-link" href="./opening.html">Opening List</a>
         <a class="nav-link" href="./today.html">Today's List</a>
         <a class="nav-link" href="./closing.html">Closing List</a>
         <a class="nav-link active" href="./admin.html">Admin</a>
@@ -34,7 +35,8 @@
             <label>
               <span>Category</span>
               <select name="category">
-                <option value="cleaning">Cleaning</option>
+                <option value="opening">Opening</option>
+                <option value="cleaning" selected>Cleaning</option>
                 <option value="stocking">Stocking</option>
                 <option value="prep">Prepping</option>
                 <option value="closing">Closing</option>
@@ -42,7 +44,7 @@
               </select>
             </label>
 
-            <label>
+            <label id="periodField">
               <span>Period</span>
               <select name="period">
                 <option value="daily">Daily</option>

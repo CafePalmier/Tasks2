@@ -941,6 +941,102 @@
       "lastCompletedAt": null,
       "area": "Bar",
       "order": 78
+    },
+    {
+      "id": "task-79",
+      "title": "Fill coffee urns with hot water, then coffee",
+      "category": "opening",
+      "period": "daily",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 79
+    },
+    {
+      "id": "task-80",
+      "title": "Turn Open sign on",
+      "category": "opening",
+      "period": "daily",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 80
+    },
+    {
+      "id": "task-81",
+      "title": "Turn espresso machine on",
+      "category": "opening",
+      "period": "daily",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 81
+    },
+    {
+      "id": "task-82",
+      "title": "Turn espresso machine light on",
+      "category": "opening",
+      "period": "daily",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 82
+    },
+    {
+      "id": "task-83",
+      "title": "Unlock doors",
+      "category": "opening",
+      "period": "daily",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 83
+    },
+    {
+      "id": "task-84",
+      "title": "Put chairs down",
+      "category": "opening",
+      "period": "daily",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 84
+    },
+    {
+      "id": "task-85",
+      "title": "Dial espresso",
+      "category": "opening",
+      "period": "daily",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 85
+    },
+    {
+      "id": "task-86",
+      "title": "Turn fridge lights on",
+      "category": "opening",
+      "period": "daily",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 86
     }
   ]
 }

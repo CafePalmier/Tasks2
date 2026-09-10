@@ -6,6 +6,7 @@ const state = {
   tasks: [],
   available: [],
   completed: [],
+  hasTaskApi: null,
   page: document.body.dataset.page || 'home'
 };
 
@@ -17,6 +18,7 @@ const periodLabels = {
 };
 
 const categoryLabels = {
+  opening: 'Opening',
   cleaning: 'Cleaning',
   stocking: 'Stocking',
   prep: 'Prepping',
@@ -25,7 +27,8 @@ const categoryLabels = {
 };
 
 const taskPeriods = ['daily', 'weekly', 'monthly', 'yearly'];
-const taskCategories = ['cleaning', 'stocking', 'prep', 'closing', 'general'];
+const taskCategories = ['opening', 'cleaning', 'stocking', 'prep', 'closing', 'general'];
+const dailyOnlyCategories = ['opening', 'closing'];
 const closingAreas = ['Outside', 'Upstairs', 'Downstairs', 'Kitchen', 'Bar', 'General'];
 
 function sortTasks(tasks) {
@@ -40,29 +43,122 @@ function sortTasks(tasks) {
   });
 }
 
+function getLocalTasks(fallbackTasks = []) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    const savedTasks = Array.isArray(saved) ? saved : saved?.tasks;
+    return Array.isArray(savedTasks) ? savedTasks : fallbackTasks;
+  } catch (error) {
+    return fallbackTasks;
+  }
+}
+
+function saveLocalTasks(tasks) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks }));
+}
+
+function localTaskApi(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const segments = path.split('/').filter(Boolean);
+  const taskId = segments[2];
+  const action = segments[3];
+  const body = options.body ? JSON.parse(options.body) : {};
+  let tasks = [...state.tasks];
+
+  if (path === '/api/tasks' && method === 'POST') {
+    const task = {
+      ...body,
+      id: `task-${Date.now()}`,
+      period: dailyOnlyCategories.includes(body.category) ? 'daily' : (body.period || 'daily'),
+      description: body.description || '',
+      urgentOn: Array.isArray(body.urgentOn) ? body.urgentOn : [],
+      isActive: true,
+      lastCompletedAt: null,
+      area: body.area || 'General',
+      order: Math.max(0, ...tasks.map((item) => Number(item.order) || 0)) + 1
+    };
+    tasks.push(task);
+    saveLocalTasks(tasks);
+    return Promise.resolve({ task });
+  }
+
+  const taskIndex = tasks.findIndex((task) => task.id === taskId);
+  if (taskIndex === -1) return Promise.reject(new Error('Task not found'));
+
+  if (method === 'PUT') {
+    tasks[taskIndex] = {
+      ...tasks[taskIndex],
+      ...body,
+      period: dailyOnlyCategories.includes(body.category) ? 'daily' : (body.period || tasks[taskIndex].period)
+    };
+  } else if (method === 'DELETE') {
+    tasks = tasks.filter((task) => task.id !== taskId);
+  } else if (method === 'POST' && action === 'complete') {
+    tasks[taskIndex].lastCompletedAt = new Date().toISOString();
+  } else if (method === 'POST' && action === 'reopen') {
+    tasks[taskIndex].lastCompletedAt = null;
+  } else {
+    return Promise.reject(new Error('Unsupported task action'));
+  }
+
+  saveLocalTasks(tasks);
+  return Promise.resolve({ task: tasks[taskIndex], deleted: method === 'DELETE' });
+}
+
 function api(path, options = {}) {
-  const isTasksApi = path === '/api/tasks';
+  const isTasksApi = path.startsWith('/api/tasks');
   const method = (options.method || 'GET').toUpperCase();
   const isLocalServer = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
-  if (isTasksApi && method === 'GET') {
-    const requestPath = isLocalServer ? '/api/tasks' : STATIC_TASKS_PATH;
-
-    return fetch(requestPath, {
+  if (path === '/api/tasks' && method === 'GET') {
+    const getJson = (requestPath) => fetch(requestPath, {
       headers: { 'Content-Type': 'application/json' },
       ...options
-    }).then((response) => response.json());
-  }
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error(`Task request failed with ${response.status}`);
+      }
+      return response.json();
+    });
 
-  if (isTasksApi && method !== 'GET') {
-    if (!isLocalServer) {
-      return Promise.reject(new Error('Task editing is not available on GitHub Pages.'));
+    if (isLocalServer) {
+      return getJson('/api/tasks')
+        .then((data) => {
+          state.hasTaskApi = true;
+          return data;
+        })
+        .catch(() => {
+          state.hasTaskApi = false;
+          return getJson(STATIC_TASKS_PATH).then((data) => ({
+            ...data,
+            tasks: getLocalTasks(data.tasks || [])
+          }));
+        });
     }
 
+    state.hasTaskApi = false;
+    return getJson(STATIC_TASKS_PATH).then((data) => ({
+      ...data,
+      tasks: getLocalTasks(data.tasks || [])
+    }));
+  }
+
+  if (isTasksApi && method !== 'GET' && state.hasTaskApi === false) {
+    return localTaskApi(path, options);
+  }
+
+  if (isTasksApi && method !== 'GET' && isLocalServer) {
     return fetch(path, {
       headers: { 'Content-Type': 'application/json' },
       ...options
-    }).then((response) => response.json());
+    }).then((response) => {
+      if (!response.ok) throw new Error(`Task request failed with ${response.status}`);
+      return response.json();
+    });
+  }
+
+  if (isTasksApi && method !== 'GET') {
+    return localTaskApi(path, options);
   }
 
   return fetch(path, {
@@ -198,7 +294,7 @@ function renderGroups() {
   const root = document.getElementById('taskGroups');
   if (!root) return;
 
-  const homeTasks = sortTasks(state.available.filter((task) => task.category !== 'closing'));
+  const homeTasks = sortTasks(state.available.filter((task) => !['opening', 'closing'].includes(task.category)));
   const todayTaskIds = new Set(getTodayListState().taskIds);
 
   if (!homeTasks.length) {
@@ -217,9 +313,8 @@ function renderGroups() {
       <div class="task-list">
         ${homeTasks.map((task) => `
           <div class="task-swipe-shell" data-task-id="${task.id}">
-            <div class="task-swipe-action">Complete</div>
-            <article class="task-item task-swipe-content ${task.urgentToday ? 'urgent' : ''}">
-              <input class="task-check" type="checkbox" data-task-id="${task.id}" aria-label="Mark ${escapeHtml(task.title)} complete" />
+            <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
+            <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
               <div class="task-main">
                 <h4>${escapeHtml(task.title)}</h4>
                 ${task.description ? `
@@ -235,7 +330,7 @@ function renderGroups() {
                 </div>
               </div>
               <div class="task-actions">
-                <button class="secondary-btn" data-add-today-id="${task.id}" ${todayTaskIds.has(task.id) ? 'disabled' : ''}>${todayTaskIds.has(task.id) ? 'Added' : 'Add to Today'}</button>
+                <button class="secondary-btn" data-add-today-id="${task.id}">${todayTaskIds.has(task.id) ? 'Remove' : 'Add to Today'}</button>
                 <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
               </div>
             </article>
@@ -245,19 +340,9 @@ function renderGroups() {
     </div>
   `;
 
-  document.querySelectorAll('.task-check').forEach((checkbox) => {
-    checkbox.addEventListener('change', (event) => {
-      const taskId = event.target.dataset.taskId;
-      if (event.target.checked) {
-        completeTask(taskId);
-      }
-    });
-  });
-
   document.querySelectorAll('[data-edit-id]').forEach((button) => {
     button.addEventListener('click', () => {
-      const task = state.tasks.find((item) => item.id === button.dataset.editId);
-      if (task) populateForm(task);
+      window.location.href = `./admin.html?edit=${encodeURIComponent(button.dataset.editId)}`;
     });
   });
 
@@ -265,7 +350,9 @@ function renderGroups() {
     button.addEventListener('click', () => {
       const taskId = button.dataset.addTodayId;
       const currentState = getTodayListState();
-      const taskIds = Array.from(new Set([...currentState.taskIds, taskId]));
+      const taskIds = currentState.taskIds.includes(taskId)
+        ? currentState.taskIds.filter((id) => id !== taskId)
+        : [...currentState.taskIds, taskId];
 
       saveTodayListState(taskIds);
       renderTodayList();
@@ -286,20 +373,23 @@ function renderTodayList() {
   const todayTasks = taskIds
     .map((taskId) => state.tasks.find((task) => task.id === taskId))
     .filter(Boolean)
-    .filter((task) => task.isActive && task.category !== 'closing');
+    .filter((task) => task.isActive && !['opening', 'closing'].includes(task.category));
 
   root.innerHTML = `
     <h2>Today's List</h2>
     ${todayTasks.length
       ? `
-        <ul class="mini-list">
+        <div class="task-list today-task-list">
           ${todayTasks.map((task) => `
-            <li>
-              <span>${escapeHtml(task.title)}</span>
-              <button class="icon-btn" data-remove-today-id="${task.id}">Remove</button>
-            </li>
+            <div class="task-swipe-shell" data-task-id="${task.id}">
+              <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
+              <article class="task-item task-swipe-content task-item-no-check">
+                <div class="task-main"><h4>${escapeHtml(task.title)}</h4></div>
+                <div class="task-actions"><button class="icon-btn" data-remove-today-id="${task.id}">Remove</button></div>
+              </article>
+            </div>
           `).join('')}
-        </ul>
+        </div>
       `
       : `
         <div class="today-empty">
@@ -319,7 +409,44 @@ function renderTodayList() {
       renderGroups();
     });
   });
+  attachSwipeHandlers(root);
+}
 
+function renderOpeningList() {
+  const root = document.getElementById('openingList');
+  if (!root) return;
+
+  const openingAvailable = sortTasks(state.available.filter((task) => task.category === 'opening'));
+  const openingCompleted = state.completed.filter((task) => task.category === 'opening');
+
+  root.innerHTML = `
+    <div class="list-title-row">
+      <div><p class="eyebrow">Start of day</p><h2>Opening List</h2></div>
+      <span class="group-badge">${openingAvailable.length} left</span>
+    </div>
+    ${openingAvailable.length ? `<div class="task-list">
+      ${openingAvailable.map((task) => `
+        <div class="task-swipe-shell" data-task-id="${task.id}">
+          <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
+          <article class="task-item task-swipe-content task-item-no-check">
+            <div class="task-main"><h4>${escapeHtml(task.title)}</h4></div>
+            <div class="task-actions"><button class="icon-btn" data-edit-id="${task.id}">Edit</button></div>
+          </article>
+        </div>
+      `).join('')}
+    </div>` : '<div class="empty-state">Opening is complete for today.</div>'}
+    ${openingCompleted.length ? `<div class="completed-section"><h3>Completed today</h3><ul class="mini-list">${openingCompleted.map((task) => `<li><span>${escapeHtml(task.title)}</span><button class="icon-btn" data-reopen-id="${task.id}">Reopen</button></li>`).join('')}</ul></div>` : ''}
+  `;
+
+  root.querySelectorAll('[data-edit-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      window.location.href = `./admin.html?edit=${encodeURIComponent(button.dataset.editId)}`;
+    });
+  });
+  root.querySelectorAll('[data-reopen-id]').forEach((button) => {
+    button.addEventListener('click', () => reopenTask(button.dataset.reopenId));
+  });
+  attachSwipeHandlers(root);
 }
 
 function openCompletedModal() {
@@ -399,7 +526,7 @@ function renderClosingList() {
         <div class="task-list">
           ${tasks.map((task) => `
             <div class="task-swipe-shell" data-task-id="${task.id}">
-              <div class="task-swipe-action">Complete</div>
+              <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
               <article class="task-item task-swipe-content">
                 <input class="task-check" type="checkbox" data-task-id="${task.id}" aria-label="Mark ${escapeHtml(task.title)} complete" />
                 <div class="task-main">
@@ -459,8 +586,7 @@ function renderClosingList() {
 
   root.querySelectorAll('[data-edit-id]').forEach((button) => {
     button.addEventListener('click', () => {
-      const task = state.tasks.find((item) => item.id === button.dataset.editId);
-      if (task) populateForm(task);
+      window.location.href = `./admin.html?edit=${encodeURIComponent(button.dataset.editId)}`;
     });
   });
 
@@ -602,7 +728,19 @@ function populateForm(task) {
   form.period.value = task.period || 'daily';
   form.urgentOn.value = (task.urgentOn || []).join(', ');
   form.description.value = task.description || '';
+  updatePeriodVisibility();
   form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updatePeriodVisibility() {
+  const form = document.getElementById('taskForm');
+  const periodField = document.getElementById('periodField');
+  if (!form || !periodField) return;
+
+  const isDailyOnly = dailyOnlyCategories.includes(form.category.value);
+  periodField.hidden = isDailyOnly;
+  form.period.disabled = isDailyOnly;
+  if (isDailyOnly) form.period.value = 'daily';
 }
 
 function resetForm() {
@@ -612,6 +750,7 @@ function resetForm() {
   form.reset();
   document.getElementById('formTitle').textContent = 'Add a task';
   form.taskId.value = '';
+  updatePeriodVisibility();
 }
 
 async function handleTaskSubmit(event) {
@@ -621,7 +760,7 @@ async function handleTaskSubmit(event) {
   const payload = {
     title: form.title.value.trim(),
     category: form.category.value,
-    period: form.period.value,
+    period: dailyOnlyCategories.includes(form.category.value) ? 'daily' : form.period.value,
     description: form.description.value.trim(),
     urgentOn: form.urgentOn.value
       .split(',')
@@ -658,6 +797,7 @@ async function handleTaskSubmit(event) {
 function renderAll() {
   renderGroups();
   renderTodayList();
+  renderOpeningList();
   renderCompleted();
   renderSummary();
   renderClosingList();
@@ -665,19 +805,34 @@ function renderAll() {
   attachSwipeHandlers();
 }
 
-function attachSwipeHandlers() {
-  document.querySelectorAll('.task-swipe-shell').forEach((shell) => {
+function attachSwipeHandlers(scope = document) {
+  scope.querySelectorAll('.task-swipe-shell').forEach((shell) => {
+    if (shell.dataset.swipeReady === 'true') return;
+    shell.dataset.swipeReady = 'true';
     const content = shell.querySelector('.task-swipe-content');
     const taskId = shell.dataset.taskId;
     let startX = 0;
+    let startY = 0;
     let dragOffset = 0;
     let isDragging = false;
+    let directionLocked = false;
+    let isHorizontal = false;
 
     const resetPosition = () => {
       content.style.transition = 'transform 0.22s ease';
       content.style.transform = 'translateX(0px)';
       shell.classList.remove('revealed');
       dragOffset = 0;
+      isDragging = false;
+      directionLocked = false;
+      isHorizontal = false;
+    };
+
+    const revealAction = () => {
+      content.style.transition = 'transform 0.25s cubic-bezier(.2,.8,.2,1)';
+      content.style.transform = 'translateX(-96px)';
+      shell.classList.add('revealed');
+      dragOffset = -96;
       isDragging = false;
     };
 
@@ -687,7 +842,9 @@ function attachSwipeHandlers() {
       }
 
       startX = event.clientX;
+      startY = event.clientY;
       isDragging = true;
+      directionLocked = false;
       content.style.transition = 'none';
       shell.setPointerCapture(event.pointerId);
     });
@@ -695,32 +852,32 @@ function attachSwipeHandlers() {
     shell.addEventListener('pointermove', (event) => {
       if (!isDragging) return;
 
-      const deltaX = Math.max(0, event.clientX - startX);
-      dragOffset = Math.min(deltaX, 140);
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      if (!directionLocked && (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6)) {
+        directionLocked = true;
+        isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+      }
+      if (!isHorizontal) return;
+      event.preventDefault();
+      dragOffset = Math.max(-128, Math.min(0, deltaX));
       content.style.transform = `translateX(${dragOffset}px)`;
-      shell.classList.toggle('revealed', dragOffset > 8);
+      shell.classList.toggle('revealed', dragOffset < -8);
     });
 
     shell.addEventListener('pointerup', () => {
       if (!isDragging) return;
 
-      if (dragOffset >= 110) {
-        const checkbox = shell.querySelector('.task-check');
-        if (checkbox) {
-          checkbox.checked = true;
-        }
+      if (dragOffset <= -118) {
         completeTask(taskId);
         return;
       }
-
-      resetPosition();
+      if (dragOffset <= -44) revealAction();
+      else resetPosition();
     });
 
     shell.addEventListener('pointercancel', resetPosition);
-    shell.addEventListener('pointerleave', () => {
-      if (!isDragging) return;
-      resetPosition();
-    });
+    shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => completeTask(taskId));
   });
 }
 
@@ -729,6 +886,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (form) {
     form.addEventListener('submit', handleTaskSubmit);
     document.getElementById('resetForm').addEventListener('click', resetForm);
+    const categorySelect = form.elements.category;
+    categorySelect.addEventListener('change', updatePeriodVisibility);
+    updatePeriodVisibility();
   }
 
   document.querySelectorAll('[data-close-completed]').forEach((button) => {
@@ -742,4 +902,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
 
   await loadTaskData();
+
+  const editTaskId = new URLSearchParams(window.location.search).get('edit');
+  if (editTaskId && form) {
+    const task = state.tasks.find((item) => item.id === editTaskId);
+    if (task) populateForm(task);
+  }
 });
