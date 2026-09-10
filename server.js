@@ -84,6 +84,11 @@ function ensureDataFile() {
   if (!fs.existsSync(DATA_FILE)) {
     fs.writeFileSync(DATA_FILE, JSON.stringify({ tasks: DEFAULT_TASKS }, null, 2), 'utf8');
   }
+
+  const rootTasksFile = path.join(ROOT_DIR, 'tasks.json');
+  if (!fs.existsSync(rootTasksFile)) {
+    fs.writeFileSync(rootTasksFile, fs.readFileSync(DATA_FILE, 'utf8'), 'utf8');
+  }
 }
 
 function loadTasks() {
@@ -96,7 +101,9 @@ function loadTasks() {
 }
 
 function saveTasks(tasks) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify({ tasks }, null, 2), 'utf8');
+  const payload = JSON.stringify({ tasks }, null, 2);
+  fs.writeFileSync(DATA_FILE, payload, 'utf8');
+  fs.writeFileSync(path.join(ROOT_DIR, 'tasks.json'), payload, 'utf8');
 }
 
 function normalizeTask(task, idx) {
@@ -345,6 +352,11 @@ const server = http.createServer(async (req, res) => {
       console.error(error);
       return sendJson(res, 500, { error: 'Server error' });
     }
+  }
+
+  if (pathname === '/tasks.json') {
+    serveFile(res, DATA_FILE);
+    return;
   }
 
   const requestPath = pathname === '/' ? '/index.html' : pathname;

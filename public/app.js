@@ -43,16 +43,26 @@ function sortTasks(tasks) {
 function api(path, options = {}) {
   const isTasksApi = path === '/api/tasks';
   const method = (options.method || 'GET').toUpperCase();
+  const isLocalServer = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
   if (isTasksApi && method === 'GET') {
-    return fetch(STATIC_TASKS_PATH, {
+    const requestPath = isLocalServer ? '/api/tasks' : STATIC_TASKS_PATH;
+
+    return fetch(requestPath, {
       headers: { 'Content-Type': 'application/json' },
       ...options
     }).then((response) => response.json());
   }
 
   if (isTasksApi && method !== 'GET') {
-    return Promise.reject(new Error('Task editing is not available on GitHub Pages.'));
+    if (!isLocalServer) {
+      return Promise.reject(new Error('Task editing is not available on GitHub Pages.'));
+    }
+
+    return fetch(path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    }).then((response) => response.json());
   }
 
   return fetch(path, {
@@ -270,6 +280,8 @@ function renderTodayList() {
   const root = document.getElementById('todayList');
   if (!root) return;
 
+  root.id = 'todayList';
+
   const { taskIds } = getTodayListState();
   const todayTasks = taskIds
     .map((taskId) => state.tasks.find((task) => task.id === taskId))
@@ -292,7 +304,7 @@ function renderTodayList() {
       : `
         <div class="today-empty">
           <p>No tasks added yet.</p>
-          <button class="primary-btn" data-open-available>Add Tasks</button>
+          <a class="primary-btn" href="./index.html">Add Tasks</a>
         </div>
       `}
   `;
@@ -308,14 +320,23 @@ function renderTodayList() {
     });
   });
 
-  root.querySelectorAll('[data-open-available]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const target = document.getElementById('taskGroups');
-      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  });
 }
 
+function openCompletedModal() {
+  const modal = document.getElementById('completedModal');
+  if (!modal) return;
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeCompletedModal() {
+  const modal = document.getElementById('completedModal');
+  if (!modal) return;
+
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
 
 function renderCompleted() {
   const root = document.getElementById('completedList');
@@ -346,6 +367,11 @@ function renderSummary() {
   if (openCount) openCount.textContent = String(state.available.length || 0);
   if (completedCount) completedCount.textContent = String(state.completed.length || 0);
   if (urgentCount) urgentCount.textContent = String(state.available.filter((task) => task.urgentToday).length || 0);
+
+  const completedButton = document.querySelector('[data-open-completed]');
+  if (completedButton) {
+    completedButton.onclick = openCompletedModal;
+  }
 }
 
 function renderClosingList() {
@@ -533,6 +559,11 @@ async function loadTaskData() {
 }
 
 async function completeTask(taskId) {
+  const checkbox = document.querySelector(`.task-check[data-task-id="${taskId}"]`);
+  if (checkbox) {
+    checkbox.checked = true;
+  }
+
   try {
     await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
     await loadTaskData();
@@ -674,6 +705,10 @@ function attachSwipeHandlers() {
       if (!isDragging) return;
 
       if (dragOffset >= 110) {
+        const checkbox = shell.querySelector('.task-check');
+        if (checkbox) {
+          checkbox.checked = true;
+        }
         completeTask(taskId);
         return;
       }
@@ -695,6 +730,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     form.addEventListener('submit', handleTaskSubmit);
     document.getElementById('resetForm').addEventListener('click', resetForm);
   }
+
+  document.querySelectorAll('[data-close-completed]').forEach((button) => {
+    button.addEventListener('click', closeCompletedModal);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeCompletedModal();
+    }
+  });
 
   await loadTaskData();
 });

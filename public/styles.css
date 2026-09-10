@@ -112,6 +112,12 @@ h1 {
   gap: 0.4rem;
 }
 
+.summary-button {
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
 .summary-card.primary { background: var(--forest); color: var(--white); }
 .summary-card.secondary { background: var(--cafe); color: var(--white); }
 .summary-card.accent { background: var(--warm); color: var(--forest); }
@@ -129,6 +135,56 @@ h1 {
   display: grid;
   grid-template-columns: minmax(0, 2.3fr) minmax(280px, 1fr);
   gap: 1.25rem;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(33, 30, 26, 0.5);
+}
+
+.modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  max-height: min(80vh, 760px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.modal-list {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.completed-section {
+  margin-top: 1rem;
 }
 
 .main-panel, .side-panel {
