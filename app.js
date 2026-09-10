@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'cafe-palmier-task-state';
 const TODAY_LIST_KEY = 'cafe-palmier-today-list';
 const STATIC_TASKS_PATH = './tasks.json';
+const TASK_DATA_VERSION = 4;
 
 const state = {
   tasks: [],
@@ -47,14 +48,25 @@ function getLocalTasks(fallbackTasks = []) {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     const savedTasks = Array.isArray(saved) ? saved : saved?.tasks;
-    return Array.isArray(savedTasks) ? savedTasks : fallbackTasks;
+    if (!Array.isArray(savedTasks)) return fallbackTasks;
+    if (saved?.version === TASK_DATA_VERSION) return savedTasks;
+
+    const savedById = new Map(savedTasks.map((task) => [task.id, task]));
+    const refreshedTasks = fallbackTasks.map((task) => ({
+      ...task,
+      lastCompletedAt: savedById.get(task.id)?.lastCompletedAt || task.lastCompletedAt
+    }));
+    const newLocalTasks = savedTasks.filter((task) => !fallbackTasks.some((item) => item.id === task.id));
+    const mergedTasks = [...refreshedTasks, ...newLocalTasks];
+    saveLocalTasks(mergedTasks);
+    return mergedTasks;
   } catch (error) {
     return fallbackTasks;
   }
 }
 
 function saveLocalTasks(tasks) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: TASK_DATA_VERSION, tasks }));
 }
 
 function localTaskApi(path, options = {}) {
@@ -290,6 +302,63 @@ function saveTodayListState(taskIds) {
   localStorage.setItem(TODAY_LIST_KEY, JSON.stringify({ date: today, taskIds }));
 }
 
+function beginInlineEdit(button) {
+  const task = state.tasks.find((item) => item.id === button.dataset.editId);
+  const card = button.closest('.task-item');
+  if (!task || !card || card.classList.contains('is-editing')) return;
+
+  const main = card.querySelector('.task-main');
+  const actions = card.querySelector('.task-actions');
+  if (!main || !actions) return;
+
+  card.classList.add('is-editing');
+  main.innerHTML = `<input class="inline-task-input" type="text" value="${escapeHtml(task.title)}" aria-label="Task title" />`;
+  actions.innerHTML = `
+    <button class="primary-btn" type="button" data-inline-save>Save</button>
+    <button class="icon-btn" type="button" data-inline-cancel>Cancel</button>
+  `;
+
+  const input = main.querySelector('.inline-task-input');
+  const saveButton = actions.querySelector('[data-inline-save]');
+  const cancelButton = actions.querySelector('[data-inline-cancel]');
+
+  const cancel = () => renderAll();
+  const save = async () => {
+    const title = input.value.trim();
+    if (!title) {
+      input.focus();
+      return;
+    }
+
+    saveButton.disabled = true;
+    try {
+      await api(`/api/tasks/${task.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title })
+      });
+      await loadTaskData();
+    } catch (error) {
+      console.error('Failed to update task title', error);
+      saveButton.disabled = false;
+    }
+  };
+
+  saveButton.addEventListener('click', save);
+  cancelButton.addEventListener('click', cancel);
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') save();
+    if (event.key === 'Escape') cancel();
+  });
+  input.focus();
+  input.select();
+}
+
+function bindInlineEditButtons(scope = document) {
+  scope.querySelectorAll('[data-edit-id]').forEach((button) => {
+    button.addEventListener('click', () => beginInlineEdit(button));
+  });
+}
+
 function renderGroups() {
   const root = document.getElementById('taskGroups');
   if (!root) return;
@@ -340,11 +409,7 @@ function renderGroups() {
     </div>
   `;
 
-  document.querySelectorAll('[data-edit-id]').forEach((button) => {
-    button.addEventListener('click', () => {
-      window.location.href = `./admin.html?edit=${encodeURIComponent(button.dataset.editId)}`;
-    });
-  });
+  bindInlineEditButtons();
 
   document.querySelectorAll('[data-add-today-id]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -438,11 +503,7 @@ function renderOpeningList() {
     ${openingCompleted.length ? `<div class="completed-section"><h3>Completed today</h3><ul class="mini-list">${openingCompleted.map((task) => `<li><span>${escapeHtml(task.title)}</span><button class="icon-btn" data-reopen-id="${task.id}">Reopen</button></li>`).join('')}</ul></div>` : ''}
   `;
 
-  root.querySelectorAll('[data-edit-id]').forEach((button) => {
-    button.addEventListener('click', () => {
-      window.location.href = `./admin.html?edit=${encodeURIComponent(button.dataset.editId)}`;
-    });
-  });
+  bindInlineEditButtons(root);
   root.querySelectorAll('[data-reopen-id]').forEach((button) => {
     button.addEventListener('click', () => reopenTask(button.dataset.reopenId));
   });
@@ -501,53 +562,89 @@ function renderSummary() {
   }
 }
 
+function getClosingSortMode() {
+  try {
+    return localStorage.getItem('cafe-palmier-closing-sort') === 'time' ? 'time' : 'area';
+  } catch (error) {
+    return 'area';
+  }
+}
+
+function getTimeTagOrder(timeTag) {
+  const match = String(timeTag || '').match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  let hours = Number(match[1]) % 12;
+  if (match[3].toUpperCase() === 'PM') hours += 12;
+  return hours * 60 + Number(match[2]);
+}
+
+function renderClosingTask(task, showAreaTag) {
+  return `
+    <div class="task-swipe-shell" data-task-id="${task.id}">
+      <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
+      <article class="task-item task-swipe-content task-item-no-check">
+        <div class="task-main">
+          <h4>${escapeHtml(task.title)}</h4>
+          ${showAreaTag
+            ? `<span class="meta-pill area-pill">${escapeHtml(task.area || 'General')}</span>`
+            : (task.timeTag ? `<span class="time-pill">${escapeHtml(task.timeTag)}</span>` : '')}
+          ${task.description ? `
+            <details class="task-details">
+              <summary>Details</summary>
+              <p>${escapeHtml(task.description)}</p>
+            </details>
+          ` : ''}
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
+        </div>
+      </article>
+    </div>
+  `;
+}
+
 function renderClosingList() {
   const root = document.getElementById('closingList');
   if (!root) return;
 
   const closingAvailable = state.available.filter((task) => task.category === 'closing');
   const closingCompleted = state.completed.filter((task) => task.category === 'closing');
+  const sortMode = getClosingSortMode();
 
-  const groupedAvailable = closingAreas.reduce((acc, area) => {
-    acc[area] = closingAvailable.filter((task) => (task.area || 'General') === area);
-    return acc;
-  }, {});
+  let availableMarkup = '';
+  if (sortMode === 'time') {
+    const timeGroups = closingAvailable.reduce((groups, task) => {
+      const key = task.timeTag || 'Any time';
+      groups[key] ||= [];
+      groups[key].push(task);
+      return groups;
+    }, {});
 
-  const availableMarkup = closingAreas.map((area) => {
-    const tasks = groupedAvailable[area];
-
-    if (!tasks.length) {
-      return '';
-    }
-
-    return `
-      <div class="panel-card closing-group">
-        <h3>${area}</h3>
-        <div class="task-list">
-          ${tasks.map((task) => `
-            <div class="task-swipe-shell" data-task-id="${task.id}">
-              <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
-              <article class="task-item task-swipe-content">
-                <input class="task-check" type="checkbox" data-task-id="${task.id}" aria-label="Mark ${escapeHtml(task.title)} complete" />
-                <div class="task-main">
-                  <h4>${escapeHtml(task.title)}</h4>
-                  ${task.description ? `
-                    <details class="task-details">
-                      <summary>Details</summary>
-                      <p>${escapeHtml(task.description)}</p>
-                    </details>
-                  ` : ''}
-                </div>
-                <div class="task-actions">
-                  <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
-                </div>
-              </article>
-            </div>
-          `).join('')}
+    availableMarkup = Object.entries(timeGroups)
+      .sort(([first], [second]) => getTimeTagOrder(first) - getTimeTagOrder(second) || first.localeCompare(second))
+      .map(([timeTag, tasks]) => `
+        <div class="panel-card closing-group closing-time-group">
+          <h3>${escapeHtml(timeTag)}</h3>
+          <div class="task-list">${sortTasks(tasks).map((task) => renderClosingTask(task, true)).join('')}</div>
         </div>
-      </div>
-    `;
-  }).join('');
+      `).join('');
+  } else {
+    const groupedAvailable = closingAreas.reduce((groups, area) => {
+      groups[area] = closingAvailable.filter((task) => (task.area || 'General') === area);
+      return groups;
+    }, {});
+
+    availableMarkup = closingAreas.map((area) => {
+      const tasks = groupedAvailable[area];
+      if (!tasks.length) return '';
+      return `
+        <div class="panel-card closing-group">
+          <h3>${area}</h3>
+          <div class="task-list">${sortTasks(tasks).map((task) => renderClosingTask(task, false)).join('')}</div>
+        </div>
+      `;
+    }).join('');
+  }
 
   const completedMarkup = closingCompleted.length
     ? `
@@ -568,30 +665,29 @@ function renderClosingList() {
   root.innerHTML = `
     <div class="closing-stack">
       <div class="panel-card">
-        <h2>Open closing list</h2>
-        <div class="closing-groups">${availableMarkup || '<div class="empty-state">No closing tasks available right now.</div>'}</div>
+        <div class="list-title-row">
+          <h2>Closing list</h2>
+          <button class="secondary-btn" type="button" data-closing-sort aria-pressed="${sortMode === 'time'}">${sortMode === 'time' ? 'Sort by section' : 'Sort by time'}</button>
+        </div>
+        <div class="closing-groups ${sortMode === 'time' ? 'closing-groups-by-time' : ''}">${availableMarkup || '<div class="empty-state">No closing tasks available right now.</div>'}</div>
       </div>
       ${completedMarkup}
     </div>
   `;
 
-  root.querySelectorAll('.task-check').forEach((checkbox) => {
-    checkbox.addEventListener('change', (event) => {
-      const taskId = event.target.dataset.taskId;
-      if (event.target.checked) {
-        completeTask(taskId);
-      }
-    });
-  });
-
-  root.querySelectorAll('[data-edit-id]').forEach((button) => {
-    button.addEventListener('click', () => {
-      window.location.href = `./admin.html?edit=${encodeURIComponent(button.dataset.editId)}`;
-    });
-  });
+  bindInlineEditButtons(root);
 
   root.querySelectorAll('[data-reopen-id]').forEach((button) => {
     button.addEventListener('click', () => reopenTask(button.dataset.reopenId));
+  });
+
+  root.querySelector('[data-closing-sort]')?.addEventListener('click', () => {
+    try {
+      localStorage.setItem('cafe-palmier-closing-sort', sortMode === 'time' ? 'area' : 'time');
+    } catch (error) {
+      // The current view remains usable if local storage is unavailable.
+    }
+    renderClosingList();
   });
 
   attachSwipeHandlers();
@@ -635,6 +731,7 @@ function renderAdminList() {
                     <div class="meta">
                       <span>${categoryLabels[task.category] || task.category}</span>
                       <span>${periodLabels[task.period] || task.period}</span>
+                      ${task.timeTag ? `<span class="time-pill">${escapeHtml(task.timeTag)}</span>` : ''}
                       <span class="status-pill ${completedIds.has(task.id) ? 'done' : 'open'}">
                         ${completedIds.has(task.id) ? 'Completed' : 'Open'}
                       </span>
@@ -685,11 +782,6 @@ async function loadTaskData() {
 }
 
 async function completeTask(taskId) {
-  const checkbox = document.querySelector(`.task-check[data-task-id="${taskId}"]`);
-  if (checkbox) {
-    checkbox.checked = true;
-  }
-
   try {
     await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
     await loadTaskData();
@@ -727,6 +819,7 @@ function populateForm(task) {
   form.category.value = task.category || 'general';
   form.period.value = task.period || 'daily';
   form.urgentOn.value = (task.urgentOn || []).join(', ');
+  form.timeTag.value = task.timeTag || '';
   form.description.value = task.description || '';
   updatePeriodVisibility();
   form.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -762,6 +855,7 @@ async function handleTaskSubmit(event) {
     category: form.category.value,
     period: dailyOnlyCategories.includes(form.category.value) ? 'daily' : form.period.value,
     description: form.description.value.trim(),
+    timeTag: form.timeTag.value.trim(),
     urgentOn: form.urgentOn.value
       .split(',')
       .map((value) => value.trim())
@@ -822,18 +916,11 @@ function attachSwipeHandlers(scope = document) {
       content.style.transition = 'transform 0.22s ease';
       content.style.transform = 'translateX(0px)';
       shell.classList.remove('revealed');
+      shell.classList.remove('ready-to-complete');
       dragOffset = 0;
       isDragging = false;
       directionLocked = false;
       isHorizontal = false;
-    };
-
-    const revealAction = () => {
-      content.style.transition = 'transform 0.25s cubic-bezier(.2,.8,.2,1)';
-      content.style.transform = 'translateX(-96px)';
-      shell.classList.add('revealed');
-      dragOffset = -96;
-      isDragging = false;
     };
 
     shell.addEventListener('pointerdown', (event) => {
@@ -863,17 +950,17 @@ function attachSwipeHandlers(scope = document) {
       dragOffset = Math.max(-128, Math.min(0, deltaX));
       content.style.transform = `translateX(${dragOffset}px)`;
       shell.classList.toggle('revealed', dragOffset < -8);
+      shell.classList.toggle('ready-to-complete', dragOffset <= -92);
     });
 
     shell.addEventListener('pointerup', () => {
       if (!isDragging) return;
 
-      if (dragOffset <= -118) {
+      if (dragOffset <= -92) {
         completeTask(taskId);
         return;
       }
-      if (dragOffset <= -44) revealAction();
-      else resetPosition();
+      resetPosition();
     });
 
     shell.addEventListener('pointercancel', resetPosition);

@@ -14,27 +14,6 @@
 
 html { scroll-behavior: smooth; }
 
-@view-transition {
-  navigation: auto;
-}
-
-::view-transition-old(root) {
-  animation: 160ms ease both page-out;
-}
-
-::view-transition-new(root) {
-  animation: 240ms ease both page-in;
-}
-
-@keyframes page-in {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes page-out {
-  to { opacity: 0; transform: translateY(-3px); }
-}
-
 body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
@@ -64,6 +43,16 @@ button, input, textarea, select {
   display: flex;
   align-items: center;
   gap: 0.85rem;
+}
+
+.brand-home {
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.brand-home:focus-visible {
+  outline: 3px solid var(--cafe);
+  outline-offset: 4px;
 }
 
 .brand-logo {
@@ -244,12 +233,18 @@ h1 {
 
 .closing-groups {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.closing-groups-by-time {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .closing-group {
   padding: 0.9rem;
+  align-self: start;
 }
 
 .closing-group h3 {
@@ -329,24 +324,44 @@ h1 {
 
 .task-swipe-action {
   position: absolute;
-  inset: 0 0 0 auto;
-  width: 128px;
+  inset: 0 -1px 0 auto;
+  width: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #b44c3d, #d7654f);
+  gap: 0.38rem;
+  padding: 0 0.7rem;
+  border-radius: 999px 18px 18px 999px;
+  background: linear-gradient(135deg, #76a67a 0%, #4d8758 55%, #376438 100%);
   color: var(--white);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.28), 0 8px 18px rgba(55, 100, 56, 0.16);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   border: 0;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 
+.task-swipe-action::before {
+  content: '✓';
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 50%;
+  font-size: 0.8rem;
+}
+
 .task-swipe-shell.revealed .task-swipe-action {
   opacity: 1;
+}
+
+.task-swipe-shell.ready-to-complete .task-swipe-action {
+  background: linear-gradient(135deg, #89ba8e 0%, #4d8758 48%, #2f713e 100%);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.4), 0 10px 22px rgba(55, 100, 56, 0.24);
 }
 
 .task-swipe-content {
@@ -391,6 +406,20 @@ h1 {
 
 .task-main {
   min-width: 0;
+}
+
+.task-item.is-editing {
+  background: rgba(255, 253, 251, 0.94);
+  border-color: rgba(55, 100, 56, 0.45);
+}
+
+.inline-task-input {
+  min-width: 0;
+  padding: 0.42rem 0.52rem;
+  border: 1px solid rgba(55, 100, 56, 0.38);
+  border-radius: 10px;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .task-main h4 {
@@ -445,6 +474,18 @@ h1 {
   color: var(--forest);
 }
 
+.area-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.18rem;
+  padding: 0.16rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(55, 100, 56, 0.12);
+  color: var(--forest);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
 .period-pill.daily {
   background: #dfe9d8;
   color: #2d5d2a;
@@ -468,6 +509,24 @@ h1 {
 .meta-pill.urgent {
   background: rgba(198,139,112,0.2);
   color: var(--forest);
+}
+
+.time-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.18rem;
+  padding: 0.16rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(198, 139, 112, 0.26);
+  color: #71412d;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.admin-item .time-pill {
+  margin-top: 0;
 }
 
 .task-actions {
@@ -701,23 +760,22 @@ textarea {
   }
 
   .nav {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 0.15rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+    overflow: visible;
+    padding-bottom: 0;
   }
 
   .nav-link {
-    flex: 0 0 auto;
-    padding: 0.5rem 0.7rem;
+    min-width: 0;
+    padding: 0.48rem 0.3rem;
+    font-size: 0.82rem;
+    text-align: center;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation-duration: 1ms;
-  }
-
   .task-swipe-content {
     transition-duration: 1ms !important;
   }

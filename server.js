@@ -48,7 +48,7 @@ const DEFAULT_TASKS = [
   { id: 'task-26', title: 'Review to-go packaging station', category: 'stocking', period: 'weekly', description: '', urgentOn: [], isActive: true, order: 26 },
 
   { id: 'task-27', title: 'Deep clean display fridges', category: 'cleaning', period: 'monthly', description: '', urgentOn: [], isActive: true, order: 27 },
-  { id: 'task-28', title: 'Audit syrups and milk stock', category: 'stocking', period: 'monthly', description: '', urgentOn: [], isActive: true, order: 28 },
+  { id: 'task-28', title: 'Change syrups', category: 'stocking', period: 'monthly', description: '', urgentOn: [], isActive: true, order: 28 },
   { id: 'task-29', title: 'Check backroom inventory levels', category: 'stocking', period: 'monthly', description: '', urgentOn: [], isActive: true, order: 29 },
   { id: 'task-30', title: 'Review prep notes and restock seasonal items', category: 'prep', period: 'monthly', description: '', urgentOn: [], isActive: true, order: 30 },
 
@@ -123,6 +123,7 @@ function normalizeTask(task, idx) {
     category,
     period: ['opening', 'closing'].includes(category) ? 'daily' : (task.period || 'daily'),
     description: task.description || '',
+    timeTag: task.timeTag ? String(task.timeTag).trim() : '',
     urgentOn: Array.isArray(task.urgentOn) ? task.urgentOn.map((day) => String(day).trim()) : [],
     isActive: task.isActive !== false,
     lastCompletedAt: task.lastCompletedAt || null,
