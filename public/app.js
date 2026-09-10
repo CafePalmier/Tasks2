@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'cafe-palmier-task-state';
+const TODAY_LIST_KEY = 'cafe-palmier-today-list';
 
 const state = {
   tasks: [],
@@ -54,44 +55,78 @@ function escapeHtml(value = '') {
     .replace(/'/g, '&#039;');
 }
 
+function getTodayListState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TODAY_LIST_KEY) || '{}');
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (saved.date !== today) {
+      localStorage.setItem(TODAY_LIST_KEY, JSON.stringify({ date: today, taskIds: [] }));
+      return { date: today, taskIds: [] };
+    }
+
+    return {
+      date: today,
+      taskIds: Array.isArray(saved.taskIds) ? saved.taskIds.filter(Boolean) : []
+    };
+  } catch (error) {
+    return { date: new Date().toISOString().slice(0, 10), taskIds: [] };
+  }
+}
+
+function saveTodayListState(taskIds) {
+  const today = new Date().toISOString().slice(0, 10);
+  localStorage.setItem(TODAY_LIST_KEY, JSON.stringify({ date: today, taskIds }));
+}
+
 function renderGroups() {
   const root = document.getElementById('taskGroups');
   if (!root) return;
 
   const homeTasks = sortTasks(state.available.filter((task) => task.category !== 'closing'));
+  const todayTaskIds = new Set(getTodayListState().taskIds);
 
   if (!homeTasks.length) {
-    root.innerHTML = '<div class="panel-card empty-state">No available tasks right now. Everything is complete for this cycle.</div>';
+    root.innerHTML = `
+      <div class="panel-card">
+        <h2>Available Tasks</h2>
+        <div class="empty-state">No available tasks right now. Everything is complete for this cycle.</div>
+      </div>
+    `;
     return;
   }
 
   root.innerHTML = `
-    <div class="task-list">
-      ${homeTasks.map((task) => `
-        <div class="task-swipe-shell" data-task-id="${task.id}">
-          <div class="task-swipe-action">Complete</div>
-          <article class="task-item task-swipe-content ${task.urgentToday ? 'urgent' : ''}">
-            <input class="task-check" type="checkbox" data-task-id="${task.id}" aria-label="Mark ${escapeHtml(task.title)} complete" />
-            <div class="task-main">
-              <h4>${escapeHtml(task.title)}</h4>
-              ${task.description ? `
-                <details class="task-details">
-                  <summary>Details</summary>
-                  <p>${escapeHtml(task.description)}</p>
-                </details>
-              ` : ''}
-              <div class="task-meta">
-                <span class="meta-pill category-pill">${categoryLabels[task.category]}</span>
-                <span class="meta-pill period-pill ${task.period}">${periodLabels[task.period]}</span>
-                ${task.urgentToday ? '<span class="meta-pill urgent">Urgent today</span>' : ''}
+    <div class="panel-card">
+      <h2>Available Tasks</h2>
+      <div class="task-list">
+        ${homeTasks.map((task) => `
+          <div class="task-swipe-shell" data-task-id="${task.id}">
+            <div class="task-swipe-action">Complete</div>
+            <article class="task-item task-swipe-content ${task.urgentToday ? 'urgent' : ''}">
+              <input class="task-check" type="checkbox" data-task-id="${task.id}" aria-label="Mark ${escapeHtml(task.title)} complete" />
+              <div class="task-main">
+                <h4>${escapeHtml(task.title)}</h4>
+                ${task.description ? `
+                  <details class="task-details">
+                    <summary>Details</summary>
+                    <p>${escapeHtml(task.description)}</p>
+                  </details>
+                ` : ''}
+                <div class="task-meta">
+                  <span class="meta-pill category-pill">${categoryLabels[task.category]}</span>
+                  <span class="meta-pill period-pill ${task.period}">${periodLabels[task.period]}</span>
+                  ${task.urgentToday ? '<span class="meta-pill urgent">Urgent today</span>' : ''}
+                </div>
               </div>
-            </div>
-            <div class="task-actions">
-              <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
-            </div>
-          </article>
-        </div>
-      `).join('')}
+              <div class="task-actions">
+                <button class="secondary-btn" data-add-today-id="${task.id}" ${todayTaskIds.has(task.id) ? 'disabled' : ''}>${todayTaskIds.has(task.id) ? 'Added' : 'Add to Today'}</button>
+                <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
+              </div>
+            </article>
+          </div>
+        `).join('')}
+      </div>
     </div>
   `;
 
@@ -111,8 +146,71 @@ function renderGroups() {
     });
   });
 
+  document.querySelectorAll('[data-add-today-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const taskId = button.dataset.addTodayId;
+      const currentState = getTodayListState();
+      const taskIds = Array.from(new Set([...currentState.taskIds, taskId]));
+
+      saveTodayListState(taskIds);
+      renderTodayList();
+      renderGroups();
+    });
+  });
+
   attachSwipeHandlers();
 }
+
+function renderTodayList() {
+  const root = document.getElementById('todayList');
+  if (!root) return;
+
+  const { taskIds } = getTodayListState();
+  const todayTasks = taskIds
+    .map((taskId) => state.tasks.find((task) => task.id === taskId))
+    .filter(Boolean)
+    .filter((task) => task.isActive && task.category !== 'closing');
+
+  root.innerHTML = `
+    <h2>Today's List</h2>
+    ${todayTasks.length
+      ? `
+        <ul class="mini-list">
+          ${todayTasks.map((task) => `
+            <li>
+              <span>${escapeHtml(task.title)}</span>
+              <button class="icon-btn" data-remove-today-id="${task.id}">Remove</button>
+            </li>
+          `).join('')}
+        </ul>
+      `
+      : `
+        <div class="today-empty">
+          <p>No tasks added yet.</p>
+          <button class="primary-btn" data-open-available>Add Tasks</button>
+        </div>
+      `}
+  `;
+
+  root.querySelectorAll('[data-remove-today-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const taskId = button.dataset.removeTodayId;
+      const currentState = getTodayListState();
+      const taskIds = currentState.taskIds.filter((id) => id !== taskId);
+      saveTodayListState(taskIds);
+      renderTodayList();
+      renderGroups();
+    });
+  });
+
+  root.querySelectorAll('[data-open-available]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = document.getElementById('taskGroups');
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
+
 
 function renderCompleted() {
   const root = document.getElementById('completedList');
@@ -420,6 +518,7 @@ async function handleTaskSubmit(event) {
 
 function renderAll() {
   renderGroups();
+  renderTodayList();
   renderCompleted();
   renderSummary();
   renderClosingList();

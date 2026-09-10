@@ -221,6 +221,7 @@ h1 {
   padding: 0.5rem 0.6rem;
   border-radius: 12px;
   min-height: 60px;
+  overflow: hidden;
   background: linear-gradient(180deg, rgba(238,210,196,0.25), rgba(234,224,211,0.55));
   border: 1px solid rgba(198, 139, 112, 0.35);
 }
@@ -254,6 +255,8 @@ h1 {
 .task-swipe-content {
   position: relative;
   z-index: 1;
+  border-radius: 18px;
+  overflow: hidden;
   background: linear-gradient(180deg, rgba(238,210,196,0.25), rgba(234,224,211,0.55));
   box-shadow: inset 0 0 0 1px rgba(198, 139, 112, 0.35);
   transition: transform 0.22s ease;

@@ -109,6 +109,7 @@ function normalizeTask(task, idx) {
     urgentOn: Array.isArray(task.urgentOn) ? task.urgentOn.map((day) => String(day).trim()) : [],
     isActive: task.isActive !== false,
     lastCompletedAt: task.lastCompletedAt || null,
+    area: task.area || 'General',
     order: task.order ?? idx + 1
   };
 }
