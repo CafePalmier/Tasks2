@@ -615,19 +615,35 @@ function renderClosingList() {
   if (sortMode === 'time') {
     const timeGroups = closingAvailable.reduce((groups, task) => {
       const key = task.timeTag || 'Any time';
-      groups[key] ||= [];
-      groups[key].push(task);
+      groups[key] ||= {};
+      const area = task.area || 'General';
+      groups[key][area] ||= [];
+      groups[key][area].push(task);
       return groups;
     }, {});
 
     availableMarkup = Object.entries(timeGroups)
       .sort(([first], [second]) => getTimeTagOrder(first) - getTimeTagOrder(second) || first.localeCompare(second))
-      .map(([timeTag, tasks]) => `
-        <div class="panel-card closing-group closing-time-group">
-          <h3>${escapeHtml(timeTag)}</h3>
-          <div class="task-list">${sortTasks(tasks).map((task) => renderClosingTask(task, true)).join('')}</div>
-        </div>
-      `).join('');
+      .map(([timeTag, areaGroups]) => {
+        const areaBlocks = closingAreas.map((area) => {
+          const tasks = areaGroups[area] || [];
+          if (!tasks.length) return '';
+
+          return `
+            <div class="closing-area-block">
+              <h4>${escapeHtml(area)}</h4>
+              <div class="task-list">${sortTasks(tasks).map((task) => renderClosingTask(task, false)).join('')}</div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="panel-card closing-group closing-time-group">
+            <h3>${escapeHtml(timeTag)}</h3>
+            <div class="closing-time-area-groups">${areaBlocks || '<div class="empty-state">No closing tasks in this time group.</div>'}</div>
+          </div>
+        `;
+      }).join('');
   } else {
     const groupedAvailable = closingAreas.reduce((groups, area) => {
       groups[area] = closingAvailable.filter((task) => (task.area || 'General') === area);

@@ -252,6 +252,22 @@ h1 {
   color: var(--forest);
 }
 
+.closing-time-area-groups {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.closing-area-block {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.closing-area-block h4 {
+  margin: 0;
+  color: var(--forest);
+  font-size: 0.95rem;
+}
+
 .task-groups {
   display: grid;
   gap: 1rem;
