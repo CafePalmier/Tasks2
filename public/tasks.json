@@ -319,6 +319,18 @@
       "order": 26
     },
     {
+      "id": "task-water-plants",
+      "title": "Water Plants",
+      "category": "general",
+      "period": "weekly",
+      "description": "",
+      "urgentOn": [],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 27
+    },
+    {
       "id": "task-27",
       "title": "Deep clean display fridges",
       "category": "cleaning",
