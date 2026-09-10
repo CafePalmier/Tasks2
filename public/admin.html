@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cafe Palmier Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-page="admin">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <img class="brand-logo" src="/assets/logo-eng.png" alt="Cafe Palmier logo" />
+      </div>
+      <nav class="nav">
+        <a class="nav-link" href="/index.html">Home</a>
+        <a class="nav-link" href="/closing.html">Closing List</a>
+        <a class="nav-link active" href="/admin.html">Admin</a>
+      </nav>
+    </header>
+
+    <main class="page-shell admin-shell">
+      <section class="panel-card form-panel">
+        <h2 id="formTitle">Add a task</h2>
+        <form id="taskForm">
+          <input type="hidden" id="taskId" />
+
+          <div class="field-grid">
+            <label>
+              <span>Title</span>
+              <input type="text" name="title" required />
+            </label>
+
+            <label>
+              <span>Category</span>
+              <select name="category">
+                <option value="cleaning">Cleaning</option>
+                <option value="stocking">Stocking</option>
+                <option value="prep">Prepping</option>
+                <option value="closing">Closing</option>
+                <option value="general">General</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Period</span>
+              <select name="period">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Urgent on</span>
+              <input type="text" name="urgentOn" placeholder="Friday, Monday" />
+            </label>
+          </div>
+
+          <label>
+            <span>Description / elaboration</span>
+            <textarea name="description" rows="3" placeholder="Add instructions or notes"></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="primary-btn">Save task</button>
+            <button type="button" class="secondary-btn" id="resetForm">Clear form</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel-card">
+        <div class="list-header">
+          <h2>Task Library</h2>
+        </div>
+        <div id="adminTaskList" class="admin-task-list"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

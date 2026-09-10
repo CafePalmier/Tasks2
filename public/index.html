@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cafe Palmier Tasks</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-page="home">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <img class="brand-logo" src="/assets/logo-eng.png" alt="Cafe Palmier logo" />
+      </div>
+      <nav class="nav">
+        <a class="nav-link active" href="/index.html">Home</a>
+        <a class="nav-link" href="/closing.html">Closing List</a>
+        <a class="nav-link" href="/admin.html">Admin</a>
+      </nav>
+    </header>
+
+    <main class="page-shell">
+      <section class="summary-bar">
+        <div class="summary-card primary">
+          <span>Open tasks</span>
+          <strong id="openCount">0</strong>
+        </div>
+        <div class="summary-card secondary">
+          <span>Completed this cycle</span>
+          <strong id="completedCount">0</strong>
+        </div>
+        <div class="summary-card accent">
+          <span>Urgent today</span>
+          <strong id="urgentCount">0</strong>
+        </div>
+      </section>
+
+      <div class="content-grid">
+        <section class="main-panel">
+          <div id="taskGroups" class="task-groups"></div>
+        </section>
+
+        <aside class="side-panel">
+          <div class="panel-card">
+            <h2>Completed</h2>
+            <ul id="completedList" class="mini-list"></ul>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
