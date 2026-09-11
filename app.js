@@ -2,7 +2,7 @@ const STORAGE_KEY = 'cafe-palmier-task-state';
 const TODAY_LIST_KEY = 'cafe-palmier-today-list';
 const DAY_LISTS_KEY = 'cafe-palmier-day-lists-v2';
 const STATIC_TASKS_PATH = './tasks.json';
-const TASK_DATA_VERSION = 4;
+const TASK_DATA_VERSION = 5;
 
 const state = {
   tasks: [],
@@ -13,7 +13,7 @@ const state = {
 };
 
 const periodLabels = {
-  daily: 'Daily',
+  shift: 'Shift',
   weekly: 'Weekly',
   monthly: 'Monthly',
   yearly: 'Yearly'
@@ -28,9 +28,9 @@ const categoryLabels = {
   general: 'General'
 };
 
-const taskPeriods = ['daily', 'weekly', 'monthly', 'yearly'];
+const taskPeriods = ['shift', 'weekly', 'monthly', 'yearly'];
 const taskCategories = ['opening', 'cleaning', 'stocking', 'prep', 'closing', 'general'];
-const dailyOnlyCategories = ['opening', 'closing'];
+const shiftOnlyCategories = ['opening', 'closing'];
 const closingAreas = ['Outside', 'Upstairs', 'Downstairs', 'Kitchen', 'Bar', 'General'];
 
 function sortTasks(tasks) {
@@ -50,14 +50,14 @@ function getLocalTasks(fallbackTasks = []) {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     const savedTasks = Array.isArray(saved) ? saved : saved?.tasks;
     if (!Array.isArray(savedTasks)) return fallbackTasks;
-    if (saved?.version === TASK_DATA_VERSION) return savedTasks;
+    if (saved?.version === TASK_DATA_VERSION) return savedTasks.filter((task) => task.period !== 'daily');
 
     const savedById = new Map(savedTasks.map((task) => [task.id, task]));
     const refreshedTasks = fallbackTasks.map((task) => ({
       ...task,
       lastCompletedAt: savedById.get(task.id)?.lastCompletedAt || task.lastCompletedAt
     }));
-    const newLocalTasks = savedTasks.filter((task) => !fallbackTasks.some((item) => item.id === task.id));
+    const newLocalTasks = savedTasks.filter((task) => task.period !== 'daily' && !fallbackTasks.some((item) => item.id === task.id));
     const mergedTasks = [...refreshedTasks, ...newLocalTasks];
     saveLocalTasks(mergedTasks);
     return mergedTasks;
@@ -82,7 +82,7 @@ function localTaskApi(path, options = {}) {
     const task = {
       ...body,
       id: `task-${Date.now()}`,
-      period: dailyOnlyCategories.includes(body.category) ? 'daily' : (body.period || 'daily'),
+      period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || 'weekly'),
       description: body.description || '',
       urgentOn: Array.isArray(body.urgentOn) ? body.urgentOn : [],
       isActive: true,
@@ -102,7 +102,7 @@ function localTaskApi(path, options = {}) {
     tasks[taskIndex] = {
       ...tasks[taskIndex],
       ...body,
-      period: dailyOnlyCategories.includes(body.category) ? 'daily' : (body.period || tasks[taskIndex].period)
+      period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || tasks[taskIndex].period)
     };
   } else if (method === 'DELETE') {
     tasks = tasks.filter((task) => task.id !== taskId);
@@ -209,6 +209,7 @@ function startOfYear(date) {
 function getPeriodWindow(period, date) {
   switch (period) {
     case 'daily':
+    case 'shift':
       return { start: new Date(date.getFullYear(), date.getMonth(), date.getDate()), end: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999) };
     case 'weekly':
       return {
@@ -924,10 +925,11 @@ function updatePeriodVisibility() {
   const periodField = document.getElementById('periodField');
   if (!form || !periodField) return;
 
-  const isDailyOnly = dailyOnlyCategories.includes(form.elements.category.value);
-  periodField.hidden = isDailyOnly;
-  form.elements.period.disabled = isDailyOnly;
-  if (isDailyOnly) form.elements.period.value = 'daily';
+  const isShiftOnly = shiftOnlyCategories.includes(form.elements.category.value);
+  periodField.hidden = isShiftOnly;
+  form.elements.period.disabled = isShiftOnly;
+  if (isShiftOnly) form.elements.period.value = 'shift';
+  updateTimeTagOptions(form);
 }
 
 function resetForm() {
@@ -949,7 +951,7 @@ async function handleTaskSubmit(event) {
   const payload = {
     title: form.elements.title.value.trim(),
     category: form.elements.category.value,
-    period: dailyOnlyCategories.includes(form.elements.category.value) ? 'daily' : form.elements.period.value,
+    period: shiftOnlyCategories.includes(form.elements.category.value) ? 'shift' : form.elements.period.value,
     description: form.elements.description.value.trim(),
     timeTag: form.elements.timeTag.value.trim(),
     urgentOn: form.elements.urgentOn.value
@@ -1088,8 +1090,8 @@ function taskFormMarkup() {
           <div class="field-grid">
             <label><span>Title</span><input type="text" name="title" required /></label>
             <label><span>Category</span><select name="category"><option value="opening">Opening</option><option value="cleaning" selected>Cleaning</option><option value="stocking">Stocking</option><option value="prep">Prepping</option><option value="closing">Closing</option><option value="general">General</option></select></label>
-            <label id="periodField"><span>Period</span><select name="period"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
-            <label><span>Time tag</span><input type="text" name="timeTag" placeholder="e.g. 4:30PM+" /></label>
+            <label id="periodField"><span>Period</span><select name="period"><option value="shift">Shift</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
+            <label><span>Time tag</span><select name="timeTag">${timeTagOptions()}</select></label>
             <label><span>Urgent on</span><input type="text" name="urgentOn" placeholder="Friday, Monday" /></label>
           </div>
           <label><span>Description / elaboration</span><textarea name="description" rows="3" placeholder="Add instructions or notes"></textarea></label>
@@ -1097,6 +1099,39 @@ function taskFormMarkup() {
         </form>
       </div>
     </div>`;
+}
+
+function timeTagOptions(category = '') {
+  const options = ['<option value="">Any time</option>'];
+  const startMinutes = category === 'closing' ? 14 * 60 : 0;
+  const endMinutes = category === 'closing' ? 17 * 60 : (24 * 60) - 10;
+  for (let minutes = startMinutes; minutes <= endMinutes; minutes += 10) {
+    const hours24 = Math.floor(minutes / 60);
+    const minute = String(minutes % 60).padStart(2, '0');
+    const suffix = hours24 >= 12 ? 'PM' : 'AM';
+    const hours12 = hours24 % 12 || 12;
+    const value = `${hours12}:${minute}${suffix}+`;
+    options.push(`<option value="${value}">${value}</option>`);
+  }
+  return options.join('');
+}
+
+function updateTimeTagOptions(form) {
+  const select = form?.elements?.timeTag;
+  if (!select) return;
+  const selectedValue = select.value;
+  const category = form.elements.category?.value || '';
+  select.innerHTML = timeTagOptions(category);
+  if ([...select.options].some((option) => option.value === selectedValue)) {
+    select.value = selectedValue;
+  }
+}
+
+function initializeTimeTagSelects() {
+  document.querySelectorAll('select[name="timeTag"]').forEach((select) => {
+    const form = select.closest('form');
+    if (!select.options.length) select.innerHTML = timeTagOptions(form?.elements.category?.value);
+  });
 }
 
 function ensureAppChrome() {
@@ -1158,6 +1193,7 @@ function closeTaskModal() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   ensureAppChrome();
+  initializeTimeTagSelects();
   const form = document.getElementById('taskForm');
   if (form) {
     form.addEventListener('submit', handleTaskSubmit);

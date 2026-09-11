@@ -9,7 +9,7 @@ const ROOT_ASSETS_DIR = path.join(ROOT_DIR, 'Assets');
 const DATA_DIR = path.join(ROOT_DIR, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'tasks.json');
 
-const PERIOD_ORDER = { daily: 0, weekly: 1, monthly: 2, yearly: 3 };
+const PERIOD_ORDER = { shift: 0, weekly: 1, monthly: 2, yearly: 3 };
 const CATEGORY_ORDER = {
   opening: 0,
   cleaning: 1,
@@ -19,7 +19,7 @@ const CATEGORY_ORDER = {
   general: 5
 };
 
-const DEFAULT_TASKS = [
+let DEFAULT_TASKS = [
   { id: 'task-1', title: 'Windex doors and fridges', category: 'cleaning', period: 'daily', description: '', urgentOn: [], isActive: true, order: 1 },
   { id: 'task-2', title: 'Clean outside tables', category: 'cleaning', period: 'daily', description: '', urgentOn: [], isActive: true, order: 2 },
   { id: 'task-3', title: 'Wipe fridges', category: 'cleaning', period: 'daily', description: '', urgentOn: [], isActive: true, order: 3 },
@@ -84,7 +84,8 @@ const DEFAULT_TASKS = [
   { id: 'task-opening-6', title: 'Put chairs down', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 58 },
   { id: 'task-opening-7', title: 'Dial espresso', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 59 },
   { id: 'task-opening-8', title: 'Turn fridge lights on', category: 'opening', period: 'daily', description: '', urgentOn: [], isActive: true, order: 60 }
-];
+].filter((task) => task.period !== 'daily' || ['opening', 'closing'].includes(task.category))
+  .map((task) => ['opening', 'closing'].includes(task.category) ? { ...task, period: 'shift' } : task);
 
 function ensureDataFile() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -122,7 +123,7 @@ function normalizeTask(task, idx) {
     id: task.id || `task-${Date.now()}-${idx}`,
     title: String(task.title || 'Untitled task').trim(),
     category,
-    period: ['opening', 'closing'].includes(category) ? 'daily' : (task.period || 'daily'),
+    period: ['opening', 'closing'].includes(category) ? 'shift' : (task.period || 'weekly'),
     description: task.description || '',
     timeTag: task.timeTag ? String(task.timeTag).trim() : '',
     urgentOn: Array.isArray(task.urgentOn) ? task.urgentOn.map((day) => String(day).trim()) : [],
@@ -182,6 +183,7 @@ function startOfYear(date) {
 function getPeriodWindow(period, date) {
   switch (period) {
     case 'daily':
+    case 'shift':
       return { start: new Date(date.getFullYear(), date.getMonth(), date.getDate()), end: new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999) };
     case 'weekly':
       return { start: startOfWeek(date), end: new Date(startOfWeek(date).getTime() + 6 * 24 * 60 * 60 * 1000 + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 999) };
