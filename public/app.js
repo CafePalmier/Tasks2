@@ -418,7 +418,8 @@ function renderGroups() {
       <h2>Available Tasks</h2>
       <div class="task-list">
         ${homeTasks.map((task) => `
-          <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="tomorrow">
+          <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="both">
+            <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
             <button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(task.title)} to tomorrow">Tomorrow</button>
             <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
               <div class="task-main">
@@ -1015,6 +1016,7 @@ function attachSwipeHandlers(scope = document) {
       content.style.transition = 'transform 0.22s ease';
       content.style.transform = 'translateX(0px)';
       shell.classList.remove('revealed');
+      shell.classList.remove('swipe-left', 'swipe-right');
       shell.classList.remove('ready-to-complete');
       dragOffset = 0;
       isDragging = false;
@@ -1046,19 +1048,24 @@ function attachSwipeHandlers(scope = document) {
       }
       if (!isHorizontal) return;
       event.preventDefault();
-      dragOffset = Math.max(-128, Math.min(0, deltaX));
+      const allowsTomorrow = swipeMode === 'both';
+      dragOffset = Math.max(-128, Math.min(allowsTomorrow ? 128 : 0, deltaX));
       content.style.transform = `translateX(${dragOffset}px)`;
-      shell.classList.toggle('revealed', dragOffset < -8);
-      shell.classList.toggle('ready-to-complete', dragOffset <= -92);
+      shell.classList.toggle('revealed', Math.abs(dragOffset) > 8);
+      shell.classList.toggle('swipe-left', dragOffset < -8);
+      shell.classList.toggle('swipe-right', dragOffset > 8);
+      shell.classList.toggle('ready-to-complete', Math.abs(dragOffset) >= 92);
     });
 
     shell.addEventListener('pointerup', () => {
       if (!isDragging) return;
 
       if (dragOffset <= -92) {
-        if (swipeMode === 'tomorrow') addTaskToDay(taskId, 'tomorrow');
-        else if (swipeMode === 'complete') completeTask(taskId);
-        else resetPosition();
+        completeTask(taskId);
+        return;
+      }
+      if (dragOffset >= 92 && swipeMode === 'both') {
+        addTaskToDay(taskId, 'tomorrow');
         return;
       }
       resetPosition();
