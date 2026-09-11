@@ -14,16 +14,16 @@
       <nav class="nav">
         <a class="nav-link" href="./index.html">Available Tasks</a>
         <a class="nav-link" href="./opening.html">Opening List</a>
-        <a class="nav-link active" href="./today.html">Today's List</a>
         <a class="nav-link" href="./closing.html">Closing List</a>
-        <a class="nav-link" href="./admin.html">Admin</a>
+        <a class="nav-link active" href="./today.html">Today &amp; Tomorrow</a>
       </nav>
     </header>
 
     <main class="page-shell">
-      <section class="panel-card">
-        <div id="todayList" class="task-groups"></div>
-      </section>
+      <div class="day-lists-grid">
+        <section id="todayList" class="panel-card"></section>
+        <section id="tomorrowList" class="panel-card"></section>
+      </div>
     </main>
 
     <script src="./app.js"></script>

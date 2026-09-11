@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'cafe-palmier-task-state';
 const TODAY_LIST_KEY = 'cafe-palmier-today-list';
+const DAY_LISTS_KEY = 'cafe-palmier-day-lists-v2';
 const STATIC_TASKS_PATH = './tasks.json';
 const TASK_DATA_VERSION = 4;
 
@@ -279,78 +280,114 @@ function buildTaskPayload(tasks, now = new Date()) {
 }
 
 function getTodayListState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(TODAY_LIST_KEY) || '{}');
-    const today = new Date().toISOString().slice(0, 10);
+  return getDayListsState().today;
+}
 
-    if (saved.date !== today) {
-      localStorage.setItem(TODAY_LIST_KEY, JSON.stringify({ date: today, taskIds: [] }));
-      return { date: today, taskIds: [] };
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function nextLocalDateKey(date = new Date()) {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+  return localDateKey(next);
+}
+
+function emptyDayList(date) {
+  return { date, taskIds: [], customItems: [] };
+}
+
+function normalizeDayList(value, date) {
+  return {
+    date,
+    taskIds: Array.isArray(value?.taskIds) ? [...new Set(value.taskIds.filter(Boolean))] : [],
+    customItems: Array.isArray(value?.customItems)
+      ? value.customItems.filter((item) => item?.title).map((item) => ({ id: item.id || `custom-${Date.now()}`, title: String(item.title).trim() }))
+      : []
+  };
+}
+
+function getDayListsState() {
+  try {
+    const todayDate = localDateKey();
+    const tomorrowDate = nextLocalDateKey();
+    let saved = JSON.parse(localStorage.getItem(DAY_LISTS_KEY) || 'null');
+
+    if (!saved) {
+      const legacy = JSON.parse(localStorage.getItem(TODAY_LIST_KEY) || 'null');
+      saved = { today: legacy, tomorrow: null };
     }
 
-    return {
-      date: today,
-      taskIds: Array.isArray(saved.taskIds) ? saved.taskIds.filter(Boolean) : []
+    const todaySource = saved?.today?.date === todayDate
+      ? saved.today
+      : (saved?.tomorrow?.date === todayDate ? saved.tomorrow : null);
+    const tomorrowSource = saved?.tomorrow?.date === tomorrowDate ? saved.tomorrow : null;
+    const result = {
+      today: normalizeDayList(todaySource, todayDate),
+      tomorrow: normalizeDayList(tomorrowSource, tomorrowDate)
     };
+    localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(result));
+    return result;
   } catch (error) {
-    return { date: new Date().toISOString().slice(0, 10), taskIds: [] };
+    return { today: emptyDayList(localDateKey()), tomorrow: emptyDayList(nextLocalDateKey()) };
   }
 }
 
 function saveTodayListState(taskIds) {
-  const today = new Date().toISOString().slice(0, 10);
-  localStorage.setItem(TODAY_LIST_KEY, JSON.stringify({ date: today, taskIds }));
+  const lists = getDayListsState();
+  lists.today.taskIds = [...new Set(taskIds)];
+  localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(lists));
+}
+
+function saveDayListsState(lists) {
+  localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(lists));
+}
+
+function addTaskToDay(taskId, day) {
+  const lists = getDayListsState();
+  if (!lists[day].taskIds.includes(taskId)) lists[day].taskIds.push(taskId);
+  saveDayListsState(lists);
+  renderAll();
+}
+
+function removeTaskFromDay(taskId, day) {
+  const lists = getDayListsState();
+  lists[day].taskIds = lists[day].taskIds.filter((id) => id !== taskId);
+  saveDayListsState(lists);
+  renderAll();
+}
+
+function addCustomDayItem(day, title) {
+  const lists = getDayListsState();
+  lists[day].customItems.push({ id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, title });
+  saveDayListsState(lists);
+  renderAll();
+}
+
+function removeCustomDayItem(day, customId) {
+  const lists = getDayListsState();
+  lists[day].customItems = lists[day].customItems.filter((item) => item.id !== customId);
+  saveDayListsState(lists);
+  renderAll();
+}
+
+function ensureUrgentTasksInToday() {
+  const lists = getDayListsState();
+  const urgentIds = state.available
+    .filter((task) => task.urgentToday)
+    .map((task) => task.id);
+  const merged = [...new Set([...lists.today.taskIds, ...urgentIds])];
+  if (merged.length !== lists.today.taskIds.length) {
+    lists.today.taskIds = merged;
+    saveDayListsState(lists);
+  }
 }
 
 function beginInlineEdit(button) {
   const task = state.tasks.find((item) => item.id === button.dataset.editId);
-  const card = button.closest('.task-item');
-  if (!task || !card || card.classList.contains('is-editing')) return;
-
-  const main = card.querySelector('.task-main');
-  const actions = card.querySelector('.task-actions');
-  if (!main || !actions) return;
-
-  card.classList.add('is-editing');
-  main.innerHTML = `<input class="inline-task-input" type="text" value="${escapeHtml(task.title)}" aria-label="Task title" />`;
-  actions.innerHTML = `
-    <button class="primary-btn" type="button" data-inline-save>Save</button>
-    <button class="icon-btn" type="button" data-inline-cancel>Cancel</button>
-  `;
-
-  const input = main.querySelector('.inline-task-input');
-  const saveButton = actions.querySelector('[data-inline-save]');
-  const cancelButton = actions.querySelector('[data-inline-cancel]');
-
-  const cancel = () => renderAll();
-  const save = async () => {
-    const title = input.value.trim();
-    if (!title) {
-      input.focus();
-      return;
-    }
-
-    saveButton.disabled = true;
-    try {
-      await api(`/api/tasks/${task.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ title })
-      });
-      await loadTaskData();
-    } catch (error) {
-      console.error('Failed to update task title', error);
-      saveButton.disabled = false;
-    }
-  };
-
-  saveButton.addEventListener('click', save);
-  cancelButton.addEventListener('click', cancel);
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') save();
-    if (event.key === 'Escape') cancel();
-  });
-  input.focus();
-  input.select();
+  if (task) openTaskModal(task);
 }
 
 function bindInlineEditButtons(scope = document) {
@@ -381,8 +418,8 @@ function renderGroups() {
       <h2>Available Tasks</h2>
       <div class="task-list">
         ${homeTasks.map((task) => `
-          <div class="task-swipe-shell" data-task-id="${task.id}">
-            <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
+          <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="tomorrow">
+            <button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(task.title)} to tomorrow">Tomorrow</button>
             <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
               <div class="task-main">
                 <h4>${escapeHtml(task.title)}</h4>
@@ -399,7 +436,7 @@ function renderGroups() {
                 </div>
               </div>
               <div class="task-actions">
-                <button class="secondary-btn" data-add-today-id="${task.id}">${todayTaskIds.has(task.id) ? 'Remove' : 'Add to Today'}</button>
+                <button class="secondary-btn" data-add-today-id="${task.id}">${todayTaskIds.has(task.id) ? 'Remove today' : 'Today'}</button>
                 <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
               </div>
             </article>
@@ -428,54 +465,66 @@ function renderGroups() {
   attachSwipeHandlers();
 }
 
-function renderTodayList() {
-  const root = document.getElementById('todayList');
+function renderDayList(day) {
+  const root = document.getElementById(day === 'today' ? 'todayList' : 'tomorrowList');
   if (!root) return;
-
-  root.id = 'todayList';
-
-  const { taskIds } = getTodayListState();
-  const todayTasks = taskIds
+  const lists = getDayListsState();
+  const { taskIds, customItems } = lists[day];
+  const dayTasks = taskIds
     .map((taskId) => state.tasks.find((task) => task.id === taskId))
     .filter(Boolean)
-    .filter((task) => task.isActive && !['opening', 'closing'].includes(task.category));
+    .filter((task) => task.isActive);
+  const label = day === 'today' ? "Today's List" : "Tomorrow's List";
 
   root.innerHTML = `
-    <h2>Today's List</h2>
-    ${todayTasks.length
+    <div class="list-title-row"><h2>${label}</h2><span class="group-badge">${dayTasks.length + customItems.length}</span></div>
+    <form class="quick-day-form" data-quick-day="${day}">
+      <input name="title" type="text" placeholder="Write an additional task…" aria-label="Additional task for ${day}" required />
+      <button class="primary-btn" type="submit">Add</button>
+    </form>
+    ${dayTasks.length || customItems.length
       ? `
         <div class="task-list today-task-list">
-          ${todayTasks.map((task) => `
-            <div class="task-swipe-shell" data-task-id="${task.id}">
-              <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
-              <article class="task-item task-swipe-content task-item-no-check">
+          ${dayTasks.map((task) => `
+            <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="${day === 'today' ? 'complete' : 'none'}">
+              ${day === 'today' ? `<button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>` : ''}
+              <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
                 <div class="task-main"><h4>${escapeHtml(task.title)}</h4></div>
-                <div class="task-actions"><button class="icon-btn" data-remove-today-id="${task.id}">Remove</button></div>
+                <div class="task-actions">
+                  <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
+                  <button class="icon-btn" data-remove-day-id="${task.id}" data-day="${day}">Remove</button>
+                </div>
               </article>
             </div>
           `).join('')}
+          ${customItems.map((item) => `
+            <article class="task-item task-item-no-check one-off-item">
+              <div class="task-main"><h4>${escapeHtml(item.title)}</h4><span class="meta-pill category-pill">One-off</span></div>
+              <button class="icon-btn" data-remove-custom-id="${item.id}" data-day="${day}">${day === 'today' ? 'Done' : 'Remove'}</button>
+            </article>
+          `).join('')}
         </div>
       `
-      : `
-        <div class="today-empty">
-          <p>No tasks added yet.</p>
-          <a class="primary-btn" href="./index.html">Add Tasks</a>
-        </div>
-      `}
+      : `<div class="today-empty"><p>No tasks added yet.</p></div>`}
   `;
 
-  root.querySelectorAll('[data-remove-today-id]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const taskId = button.dataset.removeTodayId;
-      const currentState = getTodayListState();
-      const taskIds = currentState.taskIds.filter((id) => id !== taskId);
-      saveTodayListState(taskIds);
-      renderTodayList();
-      renderGroups();
-    });
+  root.querySelector('[data-quick-day]')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const title = event.currentTarget.elements.title.value.trim();
+    if (title) addCustomDayItem(day, title);
   });
+  root.querySelectorAll('[data-remove-day-id]').forEach((button) => {
+    button.addEventListener('click', () => removeTaskFromDay(button.dataset.removeDayId, button.dataset.day));
+  });
+  root.querySelectorAll('[data-remove-custom-id]').forEach((button) => {
+    button.addEventListener('click', () => removeCustomDayItem(button.dataset.day, button.dataset.removeCustomId));
+  });
+  bindInlineEditButtons(root);
   attachSwipeHandlers(root);
 }
+
+function renderTodayList() { renderDayList('today'); }
+function renderTomorrowList() { renderDayList('tomorrow'); }
 
 function renderOpeningList() {
   const root = document.getElementById('openingList');
@@ -560,6 +609,28 @@ function renderSummary() {
   if (completedButton) {
     completedButton.onclick = openCompletedModal;
   }
+
+  const urgentButton = document.querySelector('[data-open-urgent]');
+  if (urgentButton) urgentButton.onclick = openUrgentModal;
+}
+
+function openUrgentModal() {
+  const modal = document.getElementById('urgentModal');
+  const list = document.getElementById('urgentList');
+  if (!modal || !list) return;
+  const urgentTasks = state.available.filter((task) => task.urgentToday);
+  list.innerHTML = urgentTasks.length
+    ? urgentTasks.map((task) => `<li><span>${escapeHtml(task.title)}</span><span class="meta-pill urgent">Urgent today</span></li>`).join('')
+    : '<li class="empty-state">Nothing is urgent today.</li>';
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeUrgentModal() {
+  const modal = document.getElementById('urgentModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
 }
 
 function getClosingSortMode() {
@@ -790,6 +861,7 @@ async function loadTaskData() {
     state.tasks = payload.tasks || tasks;
     state.available = payload.available || [];
     state.completed = payload.completed || [];
+    ensureUrgentTasksInToday();
     renderAll();
   } catch (error) {
     console.error('Failed to load tasks', error);
@@ -800,6 +872,9 @@ async function loadTaskData() {
 async function completeTask(taskId) {
   try {
     await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
+    const lists = getDayListsState();
+    lists.today.taskIds = lists.today.taskIds.filter((id) => id !== taskId);
+    saveDayListsState(lists);
     await loadTaskData();
   } catch (error) {
     console.error('Failed to complete task', error);
@@ -830,15 +905,17 @@ function populateForm(task) {
   if (!form) return;
 
   document.getElementById('formTitle').textContent = 'Edit task';
-  form.taskId.value = task.id;
-  form.title.value = task.title;
-  form.category.value = task.category || 'general';
-  form.period.value = task.period || 'daily';
-  form.urgentOn.value = (task.urgentOn || []).join(', ');
-  form.timeTag.value = task.timeTag || '';
-  form.description.value = task.description || '';
+  form.elements.taskId.value = task.id;
+  form.elements.title.value = task.title;
+  form.elements.category.value = task.category || 'general';
+  form.elements.period.value = task.period || 'daily';
+  form.elements.urgentOn.value = (task.urgentOn || []).join(', ');
+  form.elements.timeTag.value = task.timeTag || '';
+  form.elements.description.value = task.description || '';
+  const deleteButton = document.getElementById('deleteTaskButton');
+  if (deleteButton) deleteButton.hidden = false;
   updatePeriodVisibility();
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  openTaskModal();
 }
 
 function updatePeriodVisibility() {
@@ -846,10 +923,10 @@ function updatePeriodVisibility() {
   const periodField = document.getElementById('periodField');
   if (!form || !periodField) return;
 
-  const isDailyOnly = dailyOnlyCategories.includes(form.category.value);
+  const isDailyOnly = dailyOnlyCategories.includes(form.elements.category.value);
   periodField.hidden = isDailyOnly;
-  form.period.disabled = isDailyOnly;
-  if (isDailyOnly) form.period.value = 'daily';
+  form.elements.period.disabled = isDailyOnly;
+  if (isDailyOnly) form.elements.period.value = 'daily';
 }
 
 function resetForm() {
@@ -858,7 +935,9 @@ function resetForm() {
 
   form.reset();
   document.getElementById('formTitle').textContent = 'Add a task';
-  form.taskId.value = '';
+  form.elements.taskId.value = '';
+  const deleteButton = document.getElementById('deleteTaskButton');
+  if (deleteButton) deleteButton.hidden = true;
   updatePeriodVisibility();
 }
 
@@ -867,12 +946,12 @@ async function handleTaskSubmit(event) {
 
   const form = event.target;
   const payload = {
-    title: form.title.value.trim(),
-    category: form.category.value,
-    period: dailyOnlyCategories.includes(form.category.value) ? 'daily' : form.period.value,
-    description: form.description.value.trim(),
-    timeTag: form.timeTag.value.trim(),
-    urgentOn: form.urgentOn.value
+    title: form.elements.title.value.trim(),
+    category: form.elements.category.value,
+    period: dailyOnlyCategories.includes(form.elements.category.value) ? 'daily' : form.elements.period.value,
+    description: form.elements.description.value.trim(),
+    timeTag: form.elements.timeTag.value.trim(),
+    urgentOn: form.elements.urgentOn.value
       .split(',')
       .map((value) => value.trim())
       .filter(Boolean)
@@ -884,8 +963,8 @@ async function handleTaskSubmit(event) {
   }
 
   try {
-    if (form.taskId.value) {
-      await api(`/api/tasks/${form.taskId.value}`, {
+    if (form.elements.taskId.value) {
+      await api(`/api/tasks/${form.elements.taskId.value}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
@@ -898,6 +977,7 @@ async function handleTaskSubmit(event) {
 
     resetForm();
     await loadTaskData();
+    closeTaskModal();
   } catch (error) {
     console.error('Failed to save task', error);
     alert('Could not save the task.');
@@ -907,6 +987,7 @@ async function handleTaskSubmit(event) {
 function renderAll() {
   renderGroups();
   renderTodayList();
+  renderTomorrowList();
   renderOpeningList();
   renderCompleted();
   renderSummary();
@@ -921,6 +1002,8 @@ function attachSwipeHandlers(scope = document) {
     shell.dataset.swipeReady = 'true';
     const content = shell.querySelector('.task-swipe-content');
     const taskId = shell.dataset.taskId;
+    const swipeMode = shell.dataset.swipeMode || 'complete';
+    if (swipeMode === 'none') return;
     let startX = 0;
     let startY = 0;
     let dragOffset = 0;
@@ -973,7 +1056,9 @@ function attachSwipeHandlers(scope = document) {
       if (!isDragging) return;
 
       if (dragOffset <= -92) {
-        completeTask(taskId);
+        if (swipeMode === 'tomorrow') addTaskToDay(taskId, 'tomorrow');
+        else if (swipeMode === 'complete') completeTask(taskId);
+        else resetPosition();
         return;
       }
       resetPosition();
@@ -981,10 +1066,91 @@ function attachSwipeHandlers(scope = document) {
 
     shell.addEventListener('pointercancel', resetPosition);
     shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => completeTask(taskId));
+    shell.querySelector('[data-swipe-tomorrow]')?.addEventListener('click', () => addTaskToDay(taskId, 'tomorrow'));
   });
 }
 
+function taskFormMarkup() {
+  return `
+    <div id="taskModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-task-modal></div>
+      <div class="modal-card task-form-modal" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+        <div class="modal-header"><h2 id="formTitle">Add a task</h2><button class="icon-btn" type="button" data-close-task-modal>Close</button></div>
+        <form id="taskForm">
+          <input type="hidden" id="taskId" name="taskId" />
+          <div class="field-grid">
+            <label><span>Title</span><input type="text" name="title" required /></label>
+            <label><span>Category</span><select name="category"><option value="opening">Opening</option><option value="cleaning" selected>Cleaning</option><option value="stocking">Stocking</option><option value="prep">Prepping</option><option value="closing">Closing</option><option value="general">General</option></select></label>
+            <label id="periodField"><span>Period</span><select name="period"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
+            <label><span>Time tag</span><input type="text" name="timeTag" placeholder="e.g. 4:30PM+" /></label>
+            <label><span>Urgent on</span><input type="text" name="urgentOn" placeholder="Friday, Monday" /></label>
+          </div>
+          <label><span>Description / elaboration</span><textarea name="description" rows="3" placeholder="Add instructions or notes"></textarea></label>
+          <div class="form-actions"><button type="submit" class="primary-btn">Save task</button><button type="button" class="secondary-btn" id="resetForm">Clear form</button><button type="button" class="danger-btn" id="deleteTaskButton" hidden>Delete task</button></div>
+        </form>
+      </div>
+    </div>`;
+}
+
+function ensureAppChrome() {
+  const topbar = document.querySelector('.topbar');
+  if (topbar && !topbar.querySelector('[data-open-task-modal]')) {
+    const addButton = document.createElement('button');
+    addButton.type = 'button';
+    addButton.className = 'add-item-field';
+    addButton.dataset.openTaskModal = '';
+    addButton.innerHTML = '<span>＋</span> Add item';
+    topbar.insertBefore(addButton, topbar.querySelector('.nav'));
+  }
+  if (!document.getElementById('taskForm')) document.body.insertAdjacentHTML('beforeend', taskFormMarkup());
+  if (!document.getElementById('urgentModal')) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="urgentModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-urgent></div><div class="modal-card"><div class="modal-header"><h2>Urgent Today</h2><button class="icon-btn" type="button" data-close-urgent>Close</button></div><ul id="urgentList" class="mini-list modal-list"></ul></div></div>');
+  }
+}
+
+function scheduleMidnightRollover() {
+  const now = new Date();
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 50);
+  setTimeout(async () => {
+    getDayListsState();
+    await loadTaskData();
+    scheduleMidnightRollover();
+  }, nextMidnight.getTime() - now.getTime());
+}
+
+function openTaskModal(task) {
+  const modal = document.getElementById('taskModal');
+  if (!modal) {
+    document.getElementById('taskForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  if (task) {
+    const form = document.getElementById('taskForm');
+    document.getElementById('formTitle').textContent = 'Edit task';
+    form.elements.taskId.value = task.id;
+    form.elements.title.value = task.title;
+    form.elements.category.value = task.category || 'general';
+    form.elements.period.value = task.period || 'daily';
+    form.elements.urgentOn.value = (task.urgentOn || []).join(', ');
+    form.elements.timeTag.value = task.timeTag || '';
+    form.elements.description.value = task.description || '';
+    document.getElementById('deleteTaskButton').hidden = false;
+    updatePeriodVisibility();
+  }
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => document.getElementById('taskForm')?.elements.title.focus(), 0);
+}
+
+function closeTaskModal() {
+  const modal = document.getElementById('taskModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
+  ensureAppChrome();
   const form = document.getElementById('taskForm');
   if (form) {
     form.addEventListener('submit', handleTaskSubmit);
@@ -997,14 +1163,27 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('[data-close-completed]').forEach((button) => {
     button.addEventListener('click', closeCompletedModal);
   });
+  document.querySelectorAll('[data-open-task-modal]').forEach((button) => button.addEventListener('click', () => { resetForm(); openTaskModal(); }));
+  document.querySelectorAll('[data-close-task-modal]').forEach((button) => button.addEventListener('click', closeTaskModal));
+  document.querySelectorAll('[data-close-urgent]').forEach((button) => button.addEventListener('click', closeUrgentModal));
+  document.getElementById('deleteTaskButton')?.addEventListener('click', async () => {
+    const taskId = document.getElementById('taskForm').elements.taskId.value;
+    if (taskId && window.confirm('Delete this task?')) {
+      await deleteTask(taskId);
+      closeTaskModal();
+    }
+  });
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       closeCompletedModal();
+      closeUrgentModal();
+      closeTaskModal();
     }
   });
 
   await loadTaskData();
+  scheduleMidnightRollover();
 
   const editTaskId = new URLSearchParams(window.location.search).get('edit');
   if (editTaskId && form) {

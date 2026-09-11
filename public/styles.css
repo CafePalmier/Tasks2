@@ -39,6 +39,25 @@ button, input, textarea, select {
   border-bottom: 1px solid rgba(55, 100, 56, 0.15);
 }
 
+.add-item-field {
+  flex: 0 1 240px;
+  min-width: 150px;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(55, 100, 56, 0.28);
+  border-radius: 14px;
+  background: var(--white);
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(58, 42, 32, 0.06);
+}
+
+.add-item-field span {
+  color: var(--forest);
+  font-weight: 800;
+  margin-right: 0.35rem;
+}
+
 .brand-wrap {
   display: flex;
   align-items: center;
@@ -145,6 +164,22 @@ h1 {
   display: grid;
   grid-template-columns: minmax(0, 2.3fr) minmax(280px, 1fr);
   gap: 1.25rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.dashboard-available { grid-row: span 2; }
+
+.day-lists-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: start;
 }
 
 .modal {
@@ -371,6 +406,14 @@ h1 {
   font-size: 0.8rem;
 }
 
+.task-swipe-action.tomorrow {
+  background: linear-gradient(135deg, #d09a7d 0%, #b7775b 100%);
+}
+
+.task-swipe-action.tomorrow::before {
+  content: '→';
+}
+
 .task-swipe-shell.revealed .task-swipe-action {
   opacity: 1;
 }
@@ -574,6 +617,17 @@ h1 {
   justify-content: center;
 }
 
+.danger-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 0.45rem 0.65rem;
+  background: #8e3e35;
+  color: var(--white);
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: auto;
+}
+
 .secondary-btn {
   background: var(--warm);
   color: var(--forest);
@@ -590,6 +644,21 @@ h1 {
 
 .today-task-list {
   margin-top: 0.7rem;
+}
+
+.quick-day-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.quick-day-form input {
+  padding: 0.55rem 0.7rem;
+}
+
+.one-off-item {
+  border-style: dashed;
 }
 
 [hidden] {
@@ -653,6 +722,11 @@ textarea {
 }
 
 .form-panel form {
+  display: grid;
+  gap: 1rem;
+}
+
+.task-form-modal form {
   display: grid;
   gap: 1rem;
 }
@@ -738,7 +812,9 @@ textarea {
 
 @media (max-width: 900px) {
   .content-grid,
-  .admin-shell {
+  .admin-shell,
+  .dashboard-grid,
+  .day-lists-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -747,6 +823,11 @@ textarea {
   .topbar {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .add-item-field {
+    width: 100%;
+    flex-basis: auto;
   }
 
   .nav {

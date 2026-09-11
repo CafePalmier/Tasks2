@@ -14,9 +14,8 @@
       <nav class="nav">
         <a class="nav-link active" href="./index.html">Available Tasks</a>
         <a class="nav-link" href="./opening.html">Opening List</a>
-        <a class="nav-link" href="./today.html">Today's List</a>
         <a class="nav-link" href="./closing.html">Closing List</a>
-        <a class="nav-link" href="./admin.html">Admin</a>
+        <a class="nav-link" href="./today.html">Today &amp; Tomorrow</a>
       </nav>
     </header>
 
@@ -30,16 +29,18 @@
           <span>Completed this cycle</span>
           <strong id="completedCount">0</strong>
         </button>
-        <div class="summary-card accent">
+        <button type="button" class="summary-card accent summary-button" data-open-urgent>
           <span>Urgent today</span>
           <strong id="urgentCount">0</strong>
-        </div>
+        </button>
       </section>
 
-      <div class="content-grid">
-        <section class="main-panel">
+      <div class="dashboard-grid">
+        <section class="dashboard-available">
           <div id="taskGroups" class="task-groups"></div>
         </section>
+        <section id="todayList" class="panel-card dashboard-today"></section>
+        <section id="tomorrowList" class="panel-card dashboard-tomorrow"></section>
       </div>
     </main>
 
