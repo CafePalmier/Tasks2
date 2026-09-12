@@ -1159,10 +1159,12 @@ function attachSwipeHandlers(scope = document) {
     let isDragging = false;
     let directionLocked = false;
     let isHorizontal = false;
+    let isCommitting = false;
 
     const resetPosition = () => {
-      content.style.transition = 'transform 0.22s ease';
-      content.style.transform = 'translateX(0px)';
+      if (isCommitting) return;
+      content.style.transition = 'transform 260ms cubic-bezier(.2,.8,.2,1)';
+      content.style.transform = 'translate3d(0, 0, 0)';
       shell.classList.remove('revealed');
       shell.classList.remove('swipe-left', 'swipe-right');
       shell.classList.remove('ready-to-complete');
@@ -1170,6 +1172,16 @@ function attachSwipeHandlers(scope = document) {
       isDragging = false;
       directionLocked = false;
       isHorizontal = false;
+    };
+
+    const commitSwipe = (direction, action) => {
+      if (isCommitting) return;
+      isCommitting = true;
+      isDragging = false;
+      const distance = content.offsetWidth + 36;
+      content.style.transition = 'none';
+      content.style.transform = `translate3d(${direction === 'left' ? -distance : distance}px, 0, 0)`;
+      action();
     };
 
     shell.addEventListener('pointerdown', (event) => {
@@ -1198,7 +1210,7 @@ function attachSwipeHandlers(scope = document) {
       event.preventDefault();
       const allowsTomorrow = swipeMode === 'both';
       dragOffset = Math.max(-128, Math.min(allowsTomorrow ? 128 : 0, deltaX));
-      content.style.transform = `translateX(${dragOffset}px)`;
+      content.style.transform = `translate3d(${dragOffset}px, 0, 0)`;
       shell.classList.toggle('revealed', Math.abs(dragOffset) > 8);
       shell.classList.toggle('swipe-left', dragOffset < -8);
       shell.classList.toggle('swipe-right', dragOffset > 8);
@@ -1209,19 +1221,35 @@ function attachSwipeHandlers(scope = document) {
       if (!isDragging) return;
 
       if (dragOffset <= -92) {
-        completeTask(taskId);
+        commitSwipe('left', () => completeTask(taskId));
         return;
       }
       if (dragOffset >= 92 && swipeMode === 'both') {
-        addTaskToDay(taskId, 'tomorrow');
+        commitSwipe('right', () => addTaskToDay(taskId, 'tomorrow'));
         return;
       }
       resetPosition();
     });
 
     shell.addEventListener('pointercancel', resetPosition);
-    shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => completeTask(taskId));
-    shell.querySelector('[data-swipe-tomorrow]')?.addEventListener('click', () => addTaskToDay(taskId, 'tomorrow'));
+    shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => commitSwipe('left', () => completeTask(taskId)));
+    shell.querySelector('[data-swipe-tomorrow]')?.addEventListener('click', () => commitSwipe('right', () => addTaskToDay(taskId, 'tomorrow')));
+  });
+}
+
+function prefetchAppPages() {
+  const currentUrl = new URL(window.location.href);
+  const seen = new Set();
+  document.querySelectorAll('.nav-link, .brand-home').forEach((anchor) => {
+    const href = anchor.getAttribute('href');
+    if (!href) return;
+    const url = new URL(href, currentUrl);
+    if (url.href === currentUrl.href || seen.has(url.href)) return;
+    seen.add(url.href);
+    const preload = document.createElement('link');
+    preload.rel = 'prefetch';
+    preload.href = url.href;
+    document.head.appendChild(preload);
   });
 }
 
@@ -1339,6 +1367,7 @@ function closeTaskModal() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   ensureAppChrome();
+  prefetchAppPages();
   initializeTimeTagSelects();
   const form = document.getElementById('taskForm');
   if (form) {
