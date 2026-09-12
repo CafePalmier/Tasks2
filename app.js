@@ -9,8 +9,13 @@ const state = {
   available: [],
   completed: [],
   hasTaskApi: null,
+  dayLists: null,
   page: document.body.dataset.page || 'home'
 };
+
+const supabaseConfig = window.SUPABASE_CONFIG;
+const usesSupabase = Boolean(supabaseConfig?.url && supabaseConfig?.publishableKey)
+  && !['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 const periodLabels = {
   shift: 'Shift',
@@ -118,7 +123,95 @@ function localTaskApi(path, options = {}) {
   return Promise.resolve({ task: tasks[taskIndex], deleted: method === 'DELETE' });
 }
 
+function fromDatabaseTask(task) {
+  return {
+    ...task,
+    timeTag: task.time_tag || '',
+    urgentOn: Array.isArray(task.urgent_on) ? task.urgent_on : [],
+    isActive: task.is_active !== false,
+    lastCompletedAt: task.last_completed_at || null,
+    order: task.task_order ?? 0
+  };
+}
+
+function toDatabaseTask(task) {
+  return {
+    id: task.id,
+    title: task.title,
+    category: task.category || 'general',
+    period: task.period || 'weekly',
+    description: task.description || '',
+    time_tag: task.timeTag || '',
+    urgent_on: Array.isArray(task.urgentOn) ? task.urgentOn : [],
+    is_active: task.isActive !== false,
+    last_completed_at: task.lastCompletedAt || null,
+    area: task.area || 'General',
+    task_order: Number(task.order) || 0,
+    updated_at: new Date().toISOString()
+  };
+}
+
+function supabaseRequest(path, options = {}) {
+  const headers = {
+    apikey: supabaseConfig.publishableKey,
+    Authorization: `Bearer ${supabaseConfig.publishableKey}`,
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+  return fetch(`${supabaseConfig.url}/rest/v1/${path}`, { ...options, headers }).then(async (response) => {
+    const body = await response.text();
+    if (!response.ok) throw new Error(`Supabase request failed with ${response.status}: ${body}`);
+    return body ? JSON.parse(body) : null;
+  });
+}
+
+function supabaseTaskApi(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const segments = path.split('/').filter(Boolean);
+  const taskId = segments[2];
+  const action = segments[3];
+  const body = options.body ? JSON.parse(options.body) : {};
+
+  if (path === '/api/tasks' && method === 'GET') {
+    return supabaseRequest('cafe_tasks?select=*&order=task_order.asc').then((tasks) => ({ tasks: tasks.map(fromDatabaseTask) }));
+  }
+  if (path === '/api/tasks' && method === 'POST') {
+    const task = {
+      ...body,
+      id: body.id || `task-${Date.now()}`,
+      period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || 'weekly'),
+      isActive: true,
+      lastCompletedAt: null,
+      area: body.area || 'General',
+      order: Math.max(0, ...state.tasks.map((item) => Number(item.order) || 0)) + 1
+    };
+    return supabaseRequest('cafe_tasks', {
+      method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(toDatabaseTask(task))
+    }).then(([saved]) => ({ task: fromDatabaseTask(saved) }));
+  }
+  if (!taskId) return Promise.reject(new Error('Task id is required'));
+  if (method === 'DELETE') {
+    return supabaseRequest(`cafe_tasks?id=eq.${encodeURIComponent(taskId)}`, { method: 'DELETE' }).then(() => ({ deleted: true }));
+  }
+  const existing = state.tasks.find((task) => task.id === taskId);
+  if (!existing) return Promise.reject(new Error('Task not found'));
+  let nextTask;
+  if (method === 'PUT') {
+    nextTask = { ...existing, ...body, period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || existing.period) };
+  } else if (method === 'POST' && action === 'complete') {
+    nextTask = { ...existing, lastCompletedAt: new Date().toISOString() };
+  } else if (method === 'POST' && action === 'reopen') {
+    nextTask = { ...existing, lastCompletedAt: null };
+  } else {
+    return Promise.reject(new Error('Unsupported task action'));
+  }
+  return supabaseRequest(`cafe_tasks?id=eq.${encodeURIComponent(taskId)}`, {
+    method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(toDatabaseTask(nextTask))
+  }).then(([saved]) => ({ task: fromDatabaseTask(saved) }));
+}
+
 function api(path, options = {}) {
+  if (usesSupabase && path.startsWith('/api/tasks')) return supabaseTaskApi(path, options);
   const isTasksApi = path.startsWith('/api/tasks');
   const method = (options.method || 'GET').toUpperCase();
   const isLocalServer = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -311,6 +404,7 @@ function normalizeDayList(value, date) {
 }
 
 function getDayListsState() {
+  if (state.dayLists) return state.dayLists;
   try {
     const todayDate = localDateKey();
     const tomorrowDate = nextLocalDateKey();
@@ -330,20 +424,60 @@ function getDayListsState() {
       tomorrow: normalizeDayList(tomorrowSource, tomorrowDate)
     };
     localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(result));
+    state.dayLists = result;
     return result;
   } catch (error) {
-    return { today: emptyDayList(localDateKey()), tomorrow: emptyDayList(nextLocalDateKey()) };
+    state.dayLists = { today: emptyDayList(localDateKey()), tomorrow: emptyDayList(nextLocalDateKey()) };
+    return state.dayLists;
   }
 }
 
 function saveTodayListState(taskIds) {
   const lists = getDayListsState();
   lists.today.taskIds = [...new Set(taskIds)];
-  localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(lists));
+  saveDayListsState(lists);
 }
 
 function saveDayListsState(lists) {
+  state.dayLists = lists;
   localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(lists));
+  if (usesSupabase) {
+    Promise.all(['today', 'tomorrow'].map((day) => supabaseRequest('cafe_day_lists?on_conflict=list_date', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        list_date: lists[day].date,
+        task_ids: lists[day].taskIds,
+        custom_items: lists[day].customItems,
+        updated_at: new Date().toISOString()
+      })
+    }))).catch((error) => console.error('Failed to sync day lists', error));
+  }
+}
+
+async function loadDayLists() {
+  if (!usesSupabase) return getDayListsState();
+  const todayDate = localDateKey();
+  const tomorrowDate = nextLocalDateKey();
+  const localLists = getDayListsState();
+  const rows = await supabaseRequest(`cafe_day_lists?select=*&list_date=in.(${todayDate},${tomorrowDate})`);
+  const byDate = new Map(rows.map((row) => [row.list_date, row]));
+  const todayRow = byDate.get(todayDate);
+  const tomorrowRow = byDate.get(tomorrowDate);
+  const result = {
+    today: normalizeDayList({
+      taskIds: todayRow ? todayRow.task_ids : localLists.today.taskIds,
+      customItems: todayRow ? todayRow.custom_items : localLists.today.customItems
+    }, todayDate),
+    tomorrow: normalizeDayList({
+      taskIds: tomorrowRow ? tomorrowRow.task_ids : localLists.tomorrow.taskIds,
+      customItems: tomorrowRow ? tomorrowRow.custom_items : localLists.tomorrow.customItems
+    }, tomorrowDate)
+  };
+  state.dayLists = result;
+  localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(result));
+  if (!todayRow || !tomorrowRow) saveDayListsState(result);
+  return result;
 }
 
 function addTaskToDay(taskId, day) {
@@ -856,13 +990,25 @@ function renderAdminList() {
 
 async function loadTaskData() {
   try {
-    const data = await api('/api/tasks');
-    const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+    let data = await api('/api/tasks');
+    let tasks = Array.isArray(data.tasks) ? data.tasks : [];
+    if (usesSupabase && !tasks.length) {
+      const starterData = await fetch(STATIC_TASKS_PATH).then((response) => response.json());
+      const starterTasks = getLocalTasks(Array.isArray(starterData.tasks) ? starterData.tasks : []);
+      await Promise.all(starterTasks.map((task) => supabaseRequest('cafe_tasks?on_conflict=id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(toDatabaseTask(task))
+      })));
+      data = await api('/api/tasks');
+      tasks = data.tasks;
+    }
     const payload = buildTaskPayload(tasks, new Date());
 
     state.tasks = payload.tasks || tasks;
     state.available = payload.available || [];
     state.completed = payload.completed || [];
+    await loadDayLists();
     ensureUrgentTasksInToday();
     renderAll();
   } catch (error) {

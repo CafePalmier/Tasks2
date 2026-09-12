@@ -40,7 +40,7 @@ let DEFAULT_TASKS = [
   { id: 'task-18', title: 'Fill ice bags', category: 'stocking', period: 'daily', description: 'Weekday task to keep the ice station stocked.', urgentOn: ['Friday'], isActive: true, order: 18 },
   { id: 'task-19', title: 'Make sure no garbage anywhere, parking lot etc.', category: 'cleaning', period: 'daily', description: '', urgentOn: [], isActive: true, order: 19 },
   { id: 'task-20', title: 'Roll-ups', category: 'stocking', period: 'daily', description: '', urgentOn: [], isActive: true, order: 20 },
-  { id: 'task-21', title: 'Prep coffee for weekend', category: 'prep', period: 'daily', description: 'Get the weekend setup prepared well before the rush.', urgentOn: ['Friday'], isActive: true, order: 21 },
+  { id: 'task-21', title: 'Prepare coffee beans for weekend', category: 'prep', period: 'weekly', description: 'Get the weekend coffee beans prepared well before the rush.', urgentOn: ['Friday'], isActive: true, order: 21 },
   { id: 'task-22', title: 'Fill sanitizer bottles', category: 'stocking', period: 'daily', description: 'Top up sanitizer bottles around the shop.', urgentOn: ['Friday'], isActive: true, order: 22 },
 
   { id: 'task-23', title: 'Deep clean coffee urns', category: 'cleaning', period: 'weekly', description: '', urgentOn: [], isActive: true, order: 23 },
@@ -70,7 +70,7 @@ let DEFAULT_TASKS = [
   { id: 'task-44', title: 'Shut lights off, set alarm, and lock up', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 44 },
   { id: 'task-45', title: 'Face/stock fridges and coffee shelves', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 45 },
   { id: 'task-46', title: 'Pull pastries', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 46 },
-  { id: 'task-47', title: 'Fill sanitizer bottles', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 47 },
+  { id: 'task-47', title: 'Fill sanitizer bottles', category: 'closing', period: 'daily', description: '', urgentOn: ['Friday'], isActive: true, order: 47 },
   { id: 'task-48', title: 'Stock to-go boxes', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 48 },
   { id: 'task-49', title: 'Replace green trays on trolley', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 49 },
   { id: 'task-50', title: 'Dump 3 litres of water down milk drain', category: 'closing', period: 'daily', description: '', urgentOn: [], isActive: true, order: 50 },

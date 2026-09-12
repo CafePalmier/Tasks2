@@ -415,7 +415,9 @@
       "category": "closing",
       "period": "shift",
       "description": "",
-      "urgentOn": [],
+      "urgentOn": [
+        "Friday"
+      ],
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
@@ -1021,6 +1023,20 @@
       "lastCompletedAt": null,
       "area": "General",
       "order": 110
+    },
+    {
+      "id": "task-111",
+      "title": "Prepare coffee beans for weekend",
+      "category": "prep",
+      "period": "weekly",
+      "description": "Get the weekend coffee beans prepared well before the rush.",
+      "urgentOn": [
+        "Friday"
+      ],
+      "isActive": true,
+      "lastCompletedAt": null,
+      "area": "General",
+      "order": 111
     }
   ]
 }
