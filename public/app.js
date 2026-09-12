@@ -1014,6 +1014,17 @@ function renderAdminList() {
 }
 
 async function loadTaskData() {
+  if (usesSupabase) {
+    const cachedTasks = getLocalTasks([]);
+    if (cachedTasks.length) {
+      const cachedPayload = buildTaskPayload(cachedTasks, new Date());
+      state.tasks = cachedPayload.tasks;
+      state.available = cachedPayload.available;
+      state.completed = cachedPayload.completed;
+      getDayListsState();
+      renderAll();
+    }
+  }
   try {
     let data = await api('/api/tasks');
     let tasks = Array.isArray(data.tasks) ? data.tasks : [];
@@ -1033,24 +1044,59 @@ async function loadTaskData() {
     state.tasks = payload.tasks || tasks;
     state.available = payload.available || [];
     state.completed = payload.completed || [];
-    await loadDayLists();
+    if (usesSupabase) saveLocalTasks(state.tasks);
+    getDayListsState();
+    renderAll();
+    try {
+      await loadDayLists();
+    } catch (dayListError) {
+      console.warn('Using the saved day lists while cloud sync reconnects', dayListError);
+    }
     ensureUrgentTasksInToday();
     renderAll();
   } catch (error) {
     console.error('Failed to load tasks', error);
-    alert('Could not load tasks.');
+    try {
+      const fallbackData = await fetch(STATIC_TASKS_PATH).then((response) => {
+        if (!response.ok) throw new Error(`Fallback request failed with ${response.status}`);
+        return response.json();
+      });
+      const fallbackTasks = getLocalTasks(Array.isArray(fallbackData.tasks) ? fallbackData.tasks : []);
+      const fallbackPayload = buildTaskPayload(fallbackTasks, new Date());
+      state.tasks = fallbackPayload.tasks;
+      state.available = fallbackPayload.available;
+      state.completed = fallbackPayload.completed;
+      getDayListsState();
+      renderAll();
+    } catch (fallbackError) {
+      console.error('Failed to load fallback tasks', fallbackError);
+      document.querySelectorAll('#taskGroups, #todayList, #tomorrowList, #openingList, #closingList').forEach((root) => {
+        root.innerHTML = '<div class="empty-state">Could not load tasks. Check the connection and refresh.</div>';
+      });
+    }
   }
 }
 
 async function completeTask(taskId) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  const previousCompletedAt = task?.lastCompletedAt || null;
   try {
-    await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
+    if (task) {
+      task.lastCompletedAt = new Date().toISOString();
+      const payload = buildTaskPayload(state.tasks, new Date());
+      state.tasks = payload.tasks;
+      state.available = payload.available;
+      state.completed = payload.completed;
+    }
     const lists = getDayListsState();
     lists.today.taskIds = lists.today.taskIds.filter((id) => id !== taskId);
     saveDayListsState(lists);
-    await loadTaskData();
+    renderAll();
+    await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
   } catch (error) {
     console.error('Failed to complete task', error);
+    if (task) task.lastCompletedAt = previousCompletedAt;
+    await loadTaskData();
   }
 }
 
