@@ -8,6 +8,7 @@ const state = {
   tasks: [],
   available: [],
   completed: [],
+  completedFilter: null,
   hasTaskApi: null,
   dayLists: null,
   page: document.body.dataset.page || 'home'
@@ -674,7 +675,7 @@ function renderOpeningList() {
       <div><p class="eyebrow">Start of day</p><h2>Opening List</h2></div>
       <span class="group-badge">${openingAvailable.length} left</span>
     </div>
-    ${renderListProgress(openingCompleted.length, openingAvailable.length)}
+    ${renderListProgress(openingCompleted.length, openingAvailable.length, 'opening')}
     ${openingAvailable.length ? `<div class="task-list">
       ${openingAvailable.map((task) => `
         <div class="task-swipe-shell" data-task-id="${task.id}">
@@ -686,13 +687,10 @@ function renderOpeningList() {
         </div>
       `).join('')}
     </div>` : '<div class="empty-state">Opening is complete for today.</div>'}
-    ${openingCompleted.length ? `<div class="completed-section"><h3>Completed today</h3><ul class="mini-list">${openingCompleted.map((task) => `<li><span>${escapeHtml(task.title)}</span><button class="icon-btn" data-reopen-id="${task.id}">Reopen</button></li>`).join('')}</ul></div>` : ''}
   `;
 
   bindInlineEditButtons(root);
-  root.querySelectorAll('[data-reopen-id]').forEach((button) => {
-    button.addEventListener('click', () => reopenTask(button.dataset.reopenId));
-  });
+  bindListProgressButtons(root);
   attachSwipeHandlers(root);
 }
 
@@ -705,6 +703,7 @@ function getProgressMessage(completed, remaining) {
   if (completed >= 25) return 'Slay Mama! 👑';
   if (completed >= 20) return 'You’re crushing it! 🚀';
   if (completed >= 15) return 'Purr Queen 💅';
+  if (completed >= 12) return 'Periodt! ✨';
   if (completed >= 10) return 'Great job, keep it going! 🙌';
   if (completed >= 7) return 'Clock it!';
   if (completed >= 5) return 'Nice work — you’re on a roll! ✨';
@@ -712,25 +711,35 @@ function getProgressMessage(completed, remaining) {
   return 'Let’s get started! ☀️';
 }
 
-function renderListProgress(completed, remaining) {
+function renderListProgress(completed, remaining, category) {
   const total = completed + remaining;
   const percentage = total ? Math.round((completed / total) * 100) : 0;
   return `
-    <div class="list-progress" aria-label="${completed} completed, ${remaining} remaining">
+    <button type="button" class="list-progress sticky-progress" data-open-list-completed="${category}" aria-label="${completed} completed, ${remaining} remaining. View completed tasks.">
       <div class="progress-counts">
         <span><strong>${completed}</strong> completed</span>
         <span><strong>${remaining}</strong> left</span>
       </div>
       <div class="progress-track" aria-hidden="true"><span style="width: ${percentage}%"></span></div>
       <p class="progress-message">${getProgressMessage(completed, remaining)}</p>
-    </div>
+    </button>
   `;
 }
 
-function openCompletedModal() {
+function bindListProgressButtons(scope = document) {
+  scope.querySelectorAll('[data-open-list-completed]').forEach((button) => {
+    button.addEventListener('click', () => openCompletedModal(button.dataset.openListCompleted));
+  });
+}
+
+function openCompletedModal(category = '') {
   const modal = document.getElementById('completedModal');
   if (!modal) return;
 
+  state.completedFilter = category || null;
+  const heading = modal.querySelector('.modal-header h2');
+  if (heading) heading.textContent = category ? `Completed ${categoryLabels[category] || category} Tasks` : 'Completed Tasks';
+  renderCompleted();
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
 }
@@ -746,13 +755,16 @@ function closeCompletedModal() {
 function renderCompleted() {
   const root = document.getElementById('completedList');
   if (!root) return;
+  const completedTasks = state.completedFilter
+    ? state.completed.filter((task) => task.category === state.completedFilter)
+    : state.completed;
 
-  if (!state.completed.length) {
+  if (!completedTasks.length) {
     root.innerHTML = '<li class="empty-state">No completed items yet</li>';
     return;
   }
 
-  root.innerHTML = state.completed.map((task) => `
+  root.innerHTML = completedTasks.map((task) => `
     <li>
       <span>${escapeHtml(task.title)}</span>
       <button class="icon-btn" data-reopen-id="${task.id}">Reopen</button>
@@ -775,7 +787,7 @@ function renderSummary() {
 
   const completedButton = document.querySelector('[data-open-completed]');
   if (completedButton) {
-    completedButton.onclick = openCompletedModal;
+    completedButton.onclick = () => openCompletedModal();
   }
 
   const urgentButton = document.querySelector('[data-open-urgent]');
@@ -901,22 +913,6 @@ function renderClosingList() {
     }).join('');
   }
 
-  const completedMarkup = closingCompleted.length
-    ? `
-      <div class="panel-card small-panel">
-        <h2>Completed closing tasks</h2>
-        <ul class="mini-list">
-          ${closingCompleted.map((task) => `
-            <li>
-              <span>${escapeHtml(task.title)}</span>
-              <button class="icon-btn" data-reopen-id="${task.id}">Reopen</button>
-            </li>
-          `).join('')}
-        </ul>
-      </div>
-    `
-    : '';
-
   root.innerHTML = `
     <div class="closing-stack">
       <div class="panel-card">
@@ -924,18 +920,14 @@ function renderClosingList() {
           <h2>Closing list</h2>
           <button class="secondary-btn" type="button" data-closing-sort aria-pressed="${sortMode === 'time'}">${sortMode === 'time' ? 'Sort by section' : 'Sort by time'}</button>
         </div>
-        ${renderListProgress(closingCompleted.length, closingAvailable.length)}
+        ${renderListProgress(closingCompleted.length, closingAvailable.length, 'closing')}
         <div class="closing-groups ${sortMode === 'time' ? 'closing-groups-by-time' : ''}">${availableMarkup || '<div class="empty-state">No closing tasks available right now.</div>'}</div>
       </div>
-      ${completedMarkup}
     </div>
   `;
 
   bindInlineEditButtons(root);
-
-  root.querySelectorAll('[data-reopen-id]').forEach((button) => {
-    button.addEventListener('click', () => reopenTask(button.dataset.reopenId));
-  });
+  bindListProgressButtons(root);
 
   root.querySelector('[data-closing-sort]')?.addEventListener('click', () => {
     try {
@@ -1355,6 +1347,14 @@ function ensureAppChrome() {
   if (!document.getElementById('urgentModal')) {
     document.body.insertAdjacentHTML('beforeend', '<div id="urgentModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-urgent></div><div class="modal-card"><div class="modal-header"><h2>Urgent Today</h2><button class="icon-btn" type="button" data-close-urgent>Close</button></div><ul id="urgentList" class="mini-list modal-list"></ul></div></div>');
   }
+  if (!document.getElementById('completedModal')) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card"><div class="modal-header"><h2>Completed Tasks</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><ul id="completedList" class="mini-list modal-list"></ul></div></div>');
+  }
+}
+
+function updateStickyHeaderOffset() {
+  const topbar = document.querySelector('.topbar');
+  if (topbar) document.documentElement.style.setProperty('--topbar-height', `${topbar.offsetHeight}px`);
 }
 
 function scheduleMidnightRollover() {
@@ -1400,6 +1400,8 @@ function closeTaskModal() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   ensureAppChrome();
+  updateStickyHeaderOffset();
+  window.addEventListener('resize', updateStickyHeaderOffset);
   prefetchAppPages();
   initializeTimeTagSelects();
   const form = document.getElementById('taskForm');
