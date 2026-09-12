@@ -539,6 +539,7 @@ h1 {
   padding-left: 0.5rem;
   border-left: 2px solid rgba(55, 100, 56, 0.2);
   font-size: 0.76rem;
+  white-space: pre-wrap;
 }
 
 .task-meta {
