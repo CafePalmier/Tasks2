@@ -674,6 +674,7 @@ function renderOpeningList() {
       <div><p class="eyebrow">Start of day</p><h2>Opening List</h2></div>
       <span class="group-badge">${openingAvailable.length} left</span>
     </div>
+    ${renderListProgress(openingCompleted.length, openingAvailable.length)}
     ${openingAvailable.length ? `<div class="task-list">
       ${openingAvailable.map((task) => `
         <div class="task-swipe-shell" data-task-id="${task.id}">
@@ -693,6 +694,37 @@ function renderOpeningList() {
     button.addEventListener('click', () => reopenTask(button.dataset.reopenId));
   });
   attachSwipeHandlers(root);
+}
+
+function getProgressMessage(completed, remaining) {
+  if (completed === 0 && remaining === 0) return 'Ready when you are ✨';
+  if (remaining === 0) return 'All done — amazing work! 🎉';
+  if (remaining <= 3) return 'So close — finish strong! 🌟';
+  if (remaining <= 10) return 'Almost there! You’ve got this 💪';
+  if (completed >= 30) return 'Incredible momentum! 🔥';
+  if (completed >= 25) return 'Slay Mama! 👑';
+  if (completed >= 20) return 'You’re crushing it! 🚀';
+  if (completed >= 15) return 'Purr Queen 💅';
+  if (completed >= 10) return 'Great job, keep it going! 🙌';
+  if (completed >= 7) return 'Clock it!';
+  if (completed >= 5) return 'Nice work — you’re on a roll! ✨';
+  if (completed > 0) return 'Great start! 👍';
+  return 'Let’s get started! ☀️';
+}
+
+function renderListProgress(completed, remaining) {
+  const total = completed + remaining;
+  const percentage = total ? Math.round((completed / total) * 100) : 0;
+  return `
+    <div class="list-progress" aria-label="${completed} completed, ${remaining} remaining">
+      <div class="progress-counts">
+        <span><strong>${completed}</strong> completed</span>
+        <span><strong>${remaining}</strong> left</span>
+      </div>
+      <div class="progress-track" aria-hidden="true"><span style="width: ${percentage}%"></span></div>
+      <p class="progress-message">${getProgressMessage(completed, remaining)}</p>
+    </div>
+  `;
 }
 
 function openCompletedModal() {
@@ -892,6 +924,7 @@ function renderClosingList() {
           <h2>Closing list</h2>
           <button class="secondary-btn" type="button" data-closing-sort aria-pressed="${sortMode === 'time'}">${sortMode === 'time' ? 'Sort by section' : 'Sort by time'}</button>
         </div>
+        ${renderListProgress(closingCompleted.length, closingAvailable.length)}
         <div class="closing-groups ${sortMode === 'time' ? 'closing-groups-by-time' : ''}">${availableMarkup || '<div class="empty-state">No closing tasks available right now.</div>'}</div>
       </div>
       ${completedMarkup}
