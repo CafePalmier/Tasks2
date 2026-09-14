@@ -14,6 +14,9 @@ const state = {
   page: document.body.dataset.page || 'home'
 };
 
+let dayListRevision = 0;
+let dayListSyncQueue = Promise.resolve();
+
 const supabaseConfig = window.SUPABASE_CONFIG;
 const usesSupabase = Boolean(supabaseConfig?.url && supabaseConfig?.publishableKey)
   && !['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -85,7 +88,11 @@ function getLocalTasks(fallbackTasks = []) {
 }
 
 function saveLocalTasks(tasks) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: TASK_DATA_VERSION, tasks }));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: TASK_DATA_VERSION, tasks }));
+  } catch (error) {
+    console.warn('Could not update the device copy of the tasks', error);
+  }
 }
 
 function localTaskApi(path, options = {}) {
@@ -165,13 +172,15 @@ function toDatabaseTask(task) {
 }
 
 function supabaseRequest(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
   const headers = {
     apikey: supabaseConfig.publishableKey,
     Authorization: `Bearer ${supabaseConfig.publishableKey}`,
     'Content-Type': 'application/json',
     ...options.headers
   };
-  return fetch(`${supabaseConfig.url}/rest/v1/${path}`, { ...options, headers }).then(async (response) => {
+  const keepalive = options.keepalive ?? ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+  return fetch(`${supabaseConfig.url}/rest/v1/${path}`, { ...options, headers, keepalive }).then(async (response) => {
     const body = await response.text();
     if (!response.ok) throw new Error(`Supabase request failed with ${response.status}: ${body}`);
     return body ? JSON.parse(body) : null;
@@ -453,27 +462,39 @@ function saveTodayListState(taskIds) {
 
 function saveDayListsState(lists) {
   state.dayLists = lists;
-  localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(lists));
-  if (usesSupabase) {
-    Promise.all(['today', 'tomorrow'].map((day) => supabaseRequest('cafe_day_lists?on_conflict=list_date', {
-      method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({
-        list_date: lists[day].date,
-        task_ids: lists[day].taskIds,
-        custom_items: lists[day].customItems,
-        updated_at: new Date().toISOString()
-      })
-    }))).catch((error) => console.error('Failed to sync day lists', error));
+  dayListRevision += 1;
+  const snapshot = JSON.parse(JSON.stringify(lists));
+  try {
+    localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(snapshot));
+  } catch (error) {
+    console.warn('Could not update the device copy of the day lists', error);
   }
+  if (usesSupabase) {
+    dayListSyncQueue = dayListSyncQueue
+      .catch(() => undefined)
+      .then(() => Promise.all(['today', 'tomorrow'].map((day) => supabaseRequest('cafe_day_lists?on_conflict=list_date', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({
+          list_date: snapshot[day].date,
+          task_ids: snapshot[day].taskIds,
+          custom_items: snapshot[day].customItems,
+          updated_at: new Date().toISOString()
+        })
+      }))));
+    dayListSyncQueue.catch((error) => console.error('Failed to sync day lists', error));
+  }
+  return dayListSyncQueue;
 }
 
 async function loadDayLists() {
   if (!usesSupabase) return getDayListsState();
+  const revisionAtStart = dayListRevision;
   const todayDate = localDateKey();
   const tomorrowDate = nextLocalDateKey();
   const localLists = getDayListsState();
   const rows = await supabaseRequest(`cafe_day_lists?select=*&list_date=in.(${todayDate},${tomorrowDate})`);
+  if (revisionAtStart !== dayListRevision) return getDayListsState();
   const byDate = new Map(rows.map((row) => [row.list_date, row]));
   const todayRow = byDate.get(todayDate);
   const tomorrowRow = byDate.get(tomorrowDate);
@@ -1245,6 +1266,7 @@ async function completeTask(taskId) {
       state.tasks = payload.tasks;
       state.available = payload.available;
       state.completed = payload.completed;
+      saveLocalTasks(state.tasks);
     }
     const lists = getDayListsState();
     lists.today.taskIds = lists.today.taskIds.filter((id) => id !== taskId);
@@ -1253,7 +1275,10 @@ async function completeTask(taskId) {
     await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
   } catch (error) {
     console.error('Failed to complete task', error);
-    if (task) task.lastCompletedAt = previousCompletedAt;
+    if (task) {
+      task.lastCompletedAt = previousCompletedAt;
+      saveLocalTasks(state.tasks);
+    }
     await loadTaskData();
   }
 }
@@ -1716,6 +1741,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initializeNavIndicator();
   updateStickyHeaderOffset();
   window.addEventListener('resize', updateStickyHeaderOffset);
+  window.addEventListener('online', () => saveDayListsState(getDayListsState()));
   prefetchAppPages();
   initializeTimeTagSelects();
   const form = document.getElementById('taskForm');
