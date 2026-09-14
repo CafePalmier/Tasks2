@@ -34,10 +34,20 @@ const categoryLabels = {
   general: 'General'
 };
 
+const categoryTagIcons = {
+  stocking: '📦',
+  cleaning: '🫧'
+};
+
 const taskPeriods = ['shift', 'weekly', 'monthly', 'yearly'];
 const taskCategories = ['opening', 'cleaning', 'stocking', 'prep', 'closing', 'general'];
 const shiftOnlyCategories = ['opening', 'closing'];
 const closingAreas = ['Outside', 'Upstairs', 'Downstairs', 'Kitchen', 'Bar', 'General'];
+
+function categoryTagLabel(category) {
+  const icon = categoryTagIcons[category];
+  return `${icon ? `${icon} ` : ''}${categoryLabels[category] || category}`;
+}
 
 function sortTasks(tasks) {
   return [...tasks].sort((a, b) => {
@@ -536,7 +546,11 @@ function renderGroups() {
   const root = document.getElementById('taskGroups');
   if (!root) return;
 
-  const homeTasks = sortTasks(state.available.filter((task) => !['opening', 'closing'].includes(task.category)));
+  const homeSortMode = getAvailableSortMode();
+  const homeTasks = sortAvailableTasks(
+    state.available.filter((task) => !['opening', 'closing'].includes(task.category)),
+    homeSortMode
+  );
   const todayTaskIds = new Set(getTodayListState().taskIds);
 
   if (!homeTasks.length) {
@@ -549,41 +563,93 @@ function renderGroups() {
     return;
   }
 
+  const renderHomeTask = (task) => `
+    <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="both">
+      <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
+      <button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(task.title)} to tomorrow">Tomorrow</button>
+      <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
+        <div class="task-main">
+          <h4>${escapeHtml(task.title)}</h4>
+          ${task.description ? `
+            <details class="task-details">
+              <summary>Details</summary>
+              <p>${escapeHtml(task.description)}</p>
+            </details>
+          ` : ''}
+          <div class="task-meta">
+            <span class="meta-pill category-pill">${categoryTagLabel(task.category)}</span>
+            <span class="meta-pill period-pill ${task.period}">${periodLabels[task.period]}</span>
+            ${task.urgentToday ? '<span class="meta-pill urgent">Urgent today</span>' : ''}
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="secondary-btn" data-add-today-id="${task.id}">${todayTaskIds.has(task.id) ? 'Remove today' : 'Today'}</button>
+          <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
+        </div>
+      </article>
+    </div>
+  `;
+  const homeTaskMarkup = homeSortMode === 'type'
+    ? `<div class="available-type-groups">${taskCategories
+      .filter((category) => homeTasks.some((task) => task.category === category))
+      .map((category) => {
+        const categoryTasks = homeTasks.filter((task) => task.category === category);
+        return `
+          <section class="available-type-group">
+            <div class="available-type-heading">
+              <h3>${categoryLabels[category]}</h3>
+              <span class="group-badge">${categoryTasks.length}</span>
+            </div>
+            <div class="task-list">${categoryTasks.map(renderHomeTask).join('')}</div>
+          </section>
+        `;
+      }).join('')}</div>`
+    : `<div class="available-time-groups">${taskPeriods
+      .filter((period) => homeTasks.some((task) => task.period === period))
+      .map((period) => {
+        const periodTasks = homeTasks.filter((task) => task.period === period);
+        return `
+          <section class="available-time-group">
+            <div class="available-type-heading">
+              <h3>${periodLabels[period]}</h3>
+              <span class="group-badge">${periodTasks.length}</span>
+            </div>
+            <div class="task-list">${periodTasks.map(renderHomeTask).join('')}</div>
+          </section>
+        `;
+      }).join('')}</div>`;
+
   root.innerHTML = `
     <div class="panel-card">
-      <h2>Available Tasks</h2>
-      <div class="task-list">
-        ${homeTasks.map((task) => `
-          <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="both">
-            <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
-            <button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(task.title)} to tomorrow">Tomorrow</button>
-            <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
-              <div class="task-main">
-                <h4>${escapeHtml(task.title)}</h4>
-                ${task.description ? `
-                  <details class="task-details">
-                    <summary>Details</summary>
-                    <p>${escapeHtml(task.description)}</p>
-                  </details>
-                ` : ''}
-                <div class="task-meta">
-                  <span class="meta-pill category-pill">${categoryLabels[task.category]}</span>
-                  <span class="meta-pill period-pill ${task.period}">${periodLabels[task.period]}</span>
-                  ${task.urgentToday ? '<span class="meta-pill urgent">Urgent today</span>' : ''}
-                </div>
-              </div>
-              <div class="task-actions">
-                <button class="secondary-btn" data-add-today-id="${task.id}">${todayTaskIds.has(task.id) ? 'Remove today' : 'Today'}</button>
-                <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
-              </div>
-            </article>
-          </div>
-        `).join('')}
+      <div class="list-title-row">
+        <h2>Available Tasks</h2>
+        <button class="sort-toggle ${homeSortMode === 'time' ? 'is-time' : ''}" type="button" data-home-sort aria-label="Switch available-task sorting. Currently sorted by ${homeSortMode}.">
+          <span class="sort-option">Type</span>
+          <span class="sort-option">Time</span>
+        </button>
       </div>
+      ${homeTaskMarkup}
     </div>
   `;
 
   bindInlineEditButtons();
+
+  root.querySelector('[data-home-sort]')?.addEventListener('click', (event) => {
+    const sortToggle = event.currentTarget;
+    const nextSortMode = homeSortMode === 'time' ? 'type' : 'time';
+    sortToggle.disabled = true;
+    sortToggle.classList.toggle('is-time', nextSortMode === 'time');
+    sortToggle.setAttribute('aria-label', `Switch available-task sorting. Currently sorted by ${nextSortMode}.`);
+
+    window.setTimeout(() => {
+      try {
+        localStorage.setItem('cafe-palmier-available-sort', nextSortMode);
+      } catch (error) {
+        // Sorting remains available for the current view if storage is unavailable.
+      }
+      renderGroups();
+    }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 240);
+  });
 
   document.querySelectorAll('[data-add-today-id]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -617,7 +683,7 @@ function renderDayList(day) {
     <div class="list-title-row"><h2>${label}</h2><span class="group-badge">${dayTasks.length + customItems.length}</span></div>
     <form class="quick-day-form" data-quick-day="${day}">
       <input name="title" type="text" placeholder="Write an additional task…" aria-label="Additional task for ${day}" required />
-      <button class="primary-btn" type="submit">Add</button>
+      <button class="primary-btn" type="submit" disabled>Add</button>
     </form>
     ${dayTasks.length || customItems.length
       ? `
@@ -645,7 +711,16 @@ function renderDayList(day) {
       : `<div class="today-empty"><p>No tasks added yet.</p></div>`}
   `;
 
-  root.querySelector('[data-quick-day]')?.addEventListener('submit', (event) => {
+  const quickDayForm = root.querySelector('[data-quick-day]');
+  const quickDayInput = quickDayForm?.elements.title;
+  const quickDayButton = quickDayForm?.querySelector('[type="submit"]');
+  const updateQuickDayButton = () => {
+    if (quickDayButton && quickDayInput) quickDayButton.disabled = !quickDayInput.value.trim();
+  };
+  quickDayInput?.addEventListener('input', updateQuickDayButton);
+  updateQuickDayButton();
+
+  quickDayForm?.addEventListener('submit', (event) => {
     event.preventDefault();
     const title = event.currentTarget.elements.title.value.trim();
     if (title) addCustomDayItem(day, title);
@@ -694,11 +769,23 @@ function renderOpeningList() {
   attachSwipeHandlers(root);
 }
 
-function getProgressMessage(completed, remaining) {
+function getProgressMessage(completed, remaining, category = '') {
+  const total = completed + remaining;
   if (completed === 0 && remaining === 0) return 'Ready when you are ✨';
   if (remaining === 0) return 'All done — amazing work! 🎉';
-  if (remaining <= 3) return 'So close — finish strong! 🌟';
-  if (remaining <= 10) return 'Almost there! You’ve got this 💪';
+
+  if (category === 'opening') {
+    const progress = completed / total;
+    if (progress >= 0.875) return 'Slay Mama! 👑';
+    if (progress >= 0.75) return 'You’re crushing it! 🚀';
+    if (progress >= 0.625) return 'Purr Queen 💅';
+    if (progress >= 0.5) return 'Periodt! ✨';
+    if (progress >= 0.375) return 'Great job, keep it going! 🙌';
+    if (progress >= 0.25) return 'Clock it!';
+    if (progress >= 0.125) return 'Nice work — you’re on a roll! ✨';
+    return 'Let’s get started! ☀️';
+  }
+
   if (completed >= 30) return 'Incredible momentum! 🔥';
   if (completed >= 25) return 'Slay Mama! 👑';
   if (completed >= 20) return 'You’re crushing it! 🚀';
@@ -707,7 +794,9 @@ function getProgressMessage(completed, remaining) {
   if (completed >= 10) return 'Great job, keep it going! 🙌';
   if (completed >= 7) return 'Clock it!';
   if (completed >= 5) return 'Nice work — you’re on a roll! ✨';
+  if (remaining <= 3) return 'So close — finish strong! 🌟';
   if (completed > 0) return 'Great start! 👍';
+  if (remaining <= 10) return 'Almost there! You’ve got this 💪';
   return 'Let’s get started! ☀️';
 }
 
@@ -721,7 +810,7 @@ function renderListProgress(completed, remaining, category) {
         <span><strong>${remaining}</strong> left</span>
       </div>
       <div class="progress-track" aria-hidden="true"><span style="width: ${percentage}%"></span></div>
-      <p class="progress-message">${getProgressMessage(completed, remaining)}</p>
+      <p class="progress-message">${getProgressMessage(completed, remaining, category)}</p>
     </button>
   `;
 }
@@ -819,6 +908,26 @@ function getClosingSortMode() {
   } catch (error) {
     return 'area';
   }
+}
+
+function getAvailableSortMode() {
+  try {
+    return localStorage.getItem('cafe-palmier-available-sort') === 'time' ? 'time' : 'type';
+  } catch (error) {
+    return 'type';
+  }
+}
+
+function sortAvailableTasks(tasks, sortMode) {
+  return [...tasks].sort((first, second) => {
+    const categoryDifference = taskCategories.indexOf(first.category) - taskCategories.indexOf(second.category);
+    const timeDifference = getTimeTagOrder(first.timeTag) - getTimeTagOrder(second.timeTag);
+    const primaryDifference = sortMode === 'time' ? timeDifference : categoryDifference;
+    const secondaryDifference = sortMode === 'time' ? categoryDifference : timeDifference;
+    if (primaryDifference !== 0) return primaryDifference;
+    if (secondaryDifference !== 0) return secondaryDifference;
+    return first.title.localeCompare(second.title);
+  });
 }
 
 function getTimeTagOrder(timeTag) {
@@ -1216,6 +1325,20 @@ function renderAll() {
   attachSwipeHandlers();
 }
 
+function initializeTaskCardDetails() {
+  document.addEventListener('click', (event) => {
+    const card = event.target.closest('.task-item');
+    if (!card || event.target.closest('button, input, select, textarea, a, label')) return;
+
+    const details = card.querySelector('.task-details');
+    if (!details || event.target.closest('summary')) return;
+
+    const swipeShell = card.closest('.task-swipe-shell');
+    if (swipeShell?.dataset.suppressCardClick === 'true') return;
+    details.open = !details.open;
+  });
+}
+
 function attachSwipeHandlers(scope = document) {
   scope.querySelectorAll('.task-swipe-shell').forEach((shell) => {
     if (shell.dataset.swipeReady === 'true') return;
@@ -1260,6 +1383,7 @@ function attachSwipeHandlers(scope = document) {
         return;
       }
 
+      shell.dataset.suppressCardClick = 'false';
       startX = event.clientX;
       startY = event.clientY;
       isDragging = true;
@@ -1281,6 +1405,7 @@ function attachSwipeHandlers(scope = document) {
       event.preventDefault();
       const allowsTomorrow = swipeMode === 'both';
       dragOffset = Math.max(-128, Math.min(allowsTomorrow ? 128 : 0, deltaX));
+      if (Math.abs(dragOffset) > 8) shell.dataset.suppressCardClick = 'true';
       content.style.transform = `translate3d(${dragOffset}px, 0, 0)`;
       shell.classList.toggle('revealed', Math.abs(dragOffset) > 8);
       shell.classList.toggle('swipe-left', dragOffset < -8);
@@ -1300,9 +1425,13 @@ function attachSwipeHandlers(scope = document) {
         return;
       }
       resetPosition();
+      window.setTimeout(() => { delete shell.dataset.suppressCardClick; }, 0);
     });
 
-    shell.addEventListener('pointercancel', resetPosition);
+    shell.addEventListener('pointercancel', () => {
+      resetPosition();
+      delete shell.dataset.suppressCardClick;
+    });
     shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => commitSwipe('left', () => completeTask(taskId)));
     shell.querySelector('[data-swipe-tomorrow]')?.addEventListener('click', () => commitSwipe('right', () => addTaskToDay(taskId, 'tomorrow')));
   });
@@ -1526,6 +1655,7 @@ function closeTaskModal() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   ensureAppChrome();
+  initializeTaskCardDetails();
   initializeNavIndicator();
   updateStickyHeaderOffset();
   window.addEventListener('resize', updateStickyHeaderOffset);
