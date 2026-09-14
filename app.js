@@ -1311,17 +1311,97 @@ function attachSwipeHandlers(scope = document) {
 function prefetchAppPages() {
   const currentUrl = new URL(window.location.href);
   const seen = new Set();
+  const pageUrls = [];
   document.querySelectorAll('.nav-link, .brand-home').forEach((anchor) => {
     const href = anchor.getAttribute('href');
     if (!href) return;
     const url = new URL(href, currentUrl);
     if (url.href === currentUrl.href || seen.has(url.href)) return;
     seen.add(url.href);
+    pageUrls.push(url.href);
     const preload = document.createElement('link');
     preload.rel = 'prefetch';
     preload.href = url.href;
     document.head.appendChild(preload);
   });
+
+  if (pageUrls.length && HTMLScriptElement.supports?.('speculationrules')) {
+    const rules = document.createElement('script');
+    rules.type = 'speculationrules';
+    rules.textContent = JSON.stringify({
+      prerender: [{ source: 'list', urls: pageUrls, eagerness: 'immediate' }]
+    });
+    document.head.appendChild(rules);
+  }
+}
+
+function initializeNavIndicator() {
+  const nav = document.querySelector('.nav');
+  const links = [...document.querySelectorAll('.nav-link')];
+  const activeLink = nav?.querySelector('.nav-link.active');
+  if (!nav || !activeLink) return;
+  let selectedLink = activeLink;
+
+  activeLink.setAttribute('aria-current', 'page');
+  const indicator = document.createElement('span');
+  indicator.className = 'nav-indicator';
+  indicator.setAttribute('aria-hidden', 'true');
+  nav.prepend(indicator);
+
+  const moveIndicator = (link, animate = true) => {
+    if (!animate) indicator.style.transition = 'none';
+    nav.style.setProperty('--nav-indicator-x', `${link.offsetLeft}px`);
+    nav.style.setProperty('--nav-indicator-y', `${link.offsetTop}px`);
+    nav.style.setProperty('--nav-indicator-width', `${link.offsetWidth}px`);
+    nav.style.setProperty('--nav-indicator-height', `${link.offsetHeight}px`);
+    if (!animate) requestAnimationFrame(() => { indicator.style.transition = ''; });
+  };
+
+  moveIndicator(activeLink, false);
+  nav.classList.add('nav-ready');
+  if (nav.scrollWidth > nav.clientWidth) {
+    nav.scrollLeft = Math.max(0, activeLink.offsetLeft - (nav.clientWidth - activeLink.offsetWidth) / 2);
+  }
+  links.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const url = new URL(link.href, window.location.href);
+      if (link === selectedLink || url.href === window.location.href) {
+        event.preventDefault();
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      event.preventDefault();
+      selectedLink.classList.remove('active');
+      selectedLink.removeAttribute('aria-current');
+      link.classList.add('active');
+      link.setAttribute('aria-current', 'page');
+      selectedLink = link;
+      nav.classList.add('is-switching');
+
+      let hasNavigated = false;
+      const finishNavigation = () => {
+        if (hasNavigated) return;
+        hasNavigated = true;
+        window.location.assign(url.href);
+      };
+      const handleSlideEnd = (transitionEvent) => {
+        if (transitionEvent.target !== indicator || transitionEvent.propertyName !== 'transform') return;
+        indicator.removeEventListener('transitionend', handleSlideEnd);
+        finishNavigation();
+      };
+
+      indicator.addEventListener('transitionend', handleSlideEnd);
+      moveIndicator(link);
+      window.setTimeout(finishNavigation, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 260);
+    });
+  });
+
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(() => moveIndicator(selectedLink, false)).observe(nav);
+  } else {
+    window.addEventListener('resize', () => moveIndicator(selectedLink, false));
+  }
 }
 
 function taskFormMarkup() {
@@ -1446,6 +1526,7 @@ function closeTaskModal() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   ensureAppChrome();
+  initializeNavIndicator();
   updateStickyHeaderOffset();
   window.addEventListener('resize', updateStickyHeaderOffset);
   prefetchAppPages();
