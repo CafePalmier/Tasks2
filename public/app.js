@@ -684,7 +684,10 @@ function renderDayList(day) {
   root.innerHTML = `
     <div class="list-title-row"><h2>${label}</h2><span class="group-badge">${dayTasks.length + customItems.length}</span></div>
     <form class="quick-day-form" data-quick-day="${day}">
-      <input name="title" type="text" placeholder="Write an additional task…" aria-label="Additional task for ${day}" required />
+      <div class="quick-day-combobox">
+        <input name="title" type="text" placeholder="Write an additional task…" aria-label="Additional task for ${day}" aria-autocomplete="list" aria-controls="${day}TaskSuggestions" autocomplete="off" required />
+        <div id="${day}TaskSuggestions" class="quick-day-suggestions" role="listbox" hidden></div>
+      </div>
       <button class="primary-btn" type="submit" disabled>Add</button>
     </form>
     ${dayTasks.length || customItems.length
@@ -716,10 +719,46 @@ function renderDayList(day) {
   const quickDayForm = root.querySelector('[data-quick-day]');
   const quickDayInput = quickDayForm?.elements.title;
   const quickDayButton = quickDayForm?.querySelector('[type="submit"]');
+  const suggestions = quickDayForm?.querySelector('.quick-day-suggestions');
   const updateQuickDayButton = () => {
     if (quickDayButton && quickDayInput) quickDayButton.disabled = !quickDayInput.value.trim();
   };
-  quickDayInput?.addEventListener('input', updateQuickDayButton);
+  const renderSuggestions = () => {
+    if (!quickDayInput || !suggestions) return;
+    const query = quickDayInput.value.trim().toLocaleLowerCase();
+    const matches = query
+      ? state.tasks.filter((task) => task.isActive && !taskIds.includes(task.id) && task.title.toLocaleLowerCase().includes(query)).slice(0, 6)
+      : [];
+    suggestions.hidden = !matches.length;
+    root.classList.toggle('has-active-suggestions', matches.length > 0);
+    suggestions.innerHTML = matches.map((task) => `
+      <button type="button" class="quick-day-suggestion" role="option" data-suggest-task-id="${task.id}">
+        <span>${escapeHtml(task.title)}</span>
+        <span class="meta-pill category-pill">${categoryTagLabel(task.category)}</span>
+      </button>
+    `).join('');
+    suggestions.querySelectorAll('[data-suggest-task-id]').forEach((button) => {
+      button.addEventListener('click', () => addTaskToDay(button.dataset.suggestTaskId, day));
+    });
+  };
+  quickDayInput?.addEventListener('input', () => {
+    updateQuickDayButton();
+    renderSuggestions();
+  });
+  quickDayInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && suggestions) {
+      suggestions.hidden = true;
+      root.classList.remove('has-active-suggestions');
+    }
+  });
+  quickDayForm?.addEventListener('focusout', () => {
+    window.setTimeout(() => {
+      if (suggestions && !quickDayForm.contains(document.activeElement)) {
+        suggestions.hidden = true;
+        root.classList.remove('has-active-suggestions');
+      }
+    }, 0);
+  });
   updateQuickDayButton();
 
   quickDayForm?.addEventListener('submit', (event) => {
