@@ -43,6 +43,8 @@ const taskPeriods = ['shift', 'weekly', 'monthly', 'yearly'];
 const taskCategories = ['opening', 'cleaning', 'stocking', 'prep', 'closing', 'general'];
 const shiftOnlyCategories = ['opening', 'closing'];
 const closingAreas = ['Outside', 'Upstairs', 'Downstairs', 'Kitchen', 'Bar', 'General'];
+const openingStages = ['first', 'second', 'third'];
+const openingStageLabels = { first: 'First', second: 'Second', third: 'Third' };
 
 function categoryTagLabel(category) {
   const icon = categoryTagIcons[category];
@@ -751,8 +753,15 @@ function renderOpeningList() {
       <span class="group-badge">${openingAvailable.length} left</span>
     </div>
     ${renderListProgress(openingCompleted.length, openingAvailable.length, 'opening')}
-    ${openingAvailable.length ? `<div class="task-list">
-      ${openingAvailable.map((task) => `
+    ${openingAvailable.length ? `<div class="opening-groups">${[...openingStages, 'unassigned'].map((stage) => {
+      const stageTasks = openingAvailable.filter((task) => stage === 'unassigned'
+        ? !openingStages.includes(task.timeTag)
+        : task.timeTag === stage);
+      if (stage === 'unassigned' && !stageTasks.length) return '';
+      const stageLabel = stage === 'unassigned' ? 'Not assigned yet' : openingStageLabels[stage];
+      return `<section class="opening-group">
+        <div class="opening-group-heading"><h3>${stageLabel}</h3><span class="group-badge">${stageTasks.length}</span></div>
+        ${stageTasks.length ? `<div class="task-list">${stageTasks.map((task) => `
         <div class="task-swipe-shell" data-task-id="${task.id}">
           <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
           <article class="task-item task-swipe-content task-item-no-check">
@@ -760,8 +769,9 @@ function renderOpeningList() {
             <div class="task-actions"><button class="icon-btn" data-edit-id="${task.id}">Edit</button></div>
           </article>
         </div>
-      `).join('')}
-    </div>` : '<div class="empty-state">Opening is complete for today.</div>'}
+      `).join('')}</div>` : '<div class="empty-state">No tasks assigned yet.</div>'}
+      </section>`;
+    }).join('')}</div>` : '<div class="empty-state">Opening is complete for today.</div>'}
   `;
 
   bindInlineEditButtons(root);
@@ -1545,7 +1555,7 @@ function taskFormMarkup() {
             <label><span>Title</span><input type="text" name="title" required /></label>
             <label><span>Category</span><select name="category"><option value="opening">Opening</option><option value="cleaning" selected>Cleaning</option><option value="stocking">Stocking</option><option value="prep">Prepping</option><option value="closing">Closing</option><option value="general">General</option></select></label>
             <label id="periodField"><span>Period</span><select name="period"><option value="shift">Shift</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
-            <label><span>Time tag</span><select name="timeTag">${timeTagOptions()}</select></label>
+            <label><span data-time-tag-label>Time tag</span><select name="timeTag">${timeTagOptions()}</select></label>
             <label><span>Urgent on</span><input type="text" name="urgentOn" placeholder="Friday, Monday" /></label>
           </div>
           <label><span>Description / elaboration</span><textarea name="description" rows="3" placeholder="Add instructions or notes"></textarea></label>
@@ -1556,6 +1566,12 @@ function taskFormMarkup() {
 }
 
 function timeTagOptions(category = '') {
+  if (category === 'opening') {
+    return [
+      '<option value="">Not assigned</option>',
+      ...openingStages.map((stage) => `<option value="${stage}">${openingStageLabels[stage]}</option>`)
+    ].join('');
+  }
   const options = ['<option value="">Any time</option>'];
   const startMinutes = category === 'closing' ? 14 * 60 : 0;
   const endMinutes = category === 'closing' ? 17 * 60 : (24 * 60) - 10;
@@ -1576,6 +1592,8 @@ function updateTimeTagOptions(form) {
   const selectedValue = select.value;
   const category = form.elements.category?.value || '';
   select.innerHTML = timeTagOptions(category);
+  const timeTagLabel = form.querySelector('[data-time-tag-label]');
+  if (timeTagLabel) timeTagLabel.textContent = category === 'opening' ? 'Opening order' : 'Time tag';
   if ([...select.options].some((option) => option.value === selectedValue)) {
     select.value = selectedValue;
   }
