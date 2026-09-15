@@ -589,7 +589,9 @@ function renderGroups() {
   if (!homeTasks.length) {
     root.innerHTML = `
       <div class="panel-card">
-        <h2>Available Tasks</h2>
+        <div class="list-title-row">
+          <div class="available-title"><h2>Available Tasks</h2><span class="group-badge">0 open</span></div>
+        </div>
         <div class="empty-state">No available tasks right now. Everything is complete for this cycle.</div>
       </div>
     `;
@@ -622,11 +624,22 @@ function renderGroups() {
       </article>
     </div>
   `;
-  const homeTaskMarkup = homeSortMode === 'type'
+  const urgentTasks = homeTasks.filter((task) => task.urgentToday);
+  const regularTasks = homeTasks.filter((task) => !task.urgentToday);
+  const urgentMarkup = urgentTasks.length ? `
+    <section class="available-type-group urgent-task-group">
+      <div class="available-type-heading">
+        <h3>Urgent Today</h3>
+        <span class="group-badge">${urgentTasks.length}</span>
+      </div>
+      <div class="task-list">${urgentTasks.map(renderHomeTask).join('')}</div>
+    </section>
+  ` : '';
+  const groupedTaskMarkup = homeSortMode === 'type'
     ? `<div class="available-type-groups">${taskCategories
-      .filter((category) => homeTasks.some((task) => task.category === category))
+      .filter((category) => regularTasks.some((task) => task.category === category))
       .map((category) => {
-        const categoryTasks = homeTasks.filter((task) => task.category === category);
+        const categoryTasks = regularTasks.filter((task) => task.category === category);
         return `
           <section class="available-type-group">
             <div class="available-type-heading">
@@ -638,9 +651,9 @@ function renderGroups() {
         `;
       }).join('')}</div>`
     : `<div class="available-time-groups">${taskPeriods
-      .filter((period) => homeTasks.some((task) => task.period === period))
+      .filter((period) => regularTasks.some((task) => task.period === period))
       .map((period) => {
-        const periodTasks = homeTasks.filter((task) => task.period === period);
+        const periodTasks = regularTasks.filter((task) => task.period === period);
         return `
           <section class="available-time-group">
             <div class="available-type-heading">
@@ -651,11 +664,12 @@ function renderGroups() {
           </section>
         `;
       }).join('')}</div>`;
+  const homeTaskMarkup = `<div class="available-home-groups">${urgentMarkup}${groupedTaskMarkup}</div>`;
 
   root.innerHTML = `
     <div class="panel-card">
       <div class="list-title-row">
-        <h2>Available Tasks</h2>
+        <div class="available-title"><h2>Available Tasks</h2><span class="group-badge">${homeTasks.length} open</span></div>
         <button class="sort-toggle ${homeSortMode === 'time' ? 'is-time' : ''}" type="button" data-home-sort aria-label="Switch available-task sorting. Currently sorted by ${homeSortMode}.">
           <span class="sort-option">Type</span>
           <span class="sort-option">Time</span>
@@ -891,13 +905,18 @@ function bindListProgressButtons(scope = document) {
   });
 }
 
-function openCompletedModal(category = '') {
+function openCompletedModal(filterValue = '', filterType = 'category') {
   const modal = document.getElementById('completedModal');
   if (!modal) return;
 
-  state.completedFilter = category || null;
+  state.completedFilter = filterValue ? { type: filterType, value: filterValue } : null;
   const heading = modal.querySelector('.modal-header h2');
-  if (heading) heading.textContent = category ? `Completed ${categoryLabels[category] || category} Tasks` : 'Completed Tasks';
+  if (heading) {
+    const filterLabel = filterType === 'period'
+      ? periodLabels[filterValue]
+      : categoryLabels[filterValue];
+    heading.textContent = filterValue ? `Completed ${filterLabel || filterValue} Tasks` : 'Completed Tasks';
+  }
   renderCompleted();
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
@@ -915,7 +934,7 @@ function renderCompleted() {
   const root = document.getElementById('completedList');
   if (!root) return;
   const completedTasks = state.completedFilter
-    ? state.completed.filter((task) => task.category === state.completedFilter)
+    ? state.completed.filter((task) => task[state.completedFilter.type] === state.completedFilter.value)
     : state.completed.filter((task) => !shiftOnlyCategories.includes(task.category));
 
   if (!completedTasks.length) {
@@ -925,7 +944,10 @@ function renderCompleted() {
 
   root.innerHTML = completedTasks.map((task) => `
     <li>
-      <span>${escapeHtml(task.title)}</span>
+      <div class="completed-task-info">
+        <strong>${escapeHtml(task.title)}</strong>
+        <time datetime="${escapeHtml(task.lastCompletedAt || '')}">Completed ${formatCompletedAt(task.lastCompletedAt)}</time>
+      </div>
       <button class="icon-btn" data-reopen-id="${task.id}">Reopen</button>
     </li>
   `).join('');
@@ -935,22 +957,14 @@ function renderCompleted() {
   });
 }
 
-function renderSummary() {
-  const openCount = document.getElementById('openCount');
-  const completedCount = document.getElementById('completedCount');
-  const urgentCount = document.getElementById('urgentCount');
-
-  if (openCount) openCount.textContent = String(state.available.length || 0);
-  if (completedCount) completedCount.textContent = String(state.completed.filter((task) => !shiftOnlyCategories.includes(task.category)).length || 0);
-  if (urgentCount) urgentCount.textContent = String(state.available.filter((task) => task.urgentToday).length || 0);
-
-  const completedButton = document.querySelector('[data-open-completed]');
-  if (completedButton) {
-    completedButton.onclick = () => openCompletedModal();
-  }
-
-  const urgentButton = document.querySelector('[data-open-urgent]');
-  if (urgentButton) urgentButton.onclick = openUrgentModal;
+function formatCompletedAt(value) {
+  if (!value) return 'date unavailable';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'date unavailable';
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date);
 }
 
 function renderPeriodProgress() {
@@ -963,35 +977,20 @@ function renderPeriodProgress() {
     const total = completed + remaining;
     const percentage = total ? Math.round((completed / total) * 100) : 0;
     return `
-      <article class="period-progress-card ${period}" aria-label="${periodLabels[period]}: ${completed} of ${total} completed">
+      <button type="button" class="period-progress-card ${period}" data-open-period-completed="${period}" aria-label="${periodLabels[period]}: ${completed} of ${total} completed. View completed tasks.">
         <div class="period-progress-heading">
           <strong>${periodLabels[period]}</strong>
           <span>${completed}/${total}</span>
         </div>
         <div class="progress-track" aria-hidden="true"><span style="width: ${percentage}%"></span></div>
         <p>${getProgressMessage(completed, remaining, period)}</p>
-      </article>
+      </button>
     `;
   }).join('');
-}
 
-function openUrgentModal() {
-  const modal = document.getElementById('urgentModal');
-  const list = document.getElementById('urgentList');
-  if (!modal || !list) return;
-  const urgentTasks = state.available.filter((task) => task.urgentToday);
-  list.innerHTML = urgentTasks.length
-    ? urgentTasks.map((task) => `<li><span>${escapeHtml(task.title)}</span><span class="meta-pill urgent">Urgent today</span></li>`).join('')
-    : '<li class="empty-state">Nothing is urgent today.</li>';
-  modal.classList.remove('hidden');
-  modal.setAttribute('aria-hidden', 'false');
-}
-
-function closeUrgentModal() {
-  const modal = document.getElementById('urgentModal');
-  if (!modal) return;
-  modal.classList.add('hidden');
-  modal.setAttribute('aria-hidden', 'true');
+  root.querySelectorAll('[data-open-period-completed]').forEach((button) => {
+    button.addEventListener('click', () => openCompletedModal(button.dataset.openPeriodCompleted, 'period'));
+  });
 }
 
 function getClosingSortMode() {
@@ -1419,7 +1418,6 @@ function renderAll() {
   renderTomorrowList();
   renderOpeningList();
   renderCompleted();
-  renderSummary();
   renderPeriodProgress();
   renderClosingList();
   renderAdminList();
@@ -1708,9 +1706,6 @@ function ensureAppChrome() {
     topbar.insertBefore(addButton, topbar.querySelector('.nav'));
   }
   if (!document.getElementById('taskForm')) document.body.insertAdjacentHTML('beforeend', taskFormMarkup());
-  if (!document.getElementById('urgentModal')) {
-    document.body.insertAdjacentHTML('beforeend', '<div id="urgentModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-urgent></div><div class="modal-card"><div class="modal-header"><h2>Urgent Today</h2><button class="icon-btn" type="button" data-close-urgent>Close</button></div><ul id="urgentList" class="mini-list modal-list"></ul></div></div>');
-  }
   if (!document.getElementById('completedModal')) {
     document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card"><div class="modal-header"><h2>Completed Tasks</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><ul id="completedList" class="mini-list modal-list"></ul></div></div>');
   }
@@ -1829,7 +1824,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelectorAll('[data-open-task-modal]').forEach((button) => button.addEventListener('click', () => { resetForm(); openTaskModal(); }));
   document.querySelectorAll('[data-close-task-modal]').forEach((button) => button.addEventListener('click', closeTaskModal));
-  document.querySelectorAll('[data-close-urgent]').forEach((button) => button.addEventListener('click', closeUrgentModal));
   document.querySelectorAll('[data-close-closing-complete]').forEach((button) => button.addEventListener('click', closeClosingCompleteModal));
   document.getElementById('deleteTaskButton')?.addEventListener('click', async () => {
     const taskId = document.getElementById('taskForm').elements.taskId.value;
@@ -1842,7 +1836,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       closeCompletedModal();
-      closeUrgentModal();
       closeTaskModal();
       closeClosingCompleteModal();
     }
