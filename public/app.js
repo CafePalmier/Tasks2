@@ -412,7 +412,7 @@ function nextLocalDateKey(date = new Date()) {
 }
 
 function emptyDayList(date) {
-  return { date, taskIds: [], customItems: [] };
+  return { date, taskIds: [], customItems: [], updatedAt: null };
 }
 
 function normalizeDayList(value, date) {
@@ -421,7 +421,8 @@ function normalizeDayList(value, date) {
     taskIds: Array.isArray(value?.taskIds) ? [...new Set(value.taskIds.filter(Boolean))] : [],
     customItems: Array.isArray(value?.customItems)
       ? value.customItems.filter((item) => item?.title).map((item) => ({ id: item.id || `custom-${Date.now()}`, title: String(item.title).trim() }))
-      : []
+      : [],
+    updatedAt: value?.updatedAt || value?.updated_at || null
   };
 }
 
@@ -461,6 +462,8 @@ function saveTodayListState(taskIds) {
 }
 
 function saveDayListsState(lists) {
+  const savedAt = new Date().toISOString();
+  ['today', 'tomorrow'].forEach((day) => { lists[day].updatedAt = savedAt; });
   state.dayLists = lists;
   dayListRevision += 1;
   const snapshot = JSON.parse(JSON.stringify(lists));
@@ -479,7 +482,7 @@ function saveDayListsState(lists) {
           list_date: snapshot[day].date,
           task_ids: snapshot[day].taskIds,
           custom_items: snapshot[day].customItems,
-          updated_at: new Date().toISOString()
+          updated_at: snapshot[day].updatedAt
         })
       }))));
     dayListSyncQueue.catch((error) => console.error('Failed to sync day lists', error));
@@ -498,19 +501,25 @@ async function loadDayLists() {
   const byDate = new Map(rows.map((row) => [row.list_date, row]));
   const todayRow = byDate.get(todayDate);
   const tomorrowRow = byDate.get(tomorrowDate);
+  const localTodayIsNewer = Boolean(localLists.today.updatedAt)
+    && (!todayRow || new Date(localLists.today.updatedAt) > new Date(todayRow.updated_at));
+  const localTomorrowIsNewer = Boolean(localLists.tomorrow.updatedAt)
+    && (!tomorrowRow || new Date(localLists.tomorrow.updatedAt) > new Date(tomorrowRow.updated_at));
   const result = {
     today: normalizeDayList({
-      taskIds: todayRow ? todayRow.task_ids : localLists.today.taskIds,
-      customItems: todayRow ? todayRow.custom_items : localLists.today.customItems
+      taskIds: todayRow && !localTodayIsNewer ? todayRow.task_ids : localLists.today.taskIds,
+      customItems: todayRow && !localTodayIsNewer ? todayRow.custom_items : localLists.today.customItems,
+      updatedAt: todayRow && !localTodayIsNewer ? todayRow.updated_at : localLists.today.updatedAt
     }, todayDate),
     tomorrow: normalizeDayList({
-      taskIds: tomorrowRow ? tomorrowRow.task_ids : localLists.tomorrow.taskIds,
-      customItems: tomorrowRow ? tomorrowRow.custom_items : localLists.tomorrow.customItems
+      taskIds: tomorrowRow && !localTomorrowIsNewer ? tomorrowRow.task_ids : localLists.tomorrow.taskIds,
+      customItems: tomorrowRow && !localTomorrowIsNewer ? tomorrowRow.custom_items : localLists.tomorrow.customItems,
+      updatedAt: tomorrowRow && !localTomorrowIsNewer ? tomorrowRow.updated_at : localLists.tomorrow.updatedAt
     }, tomorrowDate)
   };
   state.dayLists = result;
   localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(result));
-  if (!todayRow || !tomorrowRow) saveDayListsState(result);
+  if (!todayRow || !tomorrowRow || localTodayIsNewer || localTomorrowIsNewer) saveDayListsState(result);
   return result;
 }
 
@@ -575,6 +584,7 @@ function renderGroups() {
     homeSortMode
   );
   const todayTaskIds = new Set(getTodayListState().taskIds);
+  const tomorrowTaskIds = new Set(getDayListsState().tomorrow.taskIds);
 
   if (!homeTasks.length) {
     root.innerHTML = `
@@ -590,7 +600,7 @@ function renderGroups() {
     <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="both">
       <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
       <button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(task.title)} to tomorrow">Tomorrow</button>
-      <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
+      <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''} ${tomorrowTaskIds.has(task.id) ? 'scheduled-tomorrow' : ''}">
         <div class="task-main">
           <h4>${escapeHtml(task.title)}</h4>
           ${task.description ? `
@@ -717,7 +727,7 @@ function renderDayList(day) {
           ${dayTasks.map((task) => `
             <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="${day === 'today' ? 'complete' : 'none'}">
               ${day === 'today' ? `<button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>` : ''}
-              <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
+              <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''} ${day === 'tomorrow' ? 'scheduled-tomorrow' : ''}">
                 <div class="task-main"><h4>${escapeHtml(task.title)}</h4></div>
                 <div class="task-actions">
                   <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
@@ -727,7 +737,7 @@ function renderDayList(day) {
             </div>
           `).join('')}
           ${customItems.map((item) => `
-            <article class="task-item task-item-no-check one-off-item">
+            <article class="task-item task-item-no-check one-off-item ${day === 'tomorrow' ? 'scheduled-tomorrow' : ''}">
               <div class="task-main"><h4>${escapeHtml(item.title)}</h4><span class="meta-pill category-pill">One-off</span></div>
               <button class="icon-btn" data-remove-custom-id="${item.id}" data-day="${day}">${day === 'today' ? 'Done' : 'Remove'}</button>
             </article>
@@ -844,29 +854,19 @@ function getProgressMessage(completed, remaining, category = '') {
   if (completed === 0 && remaining === 0) return 'Ready when you are ✨';
   if (remaining === 0) return 'All done — amazing work! 🎉';
 
-  if (category === 'opening') {
-    const progress = completed / total;
-    if (progress >= 0.875) return 'Slay Mama! 👑';
-    if (progress >= 0.75) return 'You’re crushing it! 🚀';
-    if (progress >= 0.625) return 'Purr Queen 💅';
-    if (progress >= 0.5) return 'Periodt! ✨';
-    if (progress >= 0.375) return 'Great job, keep it going! 🙌';
-    if (progress >= 0.25) return 'Clock it!';
-    if (progress >= 0.125) return 'Nice work — you’re on a roll! ✨';
-    return 'Let’s get started! ☀️';
-  }
-
-  if (completed >= 30) return 'Incredible momentum! 🔥';
-  if (completed >= 25) return 'Slay Mama! 👑';
-  if (completed >= 20) return 'You’re crushing it! 🚀';
-  if (completed >= 15) return 'Purr Queen 💅';
-  if (completed >= 12) return 'Periodt! ✨';
-  if (completed >= 10) return 'Great job, keep it going! 🙌';
-  if (completed >= 7) return 'Clock it!';
-  if (completed >= 5) return 'Nice work — you’re on a roll! ✨';
-  if (remaining <= 3) return 'So close — finish strong! 🌟';
+  const progress = completed / total;
+  if (progress >= 0.92) return 'Epic! ⚡';
+  if (progress >= 0.84) return 'Slay Mama! 👑';
+  if (progress >= 0.76) return 'Ate! 💅';
+  if (progress >= 0.68) return 'Fire! 🔥';
+  if (progress >= 0.6) return 'Crushing it! 💪';
+  if (progress >= 0.52) return 'Purr Queen 💅';
+  if (progress >= 0.44) return 'Periodt! ✨';
+  if (progress >= 0.36) return 'Great job, keep it going! 🙌';
+  if (progress >= 0.28) return 'LFG! 🚀';
+  if (progress >= 0.2) return 'Rock’n’roll! 🤘';
+  if (progress >= 0.12) return 'Nice work — you’re on a roll! ✨';
   if (completed > 0) return 'Great start! 👍';
-  if (remaining <= 10) return 'Almost there! You’ve got this 💪';
   return 'Let’s get started! ☀️';
 }
 
@@ -916,7 +916,7 @@ function renderCompleted() {
   if (!root) return;
   const completedTasks = state.completedFilter
     ? state.completed.filter((task) => task.category === state.completedFilter)
-    : state.completed;
+    : state.completed.filter((task) => !shiftOnlyCategories.includes(task.category));
 
   if (!completedTasks.length) {
     root.innerHTML = '<li class="empty-state">No completed items yet</li>';
@@ -941,7 +941,7 @@ function renderSummary() {
   const urgentCount = document.getElementById('urgentCount');
 
   if (openCount) openCount.textContent = String(state.available.length || 0);
-  if (completedCount) completedCount.textContent = String(state.completed.length || 0);
+  if (completedCount) completedCount.textContent = String(state.completed.filter((task) => !shiftOnlyCategories.includes(task.category)).length || 0);
   if (urgentCount) urgentCount.textContent = String(state.available.filter((task) => task.urgentToday).length || 0);
 
   const completedButton = document.querySelector('[data-open-completed]');
@@ -951,6 +951,28 @@ function renderSummary() {
 
   const urgentButton = document.querySelector('[data-open-urgent]');
   if (urgentButton) urgentButton.onclick = openUrgentModal;
+}
+
+function renderPeriodProgress() {
+  const root = document.getElementById('periodProgress');
+  if (!root) return;
+
+  root.innerHTML = ['weekly', 'monthly', 'yearly'].map((period) => {
+    const completed = state.completed.filter((task) => task.period === period && !shiftOnlyCategories.includes(task.category)).length;
+    const remaining = state.available.filter((task) => task.period === period && !shiftOnlyCategories.includes(task.category)).length;
+    const total = completed + remaining;
+    const percentage = total ? Math.round((completed / total) * 100) : 0;
+    return `
+      <article class="period-progress-card ${period}" aria-label="${periodLabels[period]}: ${completed} of ${total} completed">
+        <div class="period-progress-heading">
+          <strong>${periodLabels[period]}</strong>
+          <span>${completed}/${total}</span>
+        </div>
+        <div class="progress-track" aria-hidden="true"><span style="width: ${percentage}%"></span></div>
+        <p>${getProgressMessage(completed, remaining, period)}</p>
+      </article>
+    `;
+  }).join('');
 }
 
 function openUrgentModal() {
@@ -1272,7 +1294,11 @@ async function completeTask(taskId) {
     lists.today.taskIds = lists.today.taskIds.filter((id) => id !== taskId);
     saveDayListsState(lists);
     renderAll();
+    const finishedClosingList = state.page === 'closing'
+      && task?.category === 'closing'
+      && !state.available.some((item) => item.category === 'closing');
     await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
+    if (finishedClosingList) openClosingCompleteModal();
   } catch (error) {
     console.error('Failed to complete task', error);
     if (task) {
@@ -1394,6 +1420,7 @@ function renderAll() {
   renderOpeningList();
   renderCompleted();
   renderSummary();
+  renderPeriodProgress();
   renderClosingList();
   renderAdminList();
   attachSwipeHandlers();
@@ -1532,7 +1559,7 @@ function prefetchAppPages() {
     const rules = document.createElement('script');
     rules.type = 'speculationrules';
     rules.textContent = JSON.stringify({
-      prerender: [{ source: 'list', urls: pageUrls, eagerness: 'immediate' }]
+      prefetch: [{ source: 'list', urls: pageUrls, eagerness: 'immediate' }]
     });
     document.head.appendChild(rules);
   }
@@ -1687,6 +1714,25 @@ function ensureAppChrome() {
   if (!document.getElementById('completedModal')) {
     document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card"><div class="modal-header"><h2>Completed Tasks</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><ul id="completedList" class="mini-list modal-list"></ul></div></div>');
   }
+  if (!document.getElementById('closingCompleteModal')) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="closingCompleteModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" data-close-closing-complete></div>
+        <div class="modal-card closing-complete-card" role="dialog" aria-modal="true" aria-labelledby="closingCompleteTitle">
+          <div class="closing-complete-icon" aria-hidden="true">✓</div>
+          <h2 id="closingCompleteTitle">Great Job!</h2>
+          <p>Check that no food is left in the fridge!</p>
+          <p>If you’re the last one out, make sure to:</p>
+          <ul>
+            <li>Turn lights off</li>
+            <li>Set alarm</li>
+            <li>Lock front door</li>
+          </ul>
+          <button type="button" class="primary-btn" data-close-closing-complete>Got it</button>
+        </div>
+      </div>
+    `);
+  }
 }
 
 function updateStickyHeaderOffset() {
@@ -1735,6 +1781,21 @@ function closeTaskModal() {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+function openClosingCompleteModal() {
+  const modal = document.getElementById('closingCompleteModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  modal.querySelector('[data-close-closing-complete]')?.focus();
+}
+
+function closeClosingCompleteModal() {
+  const modal = document.getElementById('closingCompleteModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   ensureAppChrome();
   initializeTaskCardDetails();
@@ -1742,6 +1803,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   updateStickyHeaderOffset();
   window.addEventListener('resize', updateStickyHeaderOffset);
   window.addEventListener('online', () => saveDayListsState(getDayListsState()));
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    state.dayLists = null;
+    loadTaskData();
+  });
+  window.addEventListener('storage', (event) => {
+    if (![STORAGE_KEY, DAY_LISTS_KEY].includes(event.key)) return;
+    state.dayLists = null;
+    loadTaskData();
+  });
   prefetchAppPages();
   initializeTimeTagSelects();
   const form = document.getElementById('taskForm');
@@ -1759,6 +1830,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('[data-open-task-modal]').forEach((button) => button.addEventListener('click', () => { resetForm(); openTaskModal(); }));
   document.querySelectorAll('[data-close-task-modal]').forEach((button) => button.addEventListener('click', closeTaskModal));
   document.querySelectorAll('[data-close-urgent]').forEach((button) => button.addEventListener('click', closeUrgentModal));
+  document.querySelectorAll('[data-close-closing-complete]').forEach((button) => button.addEventListener('click', closeClosingCompleteModal));
   document.getElementById('deleteTaskButton')?.addEventListener('click', async () => {
     const taskId = document.getElementById('taskForm').elements.taskId.value;
     if (taskId && window.confirm('Delete this task?')) {
@@ -1772,6 +1844,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       closeCompletedModal();
       closeUrgentModal();
       closeTaskModal();
+      closeClosingCompleteModal();
     }
   });
 
