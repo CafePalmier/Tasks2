@@ -167,14 +167,18 @@ function localTaskApi(path, options = {}) {
 }
 
 function fromDatabaseTask(task) {
+  const urgentValues = Array.isArray(task.urgent_on) ? task.urgent_on : [];
+  const storedSeason = urgentValues
+    .find((value) => typeof value === 'string' && value.startsWith('__season:'))
+    ?.slice('__season:'.length);
   return {
     ...task,
     timeTag: task.time_tag || '',
-    urgentOn: Array.isArray(task.urgent_on) ? task.urgent_on : [],
+    urgentOn: urgentValues.filter((value) => typeof value !== 'string' || !value.startsWith('__season:')),
     isActive: task.is_active !== false,
     lastCompletedAt: task.last_completed_at || null,
     order: task.task_order ?? 0,
-    season: normalizeSeason(task.season)
+    season: normalizeSeason(storedSeason || task.season)
   };
 }
 
@@ -185,9 +189,11 @@ function toDatabaseTask(task) {
     category: task.category || 'general',
     period: task.period || 'weekly',
     description: task.description || '',
-    season: normalizeSeason(task.season),
     time_tag: task.timeTag || '',
-    urgent_on: Array.isArray(task.urgentOn) ? task.urgentOn : [],
+    urgent_on: [
+      ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || !value.startsWith('__season:')) : []),
+      `__season:${normalizeSeason(task.season)}`
+    ],
     is_active: task.isActive !== false,
     last_completed_at: task.lastCompletedAt || null,
     area: task.area || 'General',
