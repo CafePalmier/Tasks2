@@ -10,7 +10,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 23
+      "order": 23,
+      "season": "both"
     },
     {
       "id": "task-24",
@@ -22,7 +23,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 24
+      "order": 24,
+      "season": "both"
     },
     {
       "id": "task-25",
@@ -34,7 +36,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 25
+      "order": 25,
+      "season": "both"
     },
     {
       "id": "task-26",
@@ -46,7 +49,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 26
+      "order": 26,
+      "season": "both"
     },
     {
       "id": "task-water-plants",
@@ -58,7 +62,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 27
+      "order": 27,
+      "season": "both"
     },
     {
       "id": "task-27",
@@ -70,7 +75,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 27
+      "order": 27,
+      "season": "both"
     },
     {
       "id": "task-28",
@@ -82,7 +88,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 28
+      "order": 28,
+      "season": "both"
     },
     {
       "id": "task-29",
@@ -94,7 +101,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 29
+      "order": 29,
+      "season": "both"
     },
     {
       "id": "task-30",
@@ -106,7 +114,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 30
+      "order": 30,
+      "season": "both"
     },
     {
       "id": "task-31",
@@ -118,7 +127,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 31
+      "order": 31,
+      "season": "both"
     },
     {
       "id": "task-32",
@@ -130,7 +140,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 32
+      "order": 32,
+      "season": "both"
     },
     {
       "id": "task-33",
@@ -142,7 +153,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 33
+      "order": 33,
+      "season": "both"
     },
     {
       "id": "task-34",
@@ -154,7 +166,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Outside",
-      "order": 34
+      "order": 34,
+      "season": "both"
     },
     {
       "id": "task-35",
@@ -166,7 +179,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Outside",
-      "order": 35
+      "order": 35,
+      "season": "both"
     },
     {
       "id": "task-36",
@@ -178,7 +192,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Outside",
-      "order": 36
+      "order": 36,
+      "season": "both"
     },
     {
       "id": "task-37",
@@ -190,7 +205,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Outside",
-      "order": 37
+      "order": 37,
+      "season": "both"
     },
     {
       "id": "task-38",
@@ -202,7 +218,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Outside",
-      "order": 38
+      "order": 38,
+      "season": "both"
     },
     {
       "id": "task-39",
@@ -214,7 +231,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Outside",
-      "order": 39
+      "order": 39,
+      "season": "both"
     },
     {
       "id": "task-40",
@@ -226,7 +244,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Upstairs",
-      "order": 40
+      "order": 40,
+      "season": "both"
     },
     {
       "id": "task-41",
@@ -238,7 +257,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Upstairs",
-      "order": 41
+      "order": 41,
+      "season": "both"
     },
     {
       "id": "task-42",
@@ -250,7 +270,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Upstairs",
-      "order": 42
+      "order": 42,
+      "season": "both"
     },
     {
       "id": "task-43",
@@ -262,7 +283,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Upstairs",
-      "order": 43
+      "order": 43,
+      "season": "both"
     },
     {
       "id": "task-44",
@@ -274,7 +296,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Upstairs",
-      "order": 44
+      "order": 44,
+      "season": "both"
     },
     {
       "id": "task-45",
@@ -287,7 +310,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Upstairs",
-      "order": 45
+      "order": 45,
+      "season": "both"
     },
     {
       "id": "task-46",
@@ -299,7 +323,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Upstairs",
-      "order": 46
+      "order": 46,
+      "season": "both"
     },
     {
       "id": "task-47",
@@ -311,7 +336,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 47
+      "order": 47,
+      "season": "both"
     },
     {
       "id": "task-48",
@@ -323,7 +349,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 48
+      "order": 48,
+      "season": "both"
     },
     {
       "id": "task-49",
@@ -335,7 +362,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 49
+      "order": 49,
+      "season": "both"
     },
     {
       "id": "task-50",
@@ -347,7 +375,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 50
+      "order": 50,
+      "season": "both"
     },
     {
       "id": "task-51",
@@ -359,7 +388,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 51
+      "order": 51,
+      "season": "both"
     },
     {
       "id": "task-52",
@@ -371,7 +401,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 52
+      "order": 52,
+      "season": "both"
     },
     {
       "id": "task-53",
@@ -383,7 +414,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 53
+      "order": 53,
+      "season": "both"
     },
     {
       "id": "task-54",
@@ -395,7 +427,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 54
+      "order": 54,
+      "season": "both"
     },
     {
       "id": "task-55",
@@ -407,7 +440,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 55
+      "order": 55,
+      "season": "both"
     },
     {
       "id": "task-56",
@@ -421,7 +455,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 56
+      "order": 56,
+      "season": "both"
     },
     {
       "id": "task-57",
@@ -433,7 +468,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 57
+      "order": 57,
+      "season": "both"
     },
     {
       "id": "task-58",
@@ -446,7 +482,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 6
+      "order": 6,
+      "season": "both"
     },
     {
       "id": "task-59",
@@ -458,7 +495,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 59
+      "order": 59,
+      "season": "both"
     },
     {
       "id": "task-60",
@@ -470,7 +508,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 60
+      "order": 60,
+      "season": "both"
     },
     {
       "id": "task-61",
@@ -482,7 +521,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Downstairs",
-      "order": 61
+      "order": 61,
+      "season": "both"
     },
     {
       "id": "task-62",
@@ -494,7 +534,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Kitchen",
-      "order": 62
+      "order": 62,
+      "season": "both"
     },
     {
       "id": "task-63",
@@ -506,7 +547,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Kitchen",
-      "order": 63
+      "order": 63,
+      "season": "both"
     },
     {
       "id": "task-64",
@@ -518,7 +560,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Kitchen",
-      "order": 64
+      "order": 64,
+      "season": "both"
     },
     {
       "id": "task-65",
@@ -530,7 +573,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Kitchen",
-      "order": 65
+      "order": 65,
+      "season": "both"
     },
     {
       "id": "task-66",
@@ -542,7 +586,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Kitchen",
-      "order": 66
+      "order": 66,
+      "season": "both"
     },
     {
       "id": "task-67",
@@ -555,7 +600,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 16
+      "order": 16,
+      "season": "both"
     },
     {
       "id": "task-68",
@@ -567,7 +613,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 68
+      "order": 68,
+      "season": "both"
     },
     {
       "id": "task-87",
@@ -580,7 +627,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 12
+      "order": 12,
+      "season": "both"
     },
     {
       "id": "task-69",
@@ -592,7 +640,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 15
+      "order": 15,
+      "season": "both"
     },
     {
       "id": "task-70",
@@ -604,7 +653,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 71
+      "order": 71,
+      "season": "both"
     },
     {
       "id": "task-71",
@@ -616,7 +666,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 72
+      "order": 72,
+      "season": "both"
     },
     {
       "id": "task-72",
@@ -628,7 +679,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 73
+      "order": 73,
+      "season": "both"
     },
     {
       "id": "task-73",
@@ -640,7 +692,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 74
+      "order": 74,
+      "season": "both"
     },
     {
       "id": "task-74",
@@ -652,7 +705,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 75
+      "order": 75,
+      "season": "both"
     },
     {
       "id": "task-75",
@@ -664,7 +718,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 76
+      "order": 76,
+      "season": "both"
     },
     {
       "id": "task-76",
@@ -676,7 +731,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 77
+      "order": 77,
+      "season": "both"
     },
     {
       "id": "task-77",
@@ -688,7 +744,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 78
+      "order": 78,
+      "season": "both"
     },
     {
       "id": "task-78",
@@ -700,7 +757,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "Bar",
-      "order": 79
+      "order": 79,
+      "season": "both"
     },
     {
       "id": "task-79",
@@ -712,7 +770,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 79
+      "order": 79,
+      "season": "both"
     },
     {
       "id": "task-80",
@@ -724,7 +783,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 80
+      "order": 80,
+      "season": "both"
     },
     {
       "id": "task-81",
@@ -736,7 +796,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 81
+      "order": 81,
+      "season": "both"
     },
     {
       "id": "task-82",
@@ -748,7 +809,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 82
+      "order": 82,
+      "season": "both"
     },
     {
       "id": "task-83",
@@ -760,7 +822,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 83
+      "order": 83,
+      "season": "both"
     },
     {
       "id": "task-84",
@@ -772,7 +835,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 84
+      "order": 84,
+      "season": "both"
     },
     {
       "id": "task-85",
@@ -784,7 +848,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 85
+      "order": 85,
+      "season": "both"
     },
     {
       "id": "task-86",
@@ -796,7 +861,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 86
+      "order": 86,
+      "season": "both"
     },
     {
       "id": "task-88",
@@ -806,7 +872,8 @@
       "timeTag": "2:30PM+ — Start Close",
       "isActive": true,
       "area": "Bar",
-      "order": 1
+      "order": 1,
+      "season": "both"
     },
     {
       "id": "task-89",
@@ -816,7 +883,8 @@
       "timeTag": "2:30PM+ — Start Close",
       "isActive": true,
       "area": "Bar",
-      "order": 2
+      "order": 2,
+      "season": "both"
     },
     {
       "id": "task-90",
@@ -826,7 +894,8 @@
       "timeTag": "2:30PM+ — Start Close",
       "isActive": true,
       "area": "Bar",
-      "order": 3
+      "order": 3,
+      "season": "both"
     },
     {
       "id": "task-91",
@@ -836,7 +905,8 @@
       "timeTag": "2:30PM+ — Start Close",
       "isActive": true,
       "area": "Bar",
-      "order": 4
+      "order": 4,
+      "season": "both"
     },
     {
       "id": "task-92",
@@ -846,7 +916,8 @@
       "timeTag": "3:00PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 5
+      "order": 5,
+      "season": "both"
     },
     {
       "id": "task-93",
@@ -856,7 +927,8 @@
       "timeTag": "3:00PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 6
+      "order": 6,
+      "season": "both"
     },
     {
       "id": "task-94",
@@ -866,7 +938,8 @@
       "timeTag": "3:00PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 7
+      "order": 7,
+      "season": "both"
     },
     {
       "id": "task-95",
@@ -876,7 +949,8 @@
       "timeTag": "3:00PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 8
+      "order": 8,
+      "season": "both"
     },
     {
       "id": "task-96",
@@ -886,7 +960,8 @@
       "timeTag": "3:00PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 9
+      "order": 9,
+      "season": "both"
     },
     {
       "id": "task-97",
@@ -896,7 +971,8 @@
       "timeTag": "3:00PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 10
+      "order": 10,
+      "season": "both"
     },
     {
       "id": "task-98",
@@ -906,7 +982,8 @@
       "timeTag": "3:30PM+",
       "isActive": true,
       "area": "Downstairs",
-      "order": 1
+      "order": 1,
+      "season": "both"
     },
     {
       "id": "task-99",
@@ -916,7 +993,8 @@
       "timeTag": "3:30PM+",
       "isActive": true,
       "area": "Downstairs",
-      "order": 2
+      "order": 2,
+      "season": "both"
     },
     {
       "id": "task-100",
@@ -926,7 +1004,8 @@
       "timeTag": "3:30PM+",
       "isActive": true,
       "area": "Downstairs",
-      "order": 3
+      "order": 3,
+      "season": "both"
     },
     {
       "id": "task-101",
@@ -936,7 +1015,8 @@
       "timeTag": "3:30PM+",
       "isActive": true,
       "area": "Downstairs",
-      "order": 4
+      "order": 4,
+      "season": "both"
     },
     {
       "id": "task-102",
@@ -946,7 +1026,8 @@
       "timeTag": "3:30PM+",
       "isActive": true,
       "area": "Downstairs",
-      "order": 5
+      "order": 5,
+      "season": "both"
     },
     {
       "id": "task-103",
@@ -956,7 +1037,8 @@
       "timeTag": "4:00PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 11
+      "order": 11,
+      "season": "both"
     },
     {
       "id": "task-104",
@@ -966,7 +1048,8 @@
       "timeTag": "4:30PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 13
+      "order": 13,
+      "season": "both"
     },
     {
       "id": "task-105",
@@ -976,7 +1059,8 @@
       "timeTag": "4:30PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 14
+      "order": 14,
+      "season": "both"
     },
     {
       "id": "task-106",
@@ -986,7 +1070,8 @@
       "timeTag": "4:30PM+",
       "isActive": true,
       "area": "Bar",
-      "order": 17
+      "order": 17,
+      "season": "both"
     },
     {
       "id": "task-108",
@@ -998,7 +1083,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 108
+      "order": 108,
+      "season": "both"
     },
     {
       "id": "task-109",
@@ -1010,7 +1096,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 109
+      "order": 109,
+      "season": "both"
     },
     {
       "id": "task-110",
@@ -1022,7 +1109,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 110
+      "order": 110,
+      "season": "both"
     },
     {
       "id": "task-111",
@@ -1036,7 +1124,8 @@
       "isActive": true,
       "lastCompletedAt": null,
       "area": "General",
-      "order": 111
+      "order": 111,
+      "season": "both"
     }
   ]
 }

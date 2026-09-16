@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'cafe-palmier-task-state';
 const TODAY_LIST_KEY = 'cafe-palmier-today-list';
 const DAY_LISTS_KEY = 'cafe-palmier-day-lists-v2';
+const SEASON_KEY = 'cafe-palmier-season';
 const STATIC_TASKS_PATH = './tasks.json';
 const TASK_DATA_VERSION = 5;
 
@@ -11,6 +12,7 @@ const state = {
   completedFilter: null,
   hasTaskApi: null,
   dayLists: null,
+  season: getSavedSeason(),
   page: document.body.dataset.page || 'home'
 };
 
@@ -48,6 +50,26 @@ const shiftOnlyCategories = ['opening', 'closing'];
 const closingAreas = ['Outside', 'Upstairs', 'Downstairs', 'Kitchen', 'Bar', 'General'];
 const openingStages = ['first', 'second', 'third'];
 const openingStageLabels = { first: 'First', second: 'Second', third: 'Third' };
+const seasonLabels = { winter: 'Winter', summer: 'Summer', both: 'Winter & Summer' };
+
+function normalizeSeason(value) {
+  return ['winter', 'summer', 'both'].includes(value) ? value : 'both';
+}
+
+function getSavedSeason() {
+  try {
+    return ['winter', 'summer'].includes(localStorage.getItem(SEASON_KEY))
+      ? localStorage.getItem(SEASON_KEY)
+      : 'winter';
+  } catch (error) {
+    return 'winter';
+  }
+}
+
+function taskMatchesSeason(task) {
+  const season = normalizeSeason(task.season);
+  return season === 'both' || season === state.season;
+}
 
 function categoryTagLabel(category) {
   const icon = categoryTagIcons[category];
@@ -109,6 +131,7 @@ function localTaskApi(path, options = {}) {
       id: `task-${Date.now()}`,
       period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || 'weekly'),
       description: body.description || '',
+      season: normalizeSeason(body.season),
       urgentOn: Array.isArray(body.urgentOn) ? body.urgentOn : [],
       isActive: true,
       lastCompletedAt: null,
@@ -150,7 +173,8 @@ function fromDatabaseTask(task) {
     urgentOn: Array.isArray(task.urgent_on) ? task.urgent_on : [],
     isActive: task.is_active !== false,
     lastCompletedAt: task.last_completed_at || null,
-    order: task.task_order ?? 0
+    order: task.task_order ?? 0,
+    season: normalizeSeason(task.season)
   };
 }
 
@@ -161,6 +185,7 @@ function toDatabaseTask(task) {
     category: task.category || 'general',
     period: task.period || 'weekly',
     description: task.description || '',
+    season: normalizeSeason(task.season),
     time_tag: task.timeTag || '',
     urgent_on: Array.isArray(task.urgentOn) ? task.urgentOn : [],
     is_active: task.isActive !== false,
@@ -362,7 +387,7 @@ function buildTaskPayload(tasks, now = new Date()) {
   const available = [];
   const completed = [];
 
-  const sortedTasks = [...tasks].sort((a, b) => {
+  const sortedTasks = tasks.map((task) => ({ ...task, season: normalizeSeason(task.season) })).sort((a, b) => {
     const byPeriod = (taskPeriods.indexOf(a.period) >= 0 ? taskPeriods.indexOf(a.period) : 99) - (taskPeriods.indexOf(b.period) >= 0 ? taskPeriods.indexOf(b.period) : 99);
     if (byPeriod !== 0) return byPeriod;
 
@@ -373,7 +398,7 @@ function buildTaskPayload(tasks, now = new Date()) {
   });
 
   for (const task of sortedTasks) {
-    if (task.isActive === false) continue;
+    if (task.isActive === false || !taskMatchesSeason(task)) continue;
 
     const resultTask = {
       ...task,
@@ -723,7 +748,7 @@ function renderDayList(day) {
   const dayTasks = taskIds
     .map((taskId) => state.tasks.find((task) => task.id === taskId))
     .filter(Boolean)
-    .filter((task) => task.isActive);
+    .filter((task) => task.isActive && taskMatchesSeason(task));
   const label = day === 'today' ? "Today's List" : "Tomorrow's List";
 
   root.innerHTML = `
@@ -772,7 +797,7 @@ function renderDayList(day) {
     if (!quickDayInput || !suggestions) return;
     const query = quickDayInput.value.trim().toLocaleLowerCase();
     const matches = query
-      ? state.tasks.filter((task) => task.isActive && !taskIds.includes(task.id) && task.title.toLocaleLowerCase().includes(query)).slice(0, 6)
+      ? state.tasks.filter((task) => task.isActive && taskMatchesSeason(task) && !taskIds.includes(task.id) && task.title.toLocaleLowerCase().includes(query)).slice(0, 6)
       : [];
     suggestions.hidden = !matches.length;
     root.classList.toggle('has-active-suggestions', matches.length > 0);
@@ -1179,6 +1204,7 @@ function renderAdminList() {
                     <div class="meta">
                       <span>${categoryLabels[task.category] || task.category}</span>
                       <span>${periodLabels[task.period] || task.period}</span>
+                      <span>${seasonLabels[normalizeSeason(task.season)]}</span>
                       ${task.timeTag ? `<span class="time-pill">${escapeHtml(task.timeTag)}</span>` : ''}
                       <span class="status-pill ${completedIds.has(task.id) ? 'done' : 'open'}">
                         ${completedIds.has(task.id) ? 'Completed' : 'Open'}
@@ -1336,6 +1362,7 @@ function populateForm(task) {
   form.elements.title.value = task.title;
   form.elements.category.value = task.category || 'general';
   form.elements.period.value = task.period || 'daily';
+  form.elements.season.value = normalizeSeason(task.season);
   form.elements.urgentOn.value = (task.urgentOn || []).join(', ');
   form.elements.timeTag.value = task.timeTag || '';
   form.elements.description.value = task.description || '';
@@ -1377,6 +1404,7 @@ async function handleTaskSubmit(event) {
     title: form.elements.title.value.trim(),
     category: form.elements.category.value,
     period: shiftOnlyCategories.includes(form.elements.category.value) ? 'shift' : form.elements.period.value,
+    season: normalizeSeason(form.elements.season.value),
     description: form.elements.description.value.trim(),
     timeTag: form.elements.timeTag.value.trim(),
     urgentOn: form.elements.urgentOn.value
@@ -1644,6 +1672,7 @@ function taskFormMarkup() {
             <label><span>Title</span><input type="text" name="title" required /></label>
             <label><span>Category</span><select name="category"><option value="opening">Opening</option><option value="cleaning" selected>Cleaning</option><option value="stocking">Stocking</option><option value="prep">Prepping</option><option value="closing">Closing</option><option value="general">General</option></select></label>
             <label id="periodField"><span>Period</span><select name="period"><option value="shift">Shift</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
+            <label><span>Season</span><select name="season"><option value="both" selected>Winter &amp; Summer</option><option value="winter">Winter</option><option value="summer">Summer</option></select></label>
             <label><span data-time-tag-label>Time tag</span><select name="timeTag">${timeTagOptions()}</select></label>
             <label><span>Urgent on</span><input type="text" name="urgentOn" placeholder="Friday, Monday" /></label>
           </div>
@@ -1697,6 +1726,36 @@ function initializeTimeTagSelects() {
 
 function ensureAppChrome() {
   const topbar = document.querySelector('.topbar');
+  if (topbar && !topbar.querySelector('.season-switcher')) {
+    const brand = topbar.querySelector('.brand-wrap');
+    const start = document.createElement('div');
+    start.className = 'topbar-start';
+    const switcher = document.createElement('button');
+    switcher.type = 'button';
+    switcher.className = `season-switcher ${state.season === 'summer' ? 'is-summer' : ''}`;
+    switcher.setAttribute('aria-label', `Switch displayed season. Currently showing ${seasonLabels[state.season]}.`);
+    switcher.setAttribute('aria-pressed', String(state.season === 'summer'));
+    switcher.innerHTML = '<span class="season-option">Winter</span><span class="season-option">Summer</span>';
+    topbar.insertBefore(start, brand);
+    start.append(switcher, brand);
+    switcher.addEventListener('click', () => {
+      const nextSeason = state.season === 'winter' ? 'summer' : 'winter';
+      switcher.disabled = true;
+      switcher.classList.toggle('is-summer', nextSeason === 'summer');
+      switcher.setAttribute('aria-pressed', String(nextSeason === 'summer'));
+      switcher.setAttribute('aria-label', `Switch displayed season. Currently showing ${seasonLabels[nextSeason]}.`);
+      try { localStorage.setItem(SEASON_KEY, nextSeason); } catch (error) { /* Keep the in-memory selection. */ }
+      window.setTimeout(() => {
+        state.season = nextSeason;
+        const payload = buildTaskPayload(state.tasks, new Date());
+        state.tasks = payload.tasks;
+        state.available = payload.available;
+        state.completed = payload.completed;
+        renderAll();
+        switcher.disabled = false;
+      }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 240);
+    });
+  }
   if (topbar && !topbar.querySelector('[data-open-task-modal]')) {
     const addButton = document.createElement('button');
     addButton.type = 'button';
@@ -1804,7 +1863,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadTaskData();
   });
   window.addEventListener('storage', (event) => {
-    if (![STORAGE_KEY, DAY_LISTS_KEY].includes(event.key)) return;
+    if (![STORAGE_KEY, DAY_LISTS_KEY, SEASON_KEY].includes(event.key)) return;
+    if (event.key === SEASON_KEY) state.season = getSavedSeason();
     state.dayLists = null;
     loadTaskData();
   });
