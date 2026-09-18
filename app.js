@@ -51,6 +51,7 @@ const closingAreas = ['Outside', 'Upstairs', 'Downstairs', 'Kitchen', 'Bar', 'Ge
 const openingStages = ['first', 'second', 'third'];
 const openingStageLabels = { first: 'First', second: 'Second', third: 'Third' };
 const seasonLabels = { winter: 'Winter', summer: 'Summer', both: 'Winter & Summer' };
+const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 function normalizeSeason(value) {
   return ['winter', 'summer', 'both'].includes(value) ? value : 'both';
@@ -86,6 +87,14 @@ function sortTasks(tasks) {
 
     return (a.order ?? 999) - (b.order ?? 999);
   });
+}
+
+function getAvailableTasksForDayList(taskIds, query = '') {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return sortTasks(state.available)
+    .filter((task) => !shiftOnlyCategories.includes(task.category))
+    .filter((task) => !taskIds.includes(task.id))
+    .filter((task) => !normalizedQuery || task.title.toLocaleLowerCase().includes(normalizedQuery));
 }
 
 function getLocalTasks(fallbackTasks = []) {
@@ -411,7 +420,7 @@ function buildTaskPayload(tasks, now = new Date()) {
       urgentToday: isUrgentTask(task, now)
     };
 
-    if (isCompletedInCurrentCycle(task, now)) {
+    if (isCompletedInCurrentCycle(task, now) && !resultTask.urgentToday) {
       completed.push(resultTask);
     } else {
       available.push(resultTask);
@@ -801,10 +810,7 @@ function renderDayList(day) {
   };
   const renderSuggestions = () => {
     if (!quickDayInput || !suggestions) return;
-    const query = quickDayInput.value.trim().toLocaleLowerCase();
-    const matches = query
-      ? state.tasks.filter((task) => task.isActive && taskMatchesSeason(task) && !taskIds.includes(task.id) && task.title.toLocaleLowerCase().includes(query)).slice(0, 6)
-      : [];
+    const matches = getAvailableTasksForDayList(taskIds, quickDayInput.value).slice(0, 6);
     suggestions.hidden = !matches.length;
     root.classList.toggle('has-active-suggestions', matches.length > 0);
     suggestions.innerHTML = matches.map((task) => `
@@ -821,6 +827,7 @@ function renderDayList(day) {
     updateQuickDayButton();
     renderSuggestions();
   });
+  quickDayInput?.addEventListener('focus', renderSuggestions);
   quickDayInput?.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && suggestions) {
       suggestions.hidden = true;
@@ -1299,6 +1306,7 @@ async function loadTaskData() {
       state.available = fallbackPayload.available;
       state.completed = fallbackPayload.completed;
       getDayListsState();
+      ensureUrgentTasksInToday();
       renderAll();
     } catch (fallbackError) {
       console.error('Failed to load fallback tasks', fallbackError);
@@ -1312,6 +1320,7 @@ async function loadTaskData() {
 async function completeTask(taskId) {
   const task = state.tasks.find((item) => item.id === taskId);
   const previousCompletedAt = task?.lastCompletedAt || null;
+  const remainsUrgentToday = Boolean(task && isUrgentTask(task, new Date()));
   try {
     if (task) {
       task.lastCompletedAt = new Date().toISOString();
@@ -1323,6 +1332,7 @@ async function completeTask(taskId) {
     }
     const lists = getDayListsState();
     lists.today.taskIds = lists.today.taskIds.filter((id) => id !== taskId);
+    if (remainsUrgentToday) lists.today.taskIds.push(taskId);
     saveDayListsState(lists);
     renderAll();
     const finishedClosingList = state.page === 'closing'
@@ -1369,7 +1379,7 @@ function populateForm(task) {
   form.elements.category.value = task.category || 'general';
   form.elements.period.value = task.period || 'daily';
   form.elements.season.value = normalizeSeason(task.season);
-  form.elements.urgentOn.value = (task.urgentOn || []).join(', ');
+  setUrgentDays(form, task.urgentOn || []);
   form.elements.timeTag.value = task.timeTag || '';
   form.elements.description.value = task.description || '';
   const deleteButton = document.getElementById('deleteTaskButton');
@@ -1395,6 +1405,8 @@ function resetForm() {
   if (!form) return;
 
   form.reset();
+  updateUrgentDaysSummary(form);
+  form.querySelector('[data-urgent-dropdown]')?.removeAttribute('open');
   document.getElementById('formTitle').textContent = 'Add a task';
   form.elements.taskId.value = '';
   const deleteButton = document.getElementById('deleteTaskButton');
@@ -1413,10 +1425,7 @@ async function handleTaskSubmit(event) {
     season: normalizeSeason(form.elements.season.value),
     description: form.elements.description.value.trim(),
     timeTag: form.elements.timeTag.value.trim(),
-    urgentOn: form.elements.urgentOn.value
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean)
+    urgentOn: getSelectedUrgentDays(form)
   };
 
   if (!payload.title) {
@@ -1680,13 +1689,57 @@ function taskFormMarkup() {
             <label id="periodField"><span>Period</span><select name="period"><option value="shift">Shift</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
             <label><span>Season</span><select name="season"><option value="both" selected>Winter &amp; Summer</option><option value="winter">Winter</option><option value="summer">Summer</option></select></label>
             <label><span data-time-tag-label>Time tag</span><select name="timeTag">${timeTagOptions()}</select></label>
-            <label><span>Urgent on</span><input type="text" name="urgentOn" placeholder="Friday, Monday" /></label>
+            ${urgentDaysFieldMarkup()}
           </div>
           <label><span>Description / elaboration</span><textarea name="description" rows="3" placeholder="Add instructions or notes"></textarea></label>
           <div class="form-actions"><button type="submit" class="primary-btn">Save task</button><button type="button" class="secondary-btn" id="resetForm">Clear form</button><button type="button" class="danger-btn" id="deleteTaskButton" hidden>Delete task</button></div>
         </form>
       </div>
     </div>`;
+}
+
+function urgentDaysFieldMarkup() {
+  return `
+    <div class="form-field urgent-days-field">
+      <span>Urgent on</span>
+      <details class="checkbox-dropdown" data-urgent-dropdown>
+        <summary data-urgent-summary>No days selected</summary>
+        <div class="checkbox-dropdown-menu">
+          ${weekDays.map((day) => `<label><input type="checkbox" name="urgentOn" value="${day}" /><span>${day}</span></label>`).join('')}
+        </div>
+      </details>
+    </div>`;
+}
+
+function getSelectedUrgentDays(form) {
+  return [...form.querySelectorAll('input[name="urgentOn"]:checked')].map((input) => input.value);
+}
+
+function updateUrgentDaysSummary(form) {
+  const summary = form?.querySelector('[data-urgent-summary]');
+  if (!summary) return;
+  const selectedDays = getSelectedUrgentDays(form);
+  summary.textContent = selectedDays.length > 2
+    ? `${selectedDays.length} days selected`
+    : (selectedDays.join(', ') || 'No days selected');
+}
+
+function setUrgentDays(form, selectedDays) {
+  const selected = new Set(selectedDays);
+  form.querySelectorAll('input[name="urgentOn"]').forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  updateUrgentDaysSummary(form);
+}
+
+function initializeUrgentDayDropdowns() {
+  document.querySelectorAll('[data-urgent-dropdown]').forEach((dropdown) => {
+    const form = dropdown.closest('form');
+    dropdown.querySelectorAll('input[name="urgentOn"]').forEach((input) => {
+      input.addEventListener('change', () => updateUrgentDaysSummary(form));
+    });
+    updateUrgentDaysSummary(form);
+  });
 }
 
 function timeTagOptions(category = '') {
@@ -1804,6 +1857,7 @@ function scheduleMidnightRollover() {
   const now = new Date();
   const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 50);
   setTimeout(async () => {
+    state.dayLists = null;
     getDayListsState();
     await loadTaskData();
     scheduleMidnightRollover();
@@ -1823,7 +1877,8 @@ function openTaskModal(task) {
     form.elements.title.value = task.title;
     form.elements.category.value = task.category || 'general';
     form.elements.period.value = task.period || 'daily';
-    form.elements.urgentOn.value = (task.urgentOn || []).join(', ');
+    form.elements.season.value = normalizeSeason(task.season);
+    setUrgentDays(form, task.urgentOn || []);
     form.elements.timeTag.value = task.timeTag || '';
     form.elements.description.value = task.description || '';
     document.getElementById('deleteTaskButton').hidden = false;
@@ -1876,6 +1931,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   prefetchAppPages();
   initializeTimeTagSelects();
+  initializeUrgentDayDropdowns();
   const form = document.getElementById('taskForm');
   if (form) {
     form.addEventListener('submit', handleTaskSubmit);

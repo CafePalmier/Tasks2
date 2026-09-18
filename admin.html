@@ -68,10 +68,21 @@
               <select name="timeTag"></select>
             </label>
 
-            <label>
+            <div class="form-field urgent-days-field">
               <span>Urgent on</span>
-              <input type="text" name="urgentOn" placeholder="Friday, Monday" />
-            </label>
+              <details class="checkbox-dropdown" data-urgent-dropdown>
+                <summary data-urgent-summary>No days selected</summary>
+                <div class="checkbox-dropdown-menu">
+                  <label><input type="checkbox" name="urgentOn" value="Monday" /><span>Monday</span></label>
+                  <label><input type="checkbox" name="urgentOn" value="Tuesday" /><span>Tuesday</span></label>
+                  <label><input type="checkbox" name="urgentOn" value="Wednesday" /><span>Wednesday</span></label>
+                  <label><input type="checkbox" name="urgentOn" value="Thursday" /><span>Thursday</span></label>
+                  <label><input type="checkbox" name="urgentOn" value="Friday" /><span>Friday</span></label>
+                  <label><input type="checkbox" name="urgentOn" value="Saturday" /><span>Saturday</span></label>
+                  <label><input type="checkbox" name="urgentOn" value="Sunday" /><span>Sunday</span></label>
+                </div>
+              </details>
+            </div>
           </div>
 
           <label>

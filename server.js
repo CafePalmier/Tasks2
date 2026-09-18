@@ -238,7 +238,7 @@ function buildTaskPayload(tasks, now = new Date()) {
       urgentToday: isUrgentTask(task, now)
     };
 
-    if (completedInCurrentCycle) {
+    if (completedInCurrentCycle && !resultTask.urgentToday) {
       completed.push(resultTask);
     } else {
       available.push(resultTask);
