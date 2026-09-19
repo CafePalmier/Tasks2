@@ -73,6 +73,38 @@ function taskMatchesSeason(task) {
   return season === 'both' || season === state.season;
 }
 
+function normalizeChecklist(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => typeof item === 'string'
+      ? { text: item.trim(), checked: false }
+      : { text: String(item?.text || '').trim(), checked: item?.checked === true })
+    .filter((item) => item.text);
+}
+
+function checklistFromText(value, existingChecklist = []) {
+  const existing = normalizeChecklist(existingChecklist);
+  const usedIndexes = new Set();
+  return String(value || '')
+    .split('\n')
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .map((text) => {
+      const existingIndex = existing.findIndex((item, index) => !usedIndexes.has(index) && item.text === text);
+      if (existingIndex >= 0) usedIndexes.add(existingIndex);
+      return { text, checked: existingIndex >= 0 && existing[existingIndex].checked };
+    });
+}
+
+function checklistEditorMarkup() {
+  return `
+    <div class="checklist-editor" data-checklist-editor>
+      <span>Checklist</span>
+      <div class="checklist-editor-items" data-checklist-editor-items></div>
+      <button type="button" class="secondary-btn checklist-add-item" data-add-checklist-item>+ Add checklist item</button>
+    </div>`;
+}
+
 function categoryTagLabel(category) {
   const icon = categoryTagIcons[category];
   return `${icon ? `${icon} ` : ''}${categoryLabels[category] || category}`;
@@ -141,6 +173,7 @@ function localTaskApi(path, options = {}) {
       id: `task-${Date.now()}`,
       period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || 'weekly'),
       description: body.description || '',
+      checklist: normalizeChecklist(body.checklist),
       season: normalizeSeason(body.season),
       urgentOn: Array.isArray(body.urgentOn) ? body.urgentOn : [],
       isActive: true,
@@ -188,6 +221,7 @@ function fromDatabaseTask(task) {
     isActive: task.is_active !== false,
     lastCompletedAt: task.last_completed_at || null,
     order: task.task_order ?? 0,
+    checklist: normalizeChecklist(task.checklist),
     season: normalizeSeason(storedSeason || task.season)
   };
 }
@@ -199,6 +233,7 @@ function toDatabaseTask(task) {
     category: task.category || 'general',
     period: task.period || 'weekly',
     description: task.description || '',
+    checklist: normalizeChecklist(task.checklist),
     time_tag: task.timeTag || '',
     urgent_on: [
       ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || !value.startsWith('__season:')) : []),
@@ -624,6 +659,30 @@ function bindInlineEditButtons(scope = document) {
   });
 }
 
+function renderTaskDetails(task) {
+  const checklist = normalizeChecklist(task.checklist);
+  const checklistMarkup = checklist.length ? `
+    <details class="task-details task-checklist">
+      <summary>Checklist <span>${checklist.filter((item) => item.checked).length}/${checklist.length}</span></summary>
+      <div class="checklist-items">
+        ${checklist.map((item, index) => `
+          <label class="checklist-item ${item.checked ? 'is-checked' : ''}">
+            <input type="checkbox" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" ${item.checked ? 'checked' : ''} />
+            <span>${escapeHtml(item.text)}</span>
+          </label>
+        `).join('')}
+      </div>
+    </details>
+  ` : '';
+  const descriptionMarkup = task.description ? `
+    <details class="task-details">
+      <summary>Details</summary>
+      <p>${escapeHtml(task.description)}</p>
+    </details>
+  ` : '';
+  return `${checklistMarkup}${descriptionMarkup}`;
+}
+
 function renderGroups() {
   const root = document.getElementById('taskGroups');
   if (!root) return;
@@ -655,12 +714,7 @@ function renderGroups() {
       <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''} ${tomorrowTaskIds.has(task.id) ? 'scheduled-tomorrow' : ''}">
         <div class="task-main">
           <h4>${escapeHtml(task.title)}</h4>
-          ${task.description ? `
-            <details class="task-details">
-              <summary>Details</summary>
-              <p>${escapeHtml(task.description)}</p>
-            </details>
-          ` : ''}
+          ${renderTaskDetails(task)}
           <div class="task-meta">
             <span class="meta-pill category-pill">${categoryTagLabel(task.category)}</span>
             <span class="meta-pill period-pill ${task.period}">${periodLabels[task.period]}</span>
@@ -792,7 +846,7 @@ function renderDayList(day) {
             <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="${day === 'today' ? 'complete' : 'none'}">
               ${day === 'today' ? `<button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>` : ''}
               <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''} ${day === 'tomorrow' ? 'scheduled-tomorrow' : ''}">
-                <div class="task-main"><h4>${escapeHtml(task.title)}</h4></div>
+                <div class="task-main"><h4>${escapeHtml(task.title)}</h4>${renderTaskDetails(task)}</div>
                 <div class="task-actions">
                   <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
                   <button class="icon-btn" data-remove-day-id="${task.id}" data-day="${day}">Remove</button>
@@ -897,7 +951,7 @@ function renderOpeningList() {
         <div class="task-swipe-shell" data-task-id="${task.id}">
           <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
           <article class="task-item task-swipe-content task-item-no-check">
-            <div class="task-main"><h4>${escapeHtml(task.title)}</h4></div>
+            <div class="task-main"><h4>${escapeHtml(task.title)}</h4>${renderTaskDetails(task)}</div>
             <div class="task-actions"><button class="icon-btn" data-edit-id="${task.id}">Edit</button></div>
           </article>
         </div>
@@ -1087,12 +1141,7 @@ function renderClosingTask(task, showAreaTag) {
           ${showAreaTag
             ? `<span class="meta-pill area-pill">${escapeHtml(task.area || 'General')}</span>`
             : (task.timeTag ? `<span class="time-pill">${escapeHtml(task.timeTag)}</span>` : '')}
-          ${task.description ? `
-            <details class="task-details">
-              <summary>Details</summary>
-              <p>${escapeHtml(task.description)}</p>
-            </details>
-          ` : ''}
+          ${renderTaskDetails(task)}
         </div>
         <div class="task-actions">
           <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
@@ -1389,7 +1438,9 @@ function populateForm(task) {
   form.elements.season.value = normalizeSeason(task.season);
   setUrgentDays(form, task.urgentOn || []);
   form.elements.timeTag.value = task.timeTag || '';
-  form.elements.description.value = task.description || '';
+  setChecklistEditorItems(form, normalizeChecklist(task.checklist).length
+    ? task.checklist
+    : checklistFromText(task.description));
   const deleteButton = document.getElementById('deleteTaskButton');
   if (deleteButton) deleteButton.hidden = false;
   updatePeriodVisibility();
@@ -1420,18 +1471,21 @@ function resetForm() {
   const deleteButton = document.getElementById('deleteTaskButton');
   if (deleteButton) deleteButton.hidden = true;
   updatePeriodVisibility();
+  setChecklistEditorItems(form, []);
 }
 
 async function handleTaskSubmit(event) {
   event.preventDefault();
 
   const form = event.target;
+  const existingTask = state.tasks.find((task) => task.id === form.elements.taskId.value);
   const payload = {
     title: form.elements.title.value.trim(),
     category: form.elements.category.value,
     period: shiftOnlyCategories.includes(form.elements.category.value) ? 'shift' : form.elements.period.value,
     season: normalizeSeason(form.elements.season.value),
-    description: form.elements.description.value.trim(),
+    description: '',
+    checklist: getChecklistEditorItems(form, existingTask?.checklist),
     timeTag: form.elements.timeTag.value.trim(),
     urgentOn: getSelectedUrgentDays(form)
   };
@@ -1699,7 +1753,7 @@ function taskFormMarkup() {
             <label><span data-time-tag-label>Time tag</span><select name="timeTag">${timeTagOptions()}</select></label>
             ${urgentDaysFieldMarkup()}
           </div>
-          <label><span>Description / elaboration</span><textarea name="description" rows="3" placeholder="Add instructions or notes"></textarea></label>
+          ${checklistEditorMarkup()}
           <div class="form-actions"><button type="submit" class="primary-btn">Save task</button><button type="button" class="secondary-btn" id="resetForm">Clear form</button><button type="button" class="danger-btn" id="deleteTaskButton" hidden>Delete task</button></div>
         </form>
       </div>
@@ -1757,6 +1811,61 @@ function initializeUrgentDayDropdowns() {
     };
     document.addEventListener('pointerdown', closeDropdownsOutside);
     document.addEventListener('focusin', closeDropdownsOutside);
+  }
+}
+
+function setChecklistEditorItems(form, items) {
+  const root = form?.querySelector('[data-checklist-editor-items]');
+  if (!root) return;
+  const checklist = normalizeChecklist(items);
+  const rows = checklist.length ? checklist : [{ text: '', checked: false }];
+  root.innerHTML = rows.map((item) => `
+    <div class="checklist-editor-row">
+      <span class="checklist-editor-box" aria-hidden="true"></span>
+      <input class="checklist-editor-input" type="text" value="${escapeHtml(item.text)}" placeholder="Checklist item" aria-label="Checklist item" />
+      <button type="button" class="icon-btn" data-remove-checklist-item aria-label="Remove checklist item">Remove</button>
+    </div>
+  `).join('');
+}
+
+function getChecklistEditorItems(form, existingChecklist = []) {
+  const text = [...form.querySelectorAll('.checklist-editor-input')]
+    .map((input) => input.value.trim())
+    .filter(Boolean)
+    .join('\n');
+  return checklistFromText(text, existingChecklist);
+}
+
+function addChecklistEditorItem(form) {
+  const items = getChecklistEditorItems(form);
+  items.push({ text: '', checked: false });
+  setChecklistEditorItems(form, items);
+  form.querySelectorAll('.checklist-editor-input').item(items.length - 1)?.focus();
+}
+
+async function toggleChecklistItem(taskId, itemIndex, checked) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task) return;
+
+  const previousChecklist = normalizeChecklist(task.checklist);
+  const checklist = normalizeChecklist(task.checklist);
+  if (!checklist[itemIndex]) return;
+  checklist[itemIndex].checked = checked;
+  task.checklist = checklist;
+
+  const payload = buildTaskPayload(state.tasks, new Date());
+  state.tasks = payload.tasks;
+  state.available = payload.available;
+  state.completed = payload.completed;
+  saveLocalTasks(state.tasks);
+  renderAll();
+
+  try {
+    await api(`/api/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(task) });
+  } catch (error) {
+    console.error('Failed to update checklist item', error);
+    task.checklist = previousChecklist;
+    await loadTaskData();
   }
 }
 
@@ -1898,7 +2007,9 @@ function openTaskModal(task) {
     form.elements.season.value = normalizeSeason(task.season);
     setUrgentDays(form, task.urgentOn || []);
     form.elements.timeTag.value = task.timeTag || '';
-    form.elements.description.value = task.description || '';
+    setChecklistEditorItems(form, normalizeChecklist(task.checklist).length
+      ? task.checklist
+      : checklistFromText(task.description));
     document.getElementById('deleteTaskButton').hidden = false;
     updatePeriodVisibility();
   }
@@ -1957,7 +2068,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     const categorySelect = form.elements.category;
     categorySelect.addEventListener('change', updatePeriodVisibility);
     updatePeriodVisibility();
+    setChecklistEditorItems(form, []);
   }
+
+  document.addEventListener('click', (event) => {
+    const addButton = event.target.closest('[data-add-checklist-item]');
+    if (addButton) addChecklistEditorItem(addButton.closest('form'));
+    const removeButton = event.target.closest('[data-remove-checklist-item]');
+    if (removeButton) {
+      const form = removeButton.closest('form');
+      const row = removeButton.closest('.checklist-editor-row');
+      row?.remove();
+      if (!form.querySelector('.checklist-editor-row')) setChecklistEditorItems(form, []);
+    }
+  });
+
+  document.addEventListener('change', (event) => {
+    const input = event.target.closest('[data-checklist-task-id]');
+    if (input) toggleChecklistItem(input.dataset.checklistTaskId, Number(input.dataset.checklistIndex), input.checked);
+  });
 
   document.querySelectorAll('[data-close-completed]').forEach((button) => {
     button.addEventListener('click', closeCompletedModal);

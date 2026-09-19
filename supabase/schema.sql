@@ -5,6 +5,7 @@ create table if not exists public.cafe_tasks (
   category text not null default 'general',
   period text not null default 'weekly',
   description text not null default '',
+  checklist jsonb not null default '[]'::jsonb,
   time_tag text not null default '',
   urgent_on jsonb not null default '[]'::jsonb,
   is_active boolean not null default true,
@@ -13,6 +14,8 @@ create table if not exists public.cafe_tasks (
   task_order integer not null default 0,
   updated_at timestamptz not null default now()
 );
+
+alter table public.cafe_tasks add column if not exists checklist jsonb not null default '[]'::jsonb;
 
 create table if not exists public.cafe_day_lists (
   list_date date primary key,

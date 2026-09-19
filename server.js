@@ -125,6 +125,12 @@ function normalizeTask(task, idx) {
     category,
     period: ['opening', 'closing'].includes(category) ? 'shift' : (task.period || 'weekly'),
     description: task.description || '',
+    checklist: Array.isArray(task.checklist)
+      ? task.checklist.map((item) => typeof item === 'string'
+        ? { text: item.trim(), checked: false }
+        : { text: String(item?.text || '').trim(), checked: item?.checked === true })
+        .filter((item) => item.text)
+      : [],
     season: ['winter', 'summer', 'both'].includes(task.season) ? task.season : 'both',
     timeTag: task.timeTag ? String(task.timeTag).trim() : '',
     urgentOn: Array.isArray(task.urgentOn) ? task.urgentOn.map((day) => String(day).trim()) : [],

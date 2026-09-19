@@ -85,10 +85,11 @@
             </div>
           </div>
 
-          <label>
-            <span>Description / elaboration</span>
-            <textarea name="description" rows="3" placeholder="Add instructions or notes"></textarea>
-          </label>
+          <div class="checklist-editor" data-checklist-editor>
+            <span>Checklist</span>
+            <div class="checklist-editor-items" data-checklist-editor-items></div>
+            <button type="button" class="secondary-btn checklist-add-item" data-add-checklist-item>+ Add checklist item</button>
+          </div>
 
           <div class="form-actions">
             <button type="submit" class="primary-btn">Save task</button>
