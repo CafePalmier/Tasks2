@@ -18,6 +18,7 @@ const state = {
 
 let dayListRevision = 0;
 let dayListSyncQueue = Promise.resolve();
+let urgentDropdownDismissalBound = false;
 
 const supabaseConfig = window.SUPABASE_CONFIG;
 const usesSupabase = Boolean(supabaseConfig?.url && supabaseConfig?.publishableKey)
@@ -389,6 +390,14 @@ function isCompletedInCurrentCycle(task, now) {
   return completedAt >= start && completedAt <= end;
 }
 
+function isCompletedToday(task, now) {
+  if (!task.lastCompletedAt) return false;
+  const completedAt = new Date(task.lastCompletedAt);
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  return completedAt >= startOfToday && completedAt <= endOfToday;
+}
+
 function getCurrentDayLabel(now) {
   return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
 }
@@ -420,7 +429,8 @@ function buildTaskPayload(tasks, now = new Date()) {
       urgentToday: isUrgentTask(task, now)
     };
 
-    if (isCompletedInCurrentCycle(task, now) && !resultTask.urgentToday) {
+    const completedForToday = resultTask.urgentToday && isCompletedToday(task, now);
+    if (isCompletedInCurrentCycle(task, now) && (!resultTask.urgentToday || completedForToday)) {
       completed.push(resultTask);
     } else {
       available.push(resultTask);
@@ -1320,7 +1330,6 @@ async function loadTaskData() {
 async function completeTask(taskId) {
   const task = state.tasks.find((item) => item.id === taskId);
   const previousCompletedAt = task?.lastCompletedAt || null;
-  const remainsUrgentToday = Boolean(task && isUrgentTask(task, new Date()));
   try {
     if (task) {
       task.lastCompletedAt = new Date().toISOString();
@@ -1332,7 +1341,6 @@ async function completeTask(taskId) {
     }
     const lists = getDayListsState();
     lists.today.taskIds = lists.today.taskIds.filter((id) => id !== taskId);
-    if (remainsUrgentToday) lists.today.taskIds.push(taskId);
     saveDayListsState(lists);
     renderAll();
     const finishedClosingList = state.page === 'closing'
@@ -1740,6 +1748,16 @@ function initializeUrgentDayDropdowns() {
     });
     updateUrgentDaysSummary(form);
   });
+  if (!urgentDropdownDismissalBound) {
+    urgentDropdownDismissalBound = true;
+    const closeDropdownsOutside = (event) => {
+      document.querySelectorAll('[data-urgent-dropdown][open]').forEach((dropdown) => {
+        if (!dropdown.contains(event.target)) dropdown.removeAttribute('open');
+      });
+    };
+    document.addEventListener('pointerdown', closeDropdownsOutside);
+    document.addEventListener('focusin', closeDropdownsOutside);
+  }
 }
 
 function timeTagOptions(category = '') {

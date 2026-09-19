@@ -206,6 +206,14 @@ function isCompletedInCurrentCycle(task, now) {
   return completedAt >= start && completedAt <= end;
 }
 
+function isCompletedToday(task, now) {
+  if (!task.lastCompletedAt) return false;
+  const completedAt = new Date(task.lastCompletedAt);
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  return completedAt >= startOfToday && completedAt <= endOfToday;
+}
+
 function getCurrentDayLabel(now) {
   return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
 }
@@ -238,7 +246,8 @@ function buildTaskPayload(tasks, now = new Date()) {
       urgentToday: isUrgentTask(task, now)
     };
 
-    if (completedInCurrentCycle && !resultTask.urgentToday) {
+    const completedForToday = resultTask.urgentToday && isCompletedToday(task, now);
+    if (completedInCurrentCycle && (!resultTask.urgentToday || completedForToday)) {
       completed.push(resultTask);
     } else {
       available.push(resultTask);
