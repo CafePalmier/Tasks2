@@ -105,6 +105,16 @@ function checklistEditorMarkup() {
     </div>`;
 }
 
+function readStoredChecklist(values) {
+  const value = values.find((item) => typeof item === 'string' && item.startsWith('__checklist:'));
+  if (!value) return null;
+  try {
+    return normalizeChecklist(JSON.parse(decodeURIComponent(value.slice('__checklist:'.length))));
+  } catch (error) {
+    return [];
+  }
+}
+
 function categoryTagLabel(category) {
   const icon = categoryTagIcons[category];
   return `${icon ? `${icon} ` : ''}${categoryLabels[category] || category}`;
@@ -217,11 +227,11 @@ function fromDatabaseTask(task) {
   return {
     ...task,
     timeTag: task.time_tag || '',
-    urgentOn: urgentValues.filter((value) => typeof value !== 'string' || !value.startsWith('__season:')),
+    urgentOn: urgentValues.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:'))),
     isActive: task.is_active !== false,
     lastCompletedAt: task.last_completed_at || null,
     order: task.task_order ?? 0,
-    checklist: normalizeChecklist(task.checklist),
+    checklist: readStoredChecklist(urgentValues) ?? normalizeChecklist(task.checklist),
     season: normalizeSeason(storedSeason || task.season)
   };
 }
@@ -233,11 +243,11 @@ function toDatabaseTask(task) {
     category: task.category || 'general',
     period: task.period || 'weekly',
     description: task.description || '',
-    checklist: normalizeChecklist(task.checklist),
     time_tag: task.timeTag || '',
     urgent_on: [
-      ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || !value.startsWith('__season:')) : []),
-      `__season:${normalizeSeason(task.season)}`
+      ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:'))) : []),
+      `__season:${normalizeSeason(task.season)}`,
+      `__checklist:${encodeURIComponent(JSON.stringify(normalizeChecklist(task.checklist)))}`
     ],
     is_active: task.isActive !== false,
     last_completed_at: task.lastCompletedAt || null,
