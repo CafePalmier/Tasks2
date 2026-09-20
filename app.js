@@ -687,9 +687,12 @@ function bindInlineEditButtons(scope = document) {
 
 function renderTaskDetails(task) {
   const checklist = normalizeChecklist(task.checklist);
+  const detailsLabel = checklist.length
+    ? `Checklist <span>${checklist.filter((item) => item.checked).length}/${checklist.length}</span>`
+    : 'Details';
   const checklistMarkup = (checklist.length || task.checklistImage) ? `
     <details class="task-details task-checklist">
-      <summary>Checklist <span>${checklist.filter((item) => item.checked).length}/${checklist.length}</span></summary>
+      <summary>${detailsLabel}</summary>
       <div class="task-checklist-content">
         <div class="checklist-items">
           ${checklist.map((item, index) => `
