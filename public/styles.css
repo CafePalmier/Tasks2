@@ -957,6 +957,23 @@ h1 {
   margin-top: 0.25rem;
 }
 
+.task-checklist-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+}
+
+.checklist-reference-image {
+  width: auto;
+  max-width: min(42vw, 13rem);
+  height: 8.4rem;
+  object-fit: cover;
+  border: 1px solid rgba(55,100,56,0.2);
+  border-radius: 8px;
+}
+
 .checklist-item {
   display: flex;
   align-items: center;
@@ -1015,6 +1032,52 @@ h1 {
 .checklist-editor-items {
   display: grid;
   gap: 0.38rem;
+}
+
+.checklist-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.55fr);
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.checklist-image-editor {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.checklist-image-upload {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px dashed rgba(55,100,56,0.42);
+  border-radius: 10px;
+  background: rgba(55,100,56,0.04);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.checklist-image-upload input {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.72rem;
+}
+
+.checklist-image-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.4rem;
+}
+
+.checklist-image-preview img {
+  width: 100%;
+  max-height: 8.4rem;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(55,100,56,0.2);
 }
 
 .checklist-editor-row {

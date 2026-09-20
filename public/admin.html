@@ -87,8 +87,14 @@
 
           <div class="checklist-editor" data-checklist-editor>
             <span>Checklist</span>
-            <div class="checklist-editor-items" data-checklist-editor-items></div>
-            <button type="button" class="secondary-btn checklist-add-item" data-add-checklist-item>+ Add checklist item</button>
+            <div class="checklist-editor-layout">
+              <div><div class="checklist-editor-items" data-checklist-editor-items></div><button type="button" class="secondary-btn checklist-add-item" data-add-checklist-item>+ Add checklist item</button></div>
+              <div class="checklist-image-editor">
+                <input type="hidden" name="checklistImage" />
+                <label class="checklist-image-upload">Add reference image<input type="file" accept="image/*" data-checklist-image-input /></label>
+                <div class="checklist-image-preview" data-checklist-image-preview hidden><img alt="Checklist reference preview" data-checklist-image-preview-image /><button type="button" class="icon-btn" data-remove-checklist-image>Remove</button></div>
+              </div>
+            </div>
           </div>
 
           <div class="form-actions">

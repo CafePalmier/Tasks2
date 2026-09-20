@@ -131,6 +131,7 @@ function normalizeTask(task, idx) {
         : { text: String(item?.text || '').trim(), checked: item?.checked === true })
         .filter((item) => item.text)
       : [],
+    checklistImage: typeof task.checklistImage === 'string' ? task.checklistImage : '',
     season: ['winter', 'summer', 'both'].includes(task.season) ? task.season : 'both',
     timeTag: task.timeTag ? String(task.timeTag).trim() : '',
     urgentOn: Array.isArray(task.urgentOn) ? task.urgentOn.map((day) => String(day).trim()) : [],

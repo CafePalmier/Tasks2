@@ -102,8 +102,14 @@ function checklistEditorMarkup() {
   return `
     <div class="checklist-editor" data-checklist-editor>
       <span>Checklist</span>
-      <div class="checklist-editor-items" data-checklist-editor-items></div>
-      <button type="button" class="secondary-btn checklist-add-item" data-add-checklist-item>+ Add checklist item</button>
+      <div class="checklist-editor-layout">
+        <div><div class="checklist-editor-items" data-checklist-editor-items></div><button type="button" class="secondary-btn checklist-add-item" data-add-checklist-item>+ Add checklist item</button></div>
+        <div class="checklist-image-editor">
+          <input type="hidden" name="checklistImage" />
+          <label class="checklist-image-upload">Add reference image<input type="file" accept="image/*" data-checklist-image-input /></label>
+          <div class="checklist-image-preview" data-checklist-image-preview hidden><img alt="Checklist reference preview" data-checklist-image-preview-image /><button type="button" class="icon-btn" data-remove-checklist-image>Remove</button></div>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -115,6 +121,11 @@ function readStoredChecklist(values) {
   } catch (error) {
     return [];
   }
+}
+
+function readStoredChecklistImage(values) {
+  const value = values.find((item) => typeof item === 'string' && item.startsWith('__checklistImage:'));
+  return value ? value.slice('__checklistImage:'.length) : '';
 }
 
 function categoryTagLabel(category) {
@@ -229,11 +240,12 @@ function fromDatabaseTask(task) {
   return {
     ...task,
     timeTag: task.time_tag || '',
-    urgentOn: urgentValues.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:'))),
+    urgentOn: urgentValues.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:'))),
     isActive: task.is_active !== false,
     lastCompletedAt: task.last_completed_at || null,
     order: task.task_order ?? 0,
     checklist: readStoredChecklist(urgentValues) ?? normalizeChecklist(task.checklist),
+    checklistImage: readStoredChecklistImage(urgentValues),
     season: normalizeSeason(storedSeason || task.season)
   };
 }
@@ -247,9 +259,10 @@ function toDatabaseTask(task) {
     description: task.description || '',
     time_tag: task.timeTag || '',
     urgent_on: [
-      ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:'))) : []),
+      ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:'))) : []),
       `__season:${normalizeSeason(task.season)}`,
-      `__checklist:${encodeURIComponent(JSON.stringify(normalizeChecklist(task.checklist)))}`
+      `__checklist:${encodeURIComponent(JSON.stringify(normalizeChecklist(task.checklist)))}`,
+      `__checklistImage:${typeof task.checklistImage === 'string' ? task.checklistImage : ''}`
     ],
     is_active: task.isActive !== false,
     last_completed_at: task.lastCompletedAt || null,
@@ -673,16 +686,19 @@ function bindInlineEditButtons(scope = document) {
 
 function renderTaskDetails(task) {
   const checklist = normalizeChecklist(task.checklist);
-  const checklistMarkup = checklist.length ? `
+  const checklistMarkup = (checklist.length || task.checklistImage) ? `
     <details class="task-details task-checklist">
       <summary>Checklist <span>${checklist.filter((item) => item.checked).length}/${checklist.length}</span></summary>
-      <div class="checklist-items">
-        ${checklist.map((item, index) => `
-          <label class="checklist-item ${item.checked ? 'is-checked' : ''}">
-            <input type="checkbox" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" ${item.checked ? 'checked' : ''} />
-            <span>${escapeHtml(item.text)}</span>
-          </label>
-        `).join('')}
+      <div class="task-checklist-content">
+        <div class="checklist-items">
+          ${checklist.map((item, index) => `
+            <label class="checklist-item ${item.checked ? 'is-checked' : ''}">
+              <input type="checkbox" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" ${item.checked ? 'checked' : ''} />
+              <span>${escapeHtml(item.text)}</span>
+            </label>
+          `).join('')}
+        </div>
+        ${task.checklistImage ? `<img class="checklist-reference-image" src="${escapeHtml(task.checklistImage)}" alt="Checklist reference" />` : ''}
       </div>
     </details>
   ` : '';
@@ -1549,6 +1565,7 @@ function populateForm(task) {
   setChecklistEditorItems(form, normalizeChecklist(task.checklist).length
     ? task.checklist
     : checklistFromText(task.description));
+  setChecklistEditorImage(form, task.checklistImage || '');
   const deleteButton = document.getElementById('deleteTaskButton');
   if (deleteButton) deleteButton.hidden = false;
   updatePeriodVisibility();
@@ -1580,6 +1597,7 @@ function resetForm() {
   if (deleteButton) deleteButton.hidden = true;
   updatePeriodVisibility();
   setChecklistEditorItems(form, []);
+  setChecklistEditorImage(form, '');
 }
 
 async function handleTaskSubmit(event) {
@@ -1594,6 +1612,7 @@ async function handleTaskSubmit(event) {
     season: normalizeSeason(form.elements.season.value),
     description: '',
     checklist: getChecklistEditorItems(form, existingTask?.checklist),
+    checklistImage: form.elements.checklistImage.value || '',
     timeTag: form.elements.timeTag.value.trim(),
     urgentOn: getSelectedUrgentDays(form)
   };
@@ -1954,6 +1973,39 @@ function addChecklistEditorItem(form) {
   root.lastElementChild?.querySelector('.checklist-editor-input')?.focus();
 }
 
+function setChecklistEditorImage(form, imageUrl) {
+  const hiddenInput = form?.elements?.checklistImage;
+  const preview = form?.querySelector('[data-checklist-image-preview]');
+  const image = form?.querySelector('[data-checklist-image-preview-image]');
+  if (!hiddenInput || !preview || !image) return;
+  hiddenInput.value = imageUrl || '';
+  preview.hidden = !imageUrl;
+  if (imageUrl) image.src = imageUrl;
+  else image.removeAttribute('src');
+}
+
+function resizeChecklistImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file?.type.startsWith('image/')) return reject(new Error('Please choose an image file.'));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the image.'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('Could not load the image.'));
+      image.onload = () => {
+        const scale = Math.min(1, 1200 / image.width, 900 / image.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 async function toggleChecklistItem(taskId, itemIndex, checked) {
   const task = state.tasks.find((item) => item.id === taskId);
   if (!task) return;
@@ -2125,6 +2177,7 @@ function openTaskModal(task) {
     setChecklistEditorItems(form, normalizeChecklist(task.checklist).length
       ? task.checklist
       : checklistFromText(task.description));
+    setChecklistEditorImage(form, task.checklistImage || '');
     document.getElementById('deleteTaskButton').hidden = false;
     updatePeriodVisibility();
   }
@@ -2196,11 +2249,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       row?.remove();
       if (!form.querySelector('.checklist-editor-row')) setChecklistEditorItems(form, []);
     }
+    const removeImageButton = event.target.closest('[data-remove-checklist-image]');
+    if (removeImageButton) setChecklistEditorImage(removeImageButton.closest('form'), '');
   });
 
   document.addEventListener('change', (event) => {
     const input = event.target.closest('[data-checklist-task-id]');
     if (input) toggleChecklistItem(input.dataset.checklistTaskId, Number(input.dataset.checklistIndex), input.checked);
+    const imageInput = event.target.closest('[data-checklist-image-input]');
+    if (imageInput?.files?.[0]) {
+      resizeChecklistImage(imageInput.files[0])
+        .then((imageUrl) => setChecklistEditorImage(imageInput.closest('form'), imageUrl))
+        .catch((error) => alert(error.message));
+    }
   });
 
   document.querySelectorAll('[data-close-completed]').forEach((button) => {
