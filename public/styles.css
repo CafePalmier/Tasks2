@@ -1215,6 +1215,26 @@ h1 {
   min-width: 0;
 }
 
+.available-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.task-search-combobox {
+  width: min(15rem, 42vw);
+}
+
+.task-search-combobox input {
+  padding: 0.5rem 0.7rem;
+}
+
+.completed-search {
+  width: 100%;
+  margin: 0 0 0.75rem;
+}
+
 .panel-card.has-active-suggestions {
   position: relative;
   z-index: 16;

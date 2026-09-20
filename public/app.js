@@ -10,6 +10,8 @@ const state = {
   available: [],
   completed: [],
   completedFilter: null,
+  availableSearch: '',
+  completedSearch: '',
   hasTaskApi: null,
   dayLists: null,
   season: getSavedSeason(),
@@ -693,15 +695,75 @@ function renderTaskDetails(task) {
   return `${checklistMarkup}${descriptionMarkup}`;
 }
 
+function matchingTaskTitles(tasks, query) {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return normalizedQuery
+    ? tasks.filter((task) => task.title.toLocaleLowerCase().includes(normalizedQuery))
+    : [];
+}
+
+function bindTaskSearch(root, { inputSelector, suggestionsSelector, tasks, valueKey, onSelect }) {
+  const input = root.querySelector(inputSelector);
+  const suggestions = root.querySelector(suggestionsSelector);
+  if (!input || !suggestions) return;
+  input.taskSearchConfig = { tasks, valueKey, onSelect };
+  if (input.dataset.taskSearchBound === 'true') return;
+  input.dataset.taskSearchBound = 'true';
+
+  const renderSuggestions = () => {
+    const config = input.taskSearchConfig;
+    const matches = matchingTaskTitles(config.tasks, input.value).slice(0, 8);
+    suggestions.hidden = !matches.length;
+    root.classList.toggle('has-active-suggestions', matches.length > 0);
+    suggestions.innerHTML = matches.map((task) => `
+      <button type="button" class="quick-day-suggestion" role="option" data-task-search-id="${task.id}">
+        <span>${escapeHtml(task.title)}</span>
+        <span class="meta-pill category-pill">${categoryTagLabel(task.category)}</span>
+      </button>
+    `).join('');
+    suggestions.querySelectorAll('[data-task-search-id]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const task = config.tasks.find((item) => item.id === button.dataset.taskSearchId);
+        if (task) config.onSelect(task);
+      });
+    });
+  };
+
+  input.addEventListener('input', () => {
+    const config = input.taskSearchConfig;
+    state[config.valueKey] = input.value;
+    if (!input.value.trim()) config.onSelect(null);
+    else renderSuggestions();
+  });
+  input.addEventListener('focus', renderSuggestions);
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      suggestions.hidden = true;
+      root.classList.remove('has-active-suggestions');
+    }
+  });
+  input.closest('.quick-day-combobox')?.addEventListener('focusout', () => {
+    window.setTimeout(() => {
+      if (!input.closest('.quick-day-combobox').contains(document.activeElement)) {
+        suggestions.hidden = true;
+        root.classList.remove('has-active-suggestions');
+      }
+    }, 0);
+  });
+}
+
 function renderGroups() {
   const root = document.getElementById('taskGroups');
   if (!root) return;
 
   const homeSortMode = getAvailableSortMode();
-  const homeTasks = sortAvailableTasks(
+  const allHomeTasks = sortAvailableTasks(
     state.available.filter((task) => !['opening', 'closing'].includes(task.category)),
     homeSortMode
   );
+  const homeTasks = state.availableSearch.trim()
+    ? allHomeTasks.filter((task) => task.title.toLocaleLowerCase().includes(state.availableSearch.trim().toLocaleLowerCase()))
+    : allHomeTasks;
   const todayTaskIds = new Set(getTodayListState().taskIds);
   const tomorrowTaskIds = new Set(getDayListsState().tomorrow.taskIds);
 
@@ -784,16 +846,32 @@ function renderGroups() {
     <div class="panel-card">
       <div class="list-title-row">
         <div class="available-title"><h2>Available Tasks</h2><span class="group-badge">${homeTasks.length} open</span></div>
-        <button class="sort-toggle ${homeSortMode === 'time' ? 'is-time' : ''}" type="button" data-home-sort aria-label="Switch available-task sorting. Currently sorted by ${homeSortMode}.">
-          <span class="sort-option">Type</span>
-          <span class="sort-option">Time</span>
-        </button>
+        <div class="available-controls">
+          <div class="quick-day-combobox task-search-combobox">
+            <input type="search" data-available-search value="${escapeHtml(state.availableSearch)}" placeholder="Search tasks…" aria-label="Search available tasks" aria-autocomplete="list" autocomplete="off" />
+            <div class="quick-day-suggestions" data-available-suggestions role="listbox" hidden></div>
+          </div>
+          <button class="sort-toggle ${homeSortMode === 'time' ? 'is-time' : ''}" type="button" data-home-sort aria-label="Switch available-task sorting. Currently sorted by ${homeSortMode}.">
+            <span class="sort-option">Type</span>
+            <span class="sort-option">Time</span>
+          </button>
+        </div>
       </div>
       ${homeTaskMarkup}
     </div>
   `;
 
   bindInlineEditButtons();
+  bindTaskSearch(root, {
+    inputSelector: '[data-available-search]',
+    suggestionsSelector: '[data-available-suggestions]',
+    tasks: allHomeTasks,
+    valueKey: 'availableSearch',
+    onSelect: (task) => {
+      state.availableSearch = task?.title || '';
+      renderGroups();
+    }
+  });
 
   root.querySelector('[data-home-sort]')?.addEventListener('click', (event) => {
     const sortToggle = event.currentTarget;
@@ -1022,6 +1100,7 @@ function openCompletedModal(filterValue = '', filterType = 'category') {
   if (!modal) return;
 
   state.completedFilter = filterValue ? { type: filterType, value: filterValue } : null;
+  state.completedSearch = '';
   const heading = modal.querySelector('.modal-header h2');
   if (heading) {
     const filterLabel = filterType === 'period'
@@ -1045,9 +1124,28 @@ function closeCompletedModal() {
 function renderCompleted() {
   const root = document.getElementById('completedList');
   if (!root) return;
-  const completedTasks = state.completedFilter
+  const allCompletedTasks = state.completedFilter
     ? state.completed.filter((task) => task[state.completedFilter.type] === state.completedFilter.value)
     : state.completed.filter((task) => !shiftOnlyCategories.includes(task.category));
+  const completedTasks = state.completedSearch.trim()
+    ? allCompletedTasks.filter((task) => task.title.toLocaleLowerCase().includes(state.completedSearch.trim().toLocaleLowerCase()))
+    : allCompletedTasks;
+
+  const modal = document.getElementById('completedModal');
+  if (modal) {
+    const searchInput = modal.querySelector('[data-completed-search]');
+    if (searchInput) searchInput.value = state.completedSearch;
+    bindTaskSearch(modal, {
+      inputSelector: '[data-completed-search]',
+      suggestionsSelector: '[data-completed-suggestions]',
+      tasks: allCompletedTasks,
+      valueKey: 'completedSearch',
+      onSelect: (task) => {
+        state.completedSearch = task?.title || '';
+        renderCompleted();
+      }
+    });
+  }
 
   if (!completedTasks.length) {
     root.innerHTML = '<li class="empty-state">No completed items yet</li>';
@@ -1966,6 +2064,10 @@ function ensureAppChrome() {
   if (!document.getElementById('taskForm')) document.body.insertAdjacentHTML('beforeend', taskFormMarkup());
   if (!document.getElementById('completedModal')) {
     document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card"><div class="modal-header"><h2>Completed Tasks</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><ul id="completedList" class="mini-list modal-list"></ul></div></div>');
+  }
+  const completedModal = document.getElementById('completedModal');
+  if (completedModal && !completedModal.querySelector('[data-completed-search]')) {
+    completedModal.querySelector('.modal-header')?.insertAdjacentHTML('afterend', '<div class="quick-day-combobox task-search-combobox completed-search"><input type="search" data-completed-search placeholder="Search completed tasks…" aria-label="Search completed tasks" aria-autocomplete="list" autocomplete="off" /><div class="quick-day-suggestions" data-completed-suggestions role="listbox" hidden></div></div>');
   }
   if (!document.getElementById('closingCompleteModal')) {
     document.body.insertAdjacentHTML('beforeend', `
