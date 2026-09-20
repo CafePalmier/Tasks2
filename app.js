@@ -1829,13 +1829,16 @@ function setChecklistEditorItems(form, items) {
   if (!root) return;
   const checklist = normalizeChecklist(items);
   const rows = checklist.length ? checklist : [{ text: '', checked: false }];
-  root.innerHTML = rows.map((item) => `
+  root.innerHTML = rows.map((item) => checklistEditorRowMarkup(item)).join('');
+}
+
+function checklistEditorRowMarkup(item = { text: '' }) {
+  return `
     <div class="checklist-editor-row">
       <span class="checklist-editor-box" aria-hidden="true"></span>
       <input class="checklist-editor-input" type="text" value="${escapeHtml(item.text)}" placeholder="Checklist item" aria-label="Checklist item" />
       <button type="button" class="icon-btn" data-remove-checklist-item aria-label="Remove checklist item">Remove</button>
-    </div>
-  `).join('');
+    </div>`;
 }
 
 function getChecklistEditorItems(form, existingChecklist = []) {
@@ -1847,10 +1850,10 @@ function getChecklistEditorItems(form, existingChecklist = []) {
 }
 
 function addChecklistEditorItem(form) {
-  const items = getChecklistEditorItems(form);
-  items.push({ text: '', checked: false });
-  setChecklistEditorItems(form, items);
-  form.querySelectorAll('.checklist-editor-input').item(items.length - 1)?.focus();
+  const root = form?.querySelector('[data-checklist-editor-items]');
+  if (!root) return;
+  root.insertAdjacentHTML('beforeend', checklistEditorRowMarkup());
+  root.lastElementChild?.querySelector('.checklist-editor-input')?.focus();
 }
 
 async function toggleChecklistItem(taskId, itemIndex, checked) {
