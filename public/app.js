@@ -2023,6 +2023,9 @@ async function toggleChecklistItem(taskId, itemIndex, checked) {
   state.completed = payload.completed;
   saveLocalTasks(state.tasks);
   renderAll();
+  document.querySelectorAll('.task-swipe-shell').forEach((shell) => {
+    if (shell.dataset.taskId === taskId) shell.querySelector('.task-checklist')?.setAttribute('open', '');
+  });
 
   try {
     await api(`/api/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(task) });
