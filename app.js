@@ -280,7 +280,8 @@ function supabaseRequest(path, options = {}) {
     'Content-Type': 'application/json',
     ...options.headers
   };
-  const keepalive = options.keepalive ?? ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+  const bodySize = options.body ? new Blob([options.body]).size : 0;
+  const keepalive = options.keepalive ?? (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && bodySize < 60 * 1024);
   return fetch(`${supabaseConfig.url}/rest/v1/${path}`, { ...options, headers, keepalive }).then(async (response) => {
     const body = await response.text();
     if (!response.ok) throw new Error(`Supabase request failed with ${response.status}: ${body}`);
@@ -1993,12 +1994,12 @@ function resizeChecklistImage(file) {
       const image = new Image();
       image.onerror = () => reject(new Error('Could not load the image.'));
       image.onload = () => {
-        const scale = Math.min(1, 1200 / image.width, 900 / image.height);
+        const scale = Math.min(1, 720 / image.width, 720 / image.height);
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(image.width * scale));
         canvas.height = Math.max(1, Math.round(image.height * scale));
         canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.82));
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
       };
       image.src = reader.result;
     };
