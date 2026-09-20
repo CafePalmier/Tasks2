@@ -1612,7 +1612,7 @@ async function handleTaskSubmit(event) {
     season: normalizeSeason(form.elements.season.value),
     description: '',
     checklist: getChecklistEditorItems(form, existingTask?.checklist),
-    checklistImage: form.elements.checklistImage.value || '',
+    checklistImage: form.elements.checklistImage?.value || '',
     timeTag: form.elements.timeTag.value.trim(),
     urgentOn: getSelectedUrgentDays(form)
   };
