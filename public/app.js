@@ -4,6 +4,7 @@ const DAY_LISTS_KEY = 'cafe-palmier-day-lists-v2';
 const SEASON_KEY = 'cafe-palmier-season';
 const STATIC_TASKS_PATH = './tasks.json';
 const TASK_DATA_VERSION = 5;
+const CELEBRATION_PROGRESS_KEY = 'cafe-palmier-five-task-celebration';
 
 const state = {
   tasks: [],
@@ -660,6 +661,7 @@ function removeCustomDayItem(day, customId) {
   lists[day].customItems = lists[day].customItems.filter((item) => item.id !== customId);
   saveDayListsState(lists);
   renderAll();
+  if (day === 'today') recordMilestoneTask(customId);
 }
 
 function ensureUrgentTasksInToday() {
@@ -1507,6 +1509,9 @@ async function loadTaskData() {
 async function completeTask(taskId) {
   const task = state.tasks.find((item) => item.id === taskId);
   const previousCompletedAt = task?.lastCompletedAt || null;
+  const countsTowardMilestone = ['home', 'today'].includes(state.page)
+    && task
+    && !shiftOnlyCategories.includes(task.category);
   try {
     if (task) {
       task.lastCompletedAt = new Date().toISOString();
@@ -1524,7 +1529,11 @@ async function completeTask(taskId) {
       && task?.category === 'closing'
       && !state.available.some((item) => item.category === 'closing');
     await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
-    if (finishedClosingList) openClosingCompleteModal();
+    if (finishedClosingList) {
+      openClosingCompleteModal();
+    } else if (countsTowardMilestone) {
+      recordMilestoneTask(taskId);
+    }
   } catch (error) {
     console.error('Failed to complete task', error);
     if (task) {
@@ -2147,6 +2156,20 @@ function ensureAppChrome() {
       </div>
     `);
   }
+  if (!document.getElementById('taskMilestoneModal')) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="taskMilestoneModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" data-close-task-milestone></div>
+        <div class="modal-card celebration-card" role="dialog" aria-modal="true" aria-labelledby="taskMilestoneTitle">
+          <div class="celebration-icon" aria-hidden="true">★</div>
+          <p class="celebration-kicker">Five tasks complete</p>
+          <h2 id="taskMilestoneTitle">Amazing work!</h2>
+          <p>You’re on a roll — thanks for helping keep Cafe Palmier running beautifully.</p>
+          <button type="button" class="primary-btn" data-close-task-milestone>Keep going</button>
+        </div>
+      </div>
+    `);
+  }
 }
 
 function updateStickyHeaderOffset() {
@@ -2205,11 +2228,71 @@ function openClosingCompleteModal() {
   if (!modal) return;
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
+  launchConfetti();
   modal.querySelector('[data-close-closing-complete]')?.focus();
 }
 
 function closeClosingCompleteModal() {
   const modal = document.getElementById('closingCompleteModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function todayStorageKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
+function recordMilestoneTask(taskId) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CELEBRATION_PROGRESS_KEY) || 'null');
+    const progress = saved?.date === todayStorageKey()
+      ? saved
+      : { date: todayStorageKey(), taskIds: [], celebrated: false };
+    progress.taskIds = [...new Set([...(progress.taskIds || []), taskId])];
+    if (progress.taskIds.length >= 5 && !progress.celebrated) {
+      progress.celebrated = true;
+      openTaskMilestoneModal();
+    }
+    localStorage.setItem(CELEBRATION_PROGRESS_KEY, JSON.stringify(progress));
+  } catch (error) {
+    console.warn('Could not save celebration progress', error);
+  }
+}
+
+function launchConfetti() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.querySelector('.confetti-layer')?.remove();
+  const layer = document.createElement('div');
+  layer.className = 'confetti-layer';
+  layer.setAttribute('aria-hidden', 'true');
+  const colors = ['#376438', '#c68b70', '#edc94d', '#5277a6', '#845796', '#f7eee7'];
+  for (let index = 0; index < 90; index += 1) {
+    const piece = document.createElement('i');
+    piece.style.setProperty('--confetti-x', `${Math.random() * 100}vw`);
+    piece.style.setProperty('--confetti-drift', `${(Math.random() - 0.5) * 22}vw`);
+    piece.style.setProperty('--confetti-delay', `${Math.random() * 0.55}s`);
+    piece.style.setProperty('--confetti-duration', `${1.8 + Math.random() * 1.6}s`);
+    piece.style.setProperty('--confetti-color', colors[index % colors.length]);
+    piece.style.setProperty('--confetti-rotation', `${360 + Math.random() * 720}deg`);
+    layer.appendChild(piece);
+  }
+  document.body.appendChild(layer);
+  window.setTimeout(() => layer.remove(), 3900);
+}
+
+function openTaskMilestoneModal() {
+  const modal = document.getElementById('taskMilestoneModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  launchConfetti();
+  modal.querySelector('[data-close-task-milestone]')?.focus();
+}
+
+function closeTaskMilestoneModal() {
+  const modal = document.getElementById('taskMilestoneModal');
   if (!modal) return;
   modal.classList.add('hidden');
   modal.setAttribute('aria-hidden', 'true');
@@ -2277,6 +2360,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('[data-open-task-modal]').forEach((button) => button.addEventListener('click', () => { resetForm(); openTaskModal(); }));
   document.querySelectorAll('[data-close-task-modal]').forEach((button) => button.addEventListener('click', closeTaskModal));
   document.querySelectorAll('[data-close-closing-complete]').forEach((button) => button.addEventListener('click', closeClosingCompleteModal));
+  document.querySelectorAll('[data-close-task-milestone]').forEach((button) => button.addEventListener('click', closeTaskMilestoneModal));
   document.getElementById('deleteTaskButton')?.addEventListener('click', async () => {
     const taskId = document.getElementById('taskForm').elements.taskId.value;
     if (taskId && window.confirm('Delete this task?')) {
@@ -2290,6 +2374,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       closeCompletedModal();
       closeTaskModal();
       closeClosingCompleteModal();
+      closeTaskMilestoneModal();
     }
   });
 

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cafe Palmier Tutorials</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-page="tutorials">
+    <header class="topbar">
+      <a class="brand-wrap brand-home" href="./index.html" aria-label="Cafe Palmier Tasks home">
+        <img class="brand-logo" src="./Assets/logo-eng.png" alt="Cafe Palmier logo" />
+      </a>
+      <nav class="nav">
+        <a class="nav-link" href="./index.html">Available Tasks</a>
+        <a class="nav-link" href="./opening.html">Opening List</a>
+        <a class="nav-link" href="./closing.html">Closing List</a>
+        <a class="nav-link" href="./today.html">Today &amp; Tomorrow</a>
+        <a class="nav-link active" href="./tutorials.html">Tutorials</a>
+      </nav>
+    </header>
+
+    <main class="page-shell tutorials-page">
+      <section class="tutorials-heading">
+        <div><p class="eyebrow">Learn at your own pace</p><h1>Tutorials</h1><p>Quick video guides for everyday tasks and processes.</p></div>
+        <button class="primary-btn tutorial-add-button" type="button" data-open-tutorial-modal><span>＋</span> Add tutorial</button>
+      </section>
+      <section id="tutorialGrid" class="tutorial-grid" aria-live="polite">
+        <div class="tutorial-empty"><span aria-hidden="true">▶</span><h2>No tutorials yet</h2><p>Add your first video guide to get started.</p></div>
+      </section>
+    </main>
+
+    <div id="tutorialModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-tutorial-modal></div>
+      <div class="modal-card tutorial-modal-card" role="dialog" aria-modal="true" aria-labelledby="tutorialModalTitle">
+        <div class="modal-header"><h2 id="tutorialModalTitle">Add a tutorial</h2><button class="icon-btn" type="button" data-close-tutorial-modal>Close</button></div>
+        <form id="tutorialForm" class="tutorial-form">
+          <label><span>Tutorial title</span><input name="title" type="text" placeholder="e.g. How to clean the espresso machine" required /></label>
+          <label class="tutorial-file-field"><span>Video file</span><input name="video" type="file" accept="video/*" required /><small>Choose a video from this device.</small></label>
+          <div class="form-actions"><button class="primary-btn" type="submit">Add tutorial</button><button class="secondary-btn" type="button" data-close-tutorial-modal>Cancel</button></div>
+          <p class="tutorial-form-status" data-tutorial-status role="status"></p>
+        </form>
+      </div>
+    </div>
+    <script src="./tutorials.js"></script>
+  </body>
+</html>
