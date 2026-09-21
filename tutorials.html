@@ -36,12 +36,13 @@
         <div class="modal-header"><h2 id="tutorialModalTitle">Add a tutorial</h2><button class="icon-btn" type="button" data-close-tutorial-modal>Close</button></div>
         <form id="tutorialForm" class="tutorial-form">
           <label><span>Tutorial title</span><input name="title" type="text" placeholder="e.g. How to clean the espresso machine" required /></label>
-          <label class="tutorial-file-field"><span>Video file</span><input name="video" type="file" accept="video/*" required /><small>Choose a video from this device.</small></label>
+          <label class="tutorial-file-field"><span>Video file</span><input name="video" type="file" accept="video/*" required /><small>Choose a video from this device. It will be shared with every device.</small></label>
           <div class="form-actions"><button class="primary-btn" type="submit">Add tutorial</button><button class="secondary-btn" type="button" data-close-tutorial-modal>Cancel</button></div>
           <p class="tutorial-form-status" data-tutorial-status role="status"></p>
         </form>
       </div>
     </div>
+    <script src="./supabase-config.js"></script>
     <script src="./tutorials.js"></script>
   </body>
 </html>
