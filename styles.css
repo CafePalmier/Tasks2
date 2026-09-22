@@ -27,11 +27,24 @@ button {
   touch-action: manipulation;
 }
 
-html { scroll-behavior: smooth; }
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-x: clip;
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at 12% -5%, rgba(239, 215, 203, 0.8), transparent 30rem),
@@ -55,7 +68,9 @@ button, input, textarea, select {
   grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr);
   align-items: center;
   gap: 1.15rem;
-  padding: 0.85rem max(1.25rem, calc((100vw - 1200px) / 2));
+  width: 100%;
+  min-width: 0;
+  padding: calc(0.85rem + env(safe-area-inset-top)) max(1.25rem, calc((100vw - 1200px) / 2), env(safe-area-inset-right)) 0.85rem max(1.25rem, calc((100vw - 1200px) / 2), env(safe-area-inset-left));
   background: rgba(255, 253, 249, 0.78);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
@@ -158,6 +173,7 @@ button, input, textarea, select {
   align-items: center;
   gap: 0.85rem;
   justify-self: start;
+  min-width: 0;
 }
 
 .brand-home {
@@ -260,6 +276,8 @@ h1 {
 }
 
 .page-shell {
+  width: 100%;
+  min-width: 0;
   max-width: 1200px;
   margin: 0 auto;
   padding: 1.5rem 1.25rem 2.5rem;
@@ -1975,6 +1993,10 @@ textarea {
 }
 
 @media (max-width: 900px) {
+  body {
+    background-attachment: scroll;
+  }
+
   .content-grid,
   .admin-shell,
   .dashboard-grid,
@@ -1990,7 +2012,8 @@ textarea {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.55rem;
     max-width: 100%;
-    overflow: hidden;
+    overflow: visible;
+    padding: calc(0.65rem + env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) 0.65rem max(0.75rem, env(safe-area-inset-left));
   }
 
   .topbar-start {
@@ -2011,6 +2034,7 @@ textarea {
     min-width: 0;
     padding: 0.62rem 0.72rem;
     font-size: 0.82rem;
+    white-space: nowrap;
   }
 
   .nav {
@@ -2023,12 +2047,23 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   .period-progress-card {
-    padding: 0.5rem;
+    padding: 0.65rem 0.7rem;
   }
 
   .period-progress-card p {
-    font-size: 0.64rem;
+    font-size: 0.68rem;
+  }
+
+  .period-progress-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
   }
 
   .task-item {
@@ -2044,10 +2079,6 @@ textarea {
     justify-content: flex-end;
   }
 
-  .topbar {
-    padding: 0.75rem 1rem;
-  }
-
   .nav {
     display: flex;
     justify-self: stretch;
@@ -2057,23 +2088,31 @@ textarea {
     scrollbar-width: none;
     padding: 0.28rem;
     border-radius: 999px;
+    scroll-padding-inline: 0.4rem;
+    -webkit-overflow-scrolling: touch;
   }
 
   .nav::-webkit-scrollbar { display: none; }
 
   .nav-link {
     flex: 0 0 auto;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
     padding: 0.52rem 0.7rem;
     font-size: 0.8rem;
     text-align: center;
   }
 
   .task-checklist-content {
-    gap: 0.45rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.55rem;
   }
 
   .checklist-reference-image {
-    max-width: 38vw;
+    max-width: 100%;
+    height: auto;
+    max-height: 14rem;
   }
 
   .nav-indicator {
@@ -2081,10 +2120,56 @@ textarea {
   }
 
   .page-shell {
-    padding: 1rem 0.85rem 2rem;
+    padding: 1rem max(0.75rem, env(safe-area-inset-right)) calc(2rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
   }
 
-  .tutorials-heading { align-items: start; }
+  .tutorials-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tutorial-add-button {
+    width: 100%;
+  }
+
+  .list-title-row,
+  .available-controls {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .task-search-combobox {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .quick-day-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .quick-day-form .primary-btn {
+    min-height: 44px;
+  }
+
+  .checklist-editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .modal {
+    align-items: flex-end;
+    padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  }
+
+  .modal-card {
+    max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: 20px;
+  }
+
+  .panel-card,
+  .group-card {
+    border-radius: 18px;
+  }
+
   .tutorial-grid { grid-template-columns: 1fr; }
 }
 
@@ -2097,8 +2182,23 @@ textarea {
   .brand-logo { width: 64px; }
 
   .add-item-field {
-    padding: 0.58rem 0.62rem;
-    font-size: 0.76rem;
+    display: grid;
+    width: 2.7rem;
+    height: 2.7rem;
+    place-items: center;
+    padding: 0;
+    font-size: 0;
+    text-align: center;
+  }
+
+  .add-item-field span {
+    margin: 0;
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+
+  .mini-list li {
+    align-items: flex-start;
   }
 }
 
