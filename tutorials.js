@@ -90,6 +90,53 @@ function escapeTutorialText(value) {
   return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 }
 
+function prepareTutorialPreview(video) {
+  video.defaultMuted = true;
+  video.muted = true;
+  const wrapper = video.closest('.tutorial-video-wrap');
+
+  const revealThumbnail = () => {
+    wrapper?.classList.add('thumbnail-ready');
+  };
+  const seekToThumbnail = () => {
+    if (!Number.isFinite(video.duration) || video.duration <= 0 || video.currentTime > 0) return;
+    try {
+      video.currentTime = Math.min(0.1, video.duration / 2);
+    } catch (error) {
+      // The loaded frame will still be used when a browser does not allow an early seek.
+    }
+  };
+
+  video.addEventListener('loadedmetadata', seekToThumbnail, { once: true });
+  video.addEventListener('loadeddata', revealThumbnail, { once: true });
+  video.addEventListener('seeked', revealThumbnail, { once: true });
+  video.addEventListener('play', () => wrapper?.classList.add('is-playing'));
+  video.addEventListener('pause', () => wrapper?.classList.remove('is-playing'));
+  video.addEventListener('ended', () => wrapper?.classList.remove('is-playing'));
+  if (video.readyState >= 1) seekToThumbnail();
+  if (video.readyState >= 2) revealThumbnail();
+}
+
+function playTutorialFullscreen(card) {
+  const video = card.querySelector('video');
+  if (!video || document.fullscreenElement === video || video.webkitDisplayingFullscreen) return;
+
+  video.controls = true;
+  const playRequest = video.play();
+  if (playRequest?.catch) playRequest.catch((error) => console.warn('The tutorial could not start automatically.', error));
+
+  if (video.requestFullscreen) {
+    const fullscreenRequest = video.requestFullscreen();
+    if (fullscreenRequest?.catch) fullscreenRequest.catch((error) => console.warn('Full screen is not available for this video.', error));
+  } else if (video.webkitEnterFullscreen) {
+    try {
+      video.webkitEnterFullscreen();
+    } catch (error) {
+      console.warn('Full screen is not available for this video yet.', error);
+    }
+  }
+}
+
 async function migrateDeviceTutorials() {
   const localTutorials = await localTutorialStore('readonly', (store) => store.getAll());
   for (const tutorial of localTutorials) {
@@ -106,11 +153,22 @@ async function renderTutorials() {
       grid.innerHTML = '<div class="tutorial-empty"><span aria-hidden="true">▶</span><h2>No tutorials yet</h2><p>Add your first video guide to get started.</p></div>';
       return;
     }
-    grid.innerHTML = tutorials.map((tutorial) => `<article class="tutorial-card">
-      <div class="tutorial-video-wrap"><video src="${publicVideoUrl(tutorial.storage_path)}" controls preload="metadata" playsinline aria-label="${escapeTutorialText(tutorial.title)}"></video></div>
+    grid.innerHTML = tutorials.map((tutorial) => `<article class="tutorial-card" tabindex="0" role="group" aria-label="Play ${escapeTutorialText(tutorial.title)} full screen">
+      <div class="tutorial-video-wrap"><video src="${publicVideoUrl(tutorial.storage_path)}#t=0.1" controls preload="metadata" muted playsinline aria-label="${escapeTutorialText(tutorial.title)}"></video><span class="tutorial-play-hint" aria-hidden="true">▶</span></div>
       <div class="tutorial-card-copy"><h2>${escapeTutorialText(tutorial.title)}</h2><button class="icon-btn tutorial-delete" type="button" data-delete-tutorial="${escapeTutorialText(tutorial.id)}" aria-label="Delete ${escapeTutorialText(tutorial.title)}">Delete</button></div>
     </article>`).join('');
-    grid.querySelectorAll('[data-delete-tutorial]').forEach((button) => button.addEventListener('click', async () => {
+    grid.querySelectorAll('.tutorial-card').forEach((card) => {
+      const video = card.querySelector('video');
+      prepareTutorialPreview(video);
+      card.addEventListener('click', () => playTutorialFullscreen(card));
+      card.addEventListener('keydown', (event) => {
+        if (event.target !== card || !['Enter', ' '].includes(event.key)) return;
+        event.preventDefault();
+        playTutorialFullscreen(card);
+      });
+    });
+    grid.querySelectorAll('[data-delete-tutorial]').forEach((button) => button.addEventListener('click', async (event) => {
+      event.stopPropagation();
       const tutorial = tutorials.find((item) => item.id === button.dataset.deleteTutorial);
       if (!tutorial || !window.confirm('Delete this tutorial for everyone?')) return;
       button.disabled = true;

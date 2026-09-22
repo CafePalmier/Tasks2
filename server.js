@@ -230,6 +230,12 @@ function isUrgentTask(task, now) {
   return Array.isArray(task.urgentOn) && task.urgentOn.includes(dayName);
 }
 
+function resetExpiredChecklist(task, now) {
+  if (!task.lastCompletedAt || isCompletedInCurrentCycle(task, now) || !task.checklist.some((item) => item.checked)) return false;
+  task.checklist = task.checklist.map((item) => ({ ...item, checked: false }));
+  return true;
+}
+
 function buildTaskPayload(tasks, now = new Date()) {
   const available = [];
   const completed = [];
@@ -293,6 +299,7 @@ function serveFile(res, filePath) {
       '.css': 'text/css; charset=utf-8',
       '.js': 'application/javascript; charset=utf-8',
       '.json': 'application/json; charset=utf-8',
+      '.webmanifest': 'application/manifest+json; charset=utf-8',
       '.png': 'image/png',
       '.jpg': 'image/jpeg',
       '.svg': 'image/svg+xml'
@@ -311,7 +318,11 @@ const server = http.createServer(async (req, res) => {
     try {
       if (pathname === '/api/tasks' && req.method === 'GET') {
         const tasks = loadTasks();
-        const payload = buildTaskPayload(tasks, new Date());
+        const now = new Date();
+        let checklistWasReset = false;
+        tasks.forEach((task) => { checklistWasReset = resetExpiredChecklist(task, now) || checklistWasReset; });
+        if (checklistWasReset) saveTasks(tasks);
+        const payload = buildTaskPayload(tasks, now);
         return sendJson(res, 200, payload);
       }
 
@@ -378,6 +389,7 @@ const server = http.createServer(async (req, res) => {
 
         if (action === 'reopen') {
           tasks[taskIndex].lastCompletedAt = null;
+          tasks[taskIndex].checklist = tasks[taskIndex].checklist.map((item) => ({ ...item, checked: false }));
           saveTasks(tasks);
           return sendJson(res, 200, { task: tasks[taskIndex] });
         }

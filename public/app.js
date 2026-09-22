@@ -225,6 +225,7 @@ function localTaskApi(path, options = {}) {
     tasks[taskIndex].lastCompletedAt = new Date().toISOString();
   } else if (method === 'POST' && action === 'reopen') {
     tasks[taskIndex].lastCompletedAt = null;
+    tasks[taskIndex].checklist = uncheckedChecklist(tasks[taskIndex].checklist);
   } else {
     return Promise.reject(new Error('Unsupported task action'));
   }
@@ -326,7 +327,7 @@ function supabaseTaskApi(path, options = {}) {
   } else if (method === 'POST' && action === 'complete') {
     nextTask = { ...existing, lastCompletedAt: new Date().toISOString() };
   } else if (method === 'POST' && action === 'reopen') {
-    nextTask = { ...existing, lastCompletedAt: null };
+    nextTask = { ...existing, lastCompletedAt: null, checklist: uncheckedChecklist(existing.checklist) };
   } else {
     return Promise.reject(new Error('Unsupported task action'));
   }
@@ -469,11 +470,29 @@ function isUrgentTask(task, now) {
   return Array.isArray(task.urgentOn) && task.urgentOn.includes(dayName);
 }
 
+function hasCheckedChecklistItems(task) {
+  return normalizeChecklist(task.checklist).some((item) => item.checked);
+}
+
+function uncheckedChecklist(checklist) {
+  return normalizeChecklist(checklist).map((item) => ({ ...item, checked: false }));
+}
+
+function checklistNeedsCycleReset(task, now) {
+  return Boolean(task.lastCompletedAt)
+    && !isCompletedInCurrentCycle(task, now)
+    && hasCheckedChecklistItems(task);
+}
+
 function buildTaskPayload(tasks, now = new Date()) {
   const available = [];
   const completed = [];
 
-  const sortedTasks = tasks.map((task) => ({ ...task, season: normalizeSeason(task.season) })).sort((a, b) => {
+  const sortedTasks = tasks.map((task) => ({
+    ...task,
+    checklist: checklistNeedsCycleReset(task, now) ? uncheckedChecklist(task.checklist) : normalizeChecklist(task.checklist),
+    season: normalizeSeason(task.season)
+  })).sort((a, b) => {
     const byPeriod = (taskPeriods.indexOf(a.period) >= 0 ? taskPeriods.indexOf(a.period) : 99) - (taskPeriods.indexOf(b.period) >= 0 ? taskPeriods.indexOf(b.period) : 99);
     if (byPeriod !== 0) return byPeriod;
 
@@ -1199,22 +1218,79 @@ function formatCompletedAt(value) {
   }).format(date);
 }
 
+function getCalendarProgress(period, now = new Date()) {
+  if (period === 'weekly') {
+    const dayOfWeek = now.getDay();
+    const position = dayOfWeek === 0 ? 5 : Math.min(dayOfWeek, 5);
+    const label = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek];
+    return {
+      position,
+      total: 5,
+      label,
+      ariaLabel: `${label}: ${position} of 5 weekdays reached`
+    };
+  }
+
+  if (period === 'monthly') {
+    const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const position = now.getDate();
+    const label = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(now);
+    return {
+      position,
+      total,
+      label,
+      ariaLabel: `${label}: day ${position} of ${total}`
+    };
+  }
+
+  const startOfCurrentYear = Date.UTC(now.getFullYear(), 0, 1);
+  const startOfCurrentDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const position = Math.floor((startOfCurrentDay - startOfCurrentYear) / (24 * 60 * 60 * 1000)) + 1;
+  const total = Math.round((Date.UTC(now.getFullYear() + 1, 0, 1) - startOfCurrentYear) / (24 * 60 * 60 * 1000));
+  return {
+    position,
+    total,
+    label: String(now.getFullYear()),
+    ariaLabel: `Day ${position} of ${total} in ${now.getFullYear()}`
+  };
+}
+
+function renderCalendarProgress(period, now = new Date()) {
+  const progress = getCalendarProgress(period, now);
+  const percentage = (progress.position / progress.total) * 100;
+  const progressBar = period === 'yearly'
+    ? `<div class="calendar-progress-track" aria-hidden="true"><span style="width: ${percentage}%"></span></div>`
+    : `<div class="calendar-progress-steps" style="--calendar-step-count: ${progress.total}" aria-hidden="true">${Array.from({ length: progress.total }, (_, index) => (
+      `<span class="calendar-progress-step ${index < progress.position ? 'is-reached' : ''}"></span>`
+    )).join('')}</div>`;
+
+  return `
+    <div class="calendar-progress" role="img" aria-label="${escapeHtml(progress.ariaLabel)}">
+      <div class="calendar-progress-heading"><span>${escapeHtml(progress.label)}</span><strong>${progress.position}/${progress.total}</strong></div>
+      ${progressBar}
+    </div>
+  `;
+}
+
 function renderPeriodProgress() {
   const root = document.getElementById('periodProgress');
   if (!root) return;
+  const now = new Date();
 
   root.innerHTML = ['weekly', 'monthly', 'yearly'].map((period) => {
     const completed = state.completed.filter((task) => task.period === period && !shiftOnlyCategories.includes(task.category)).length;
     const remaining = state.available.filter((task) => task.period === period && !shiftOnlyCategories.includes(task.category)).length;
     const total = completed + remaining;
     const percentage = total ? Math.round((completed / total) * 100) : 0;
+    const calendarProgress = getCalendarProgress(period, now);
     return `
-      <button type="button" class="period-progress-card ${period}" data-open-period-completed="${period}" aria-label="${periodLabels[period]}: ${completed} of ${total} completed. View completed tasks.">
+      <button type="button" class="period-progress-card ${period}" data-open-period-completed="${period}" aria-label="${periodLabels[period]}: ${completed} of ${total} completed. ${escapeHtml(calendarProgress.ariaLabel)}. View completed tasks.">
         <div class="period-progress-heading">
           <strong>${periodLabels[period]}</strong>
           <span>${completed}/${total}</span>
         </div>
         <div class="progress-track" aria-hidden="true"><span style="width: ${percentage}%"></span></div>
+        ${renderCalendarProgress(period, now)}
         <p>${getProgressMessage(completed, remaining, period)}</p>
       </button>
     `;
@@ -1261,13 +1337,22 @@ function getTimeTagOrder(timeTag) {
   return hours * 60 + Number(match[2]);
 }
 
+function getClosingTimeTagOrder(timeTag) {
+  return timeTag === 'Any time' || !timeTag ? -1 : getTimeTagOrder(timeTag);
+}
+
+function belongsOnClosingList(task) {
+  return task.category === 'closing' || task.urgentToday;
+}
+
 function renderClosingTask(task, showAreaTag) {
   return `
     <div class="task-swipe-shell" data-task-id="${task.id}">
       <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
-      <article class="task-item task-swipe-content task-item-no-check">
+      <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''}">
         <div class="task-main">
           <h4>${escapeHtml(task.title)}</h4>
+          ${task.urgentToday ? '<span class="meta-pill urgent">Urgent today</span>' : ''}
           ${showAreaTag
             ? `<span class="meta-pill area-pill">${escapeHtml(task.area || 'General')}</span>`
             : (task.timeTag ? `<span class="time-pill">${escapeHtml(task.timeTag)}</span>` : '')}
@@ -1285,8 +1370,8 @@ function renderClosingList() {
   const root = document.getElementById('closingList');
   if (!root) return;
 
-  const closingAvailable = state.available.filter((task) => task.category === 'closing');
-  const closingCompleted = state.completed.filter((task) => task.category === 'closing');
+  const closingAvailable = state.available.filter(belongsOnClosingList);
+  const closingCompleted = state.completed.filter(belongsOnClosingList);
   const sortMode = getClosingSortMode();
 
   let availableMarkup = '';
@@ -1301,7 +1386,7 @@ function renderClosingList() {
     }, {});
 
     availableMarkup = Object.entries(timeGroups)
-      .sort(([first], [second]) => getTimeTagOrder(first) - getTimeTagOrder(second) || first.localeCompare(second))
+      .sort(([first], [second]) => getClosingTimeTagOrder(first) - getClosingTimeTagOrder(second) || first.localeCompare(second))
       .map(([timeTag, areaGroups]) => {
         const areaBlocks = closingAreas.map((area) => {
           const tasks = areaGroups[area] || [];
@@ -1467,12 +1552,27 @@ async function loadTaskData() {
       data = await api('/api/tasks');
       tasks = data.tasks;
     }
-    const payload = buildTaskPayload(tasks, new Date());
+    const now = new Date();
+    const checklistResetIds = tasks.filter((task) => checklistNeedsCycleReset(task, now)).map((task) => task.id);
+    const payload = buildTaskPayload(tasks, now);
 
     state.tasks = payload.tasks || tasks;
     state.available = payload.available || [];
     state.completed = payload.completed || [];
     if (usesSupabase) saveLocalTasks(state.tasks);
+    if (checklistResetIds.length) {
+      saveLocalTasks(state.tasks);
+      try {
+        await Promise.all(checklistResetIds.map((taskId) => {
+          const resetTask = state.tasks.find((task) => task.id === taskId);
+          return resetTask
+            ? api(`/api/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(resetTask) })
+            : Promise.resolve();
+        }));
+      } catch (checklistResetError) {
+        console.warn('Checklist resets will be retried the next time tasks load', checklistResetError);
+      }
+    }
     getDayListsState();
     renderAll();
     try {
@@ -1526,8 +1626,9 @@ async function completeTask(taskId) {
     saveDayListsState(lists);
     renderAll();
     const finishedClosingList = state.page === 'closing'
-      && task?.category === 'closing'
-      && !state.available.some((item) => item.category === 'closing');
+      && task
+      && belongsOnClosingList(task)
+      && !state.available.some(belongsOnClosingList);
     await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
     if (finishedClosingList) {
       openClosingCompleteModal();
