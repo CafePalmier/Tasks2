@@ -57,6 +57,115 @@ const openingStages = ['first', 'second', 'third'];
 const openingStageLabels = { first: 'First', second: 'Second', third: 'Third' };
 const seasonLabels = { winter: 'Winter', summer: 'Summer', both: 'Winter & Summer' };
 const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const encouragementMessages = [
+  'You’re so back 😤',
+  'Huge behavior 🫡',
+  'Absolute scenes 🎬',
+  'We love to see it 🤝',
+  'Casual W 😌🏆',
+  'Extremely slay of you 💅',
+  'Kinda iconic ngl ✨',
+  'Certified banger 🔥',
+  'Go off then 👏',
+  'You ate that 🍽️',
+  'Big day for you honestly 📈',
+  'Character development 📚✨',
+  'Lore just expanded 🧙',
+  'Plot armor activated 🛡️',
+  'Main quest completed ⚔️',
+  'Side quest absolutely demolished 🗺️',
+  'The grind has yielded fruit 🍎',
+  'Okayyyy productivity 👀',
+  'Look at you being functional 😭👏',
+  'Disgustingly competent 🤢🔥',
+  'Unreasonable levels of success 📊',
+  'That was suspiciously well done 🤨',
+  'You cooked 👨‍🍳🔥',
+  'Let them cook 🍳',
+  'Michelin star behavior ⭐',
+  'No crumbs detected 🕵️',
+  'Absolutely devoured 🫶',
+  'Clean work chief 🫡',
+  'Another one for the history books 📖',
+  'Monumental stuff really 🗿',
+  'The council approves 🧙‍♂️✅',
+  'The vibes are immaculate 🌈',
+  'Nature is healing 🌱',
+  'Balance has been restored ⚖️',
+  'Civilization advances 🏛️',
+  'Humanity wins again 🌎',
+  'Scientists are baffled 🔬',
+  'Historians will remember this 📜',
+  'Generational performance 👑',
+  'Hall of fame stuff 🏆',
+  'Bro is thriving 📈',
+  'Bro really did the thing 😭',
+  'Dawg actually pulled it off 🐕',
+  'Insane work gang 🤝',
+  'Elite form 🥇',
+  'Built different 🧱',
+  'Unironically impressive 🫡',
+  'Okay superstar 🌟',
+  'Oh you’re LOCKED IN 🔒',
+  'We are so unbelievably back 🚀',
+  'Momentum acquired 🏃💨',
+  'The streak lives 🔥',
+  'Another brick in the empire 🧱👑',
+  'Tiny victory, massive aura ✨',
+  '+100 aura 🌀',
+  'Aura farming successful 🌾',
+  'XP gained 🎮',
+  'Level up ⬆️',
+  'Achievement unlocked 🏅',
+  'Quest complete ✅',
+  'Boss defeated 💀⚔️',
+  'Critical hit 💥',
+  'Combo continues 🔥',
+  'Perfect run 🎮',
+  'That’s cinema 🎥',
+  'Peak fiction ✍️',
+  'Cinema has returned 🍿',
+  'Oh we’re cooking now 🍳🔥',
+  'Dangerous levels of momentum ⚠️',
+  'Absolutely irresponsible amount of progress 🚨',
+  'Frankly this is getting out of hand 📈',
+  'Save some competence for the rest of us 😭',
+  'Who gave you permission to pop off like this 💀',
+  'Unfortunately… you crushed it 😔🏆',
+  'Hate to see someone succeed this hard 😭',
+  'Embarrassing how good that was 🫣',
+  'Honestly rude to make it look that easy 😤',
+  'Okay show-off 🙄✨',
+  'Another devastating victory 😔',
+  'Terrible news: you’re killing it 📢',
+  'Sources confirm: massive W 📰',
+  'Experts are calling this “pretty sick” 🧑‍🔬',
+  'Officially not messing around anymore 🚨',
+  'This goes unbelievably hard 🗣️🔥',
+  'That’s what I’m TALKING about 🗣️',
+  'Hell yeah brother 🦅',
+  'Let’s GOOOOOO 🚀',
+  'YESSIRRR 🫡',
+  'Oh hell yeah 😎',
+  'Beautiful stuff 🤌',
+  'Gorgeous work 🤌✨',
+  'Love this for you 🫶',
+  'Proud of you fr 🥹',
+  'You did your little thing 🥹✨',
+  'Keep being weirdly powerful 🧙',
+  'Keep causing problems for mediocrity 😈',
+  'Continue your reign 👑',
+  'Carry on, legend 🫡',
+  'Forward, soldier 🫡',
+  'Onto the next boss ⚔️',
+  'Maintain course captain 🛳️',
+  'Keep the sauce flowing 🫗',
+  'The machine is operational ⚙️',
+  'Engine’s warm now 🏎️',
+  'We got motion 🏃',
+  'Momentum baby 📈🔥',
+  'One step closer to becoming unbearable 😌'
+];
 
 function normalizeSeason(value) {
   return ['winter', 'summer', 'both'].includes(value) ? value : 'both';
@@ -1122,25 +1231,16 @@ function renderOpeningList() {
   attachSwipeHandlers(root);
 }
 
-function getProgressMessage(completed, remaining, category = '') {
-  const total = completed + remaining;
-  if (completed === 0 && remaining === 0) return 'Ready when you are ✨';
-  if (remaining === 0) return 'All done — amazing work! 🎉';
+function getEncouragementMessage(seed = '') {
+  let hash = 0;
+  for (const character of String(seed)) {
+    hash = ((hash * 31) + character.codePointAt(0)) >>> 0;
+  }
+  return encouragementMessages[hash % encouragementMessages.length];
+}
 
-  const progress = completed / total;
-  if (progress >= 0.92) return 'Epic! ⚡';
-  if (progress >= 0.84) return 'Slay Mama! 👑';
-  if (progress >= 0.76) return 'Ate! 💅';
-  if (progress >= 0.68) return 'Fire! 🔥';
-  if (progress >= 0.6) return 'Crushing it! 💪';
-  if (progress >= 0.52) return 'Purr Queen 💅';
-  if (progress >= 0.44) return 'Periodt! ✨';
-  if (progress >= 0.36) return 'Great job, keep it going! 🙌';
-  if (progress >= 0.28) return 'LFG! 🚀';
-  if (progress >= 0.2) return 'Rock’n’roll! 🤘';
-  if (progress >= 0.12) return 'Nice work — you’re on a roll! ✨';
-  if (completed > 0) return 'Great start! 👍';
-  return 'Let’s get started! ☀️';
+function getProgressMessage(completed, remaining, category = '') {
+  return getEncouragementMessage(`${localDateKey()}-${category}-${completed}-${remaining}`);
 }
 
 function renderListProgress(completed, remaining, category) {
@@ -2282,7 +2382,7 @@ function ensureAppChrome() {
         <div class="modal-backdrop" data-close-closing-complete></div>
         <div class="modal-card closing-complete-card" role="dialog" aria-modal="true" aria-labelledby="closingCompleteTitle">
           <div class="closing-complete-icon" aria-hidden="true">✓</div>
-          <h2 id="closingCompleteTitle">Great Job!</h2>
+          <h2 id="closingCompleteTitle" data-closing-encouragement>${encouragementMessages[0]}</h2>
           <p>Check that no food is left in the fridge!</p>
           <p>If you’re the last one out, make sure to:</p>
           <ul>
@@ -2302,9 +2402,9 @@ function ensureAppChrome() {
         <div class="modal-card celebration-card" role="dialog" aria-modal="true" aria-labelledby="taskMilestoneTitle">
           <div class="celebration-icon" aria-hidden="true">★</div>
           <p class="celebration-kicker">Five tasks complete</p>
-          <h2 id="taskMilestoneTitle">Amazing work!</h2>
-          <p>You’re on a roll — thanks for helping keep Cafe Palmier running beautifully.</p>
-          <button type="button" class="primary-btn" data-close-task-milestone>Keep going</button>
+          <h2 id="taskMilestoneTitle" data-milestone-encouragement>${encouragementMessages[1]}</h2>
+          <p data-milestone-encouragement-detail>${encouragementMessages[2]}</p>
+          <button type="button" class="primary-btn" data-close-task-milestone>Got it</button>
         </div>
       </div>
     `);
@@ -2367,6 +2467,8 @@ function closeTaskModal() {
 function openClosingCompleteModal() {
   const modal = document.getElementById('closingCompleteModal');
   if (!modal) return;
+  const title = modal.querySelector('[data-closing-encouragement]');
+  if (title) title.textContent = getEncouragementMessage(`closing-${Date.now()}`);
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
   launchConfetti();
@@ -2426,6 +2528,11 @@ function launchConfetti() {
 function openTaskMilestoneModal() {
   const modal = document.getElementById('taskMilestoneModal');
   if (!modal) return;
+  const messageSeed = Date.now();
+  const title = modal.querySelector('[data-milestone-encouragement]');
+  const detail = modal.querySelector('[data-milestone-encouragement-detail]');
+  if (title) title.textContent = getEncouragementMessage(`milestone-title-${messageSeed}`);
+  if (detail) detail.textContent = getEncouragementMessage(`milestone-detail-${messageSeed}`);
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
   launchConfetti();
