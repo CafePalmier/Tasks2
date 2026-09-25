@@ -1345,6 +1345,10 @@ function belongsOnClosingList(task) {
   return task.category === 'closing' || task.urgentToday;
 }
 
+function getClosingTimeGroup(task) {
+  return task.urgentToday ? 'Any time' : (task.timeTag || 'Any time');
+}
+
 function renderClosingTask(task, showAreaTag) {
   return `
     <div class="task-swipe-shell" data-task-id="${task.id}">
@@ -1377,7 +1381,7 @@ function renderClosingList() {
   let availableMarkup = '';
   if (sortMode === 'time') {
     const timeGroups = closingAvailable.reduce((groups, task) => {
-      const key = task.timeTag || 'Any time';
+      const key = getClosingTimeGroup(task);
       groups[key] ||= {};
       const area = task.area || 'General';
       groups[key][area] ||= [];
