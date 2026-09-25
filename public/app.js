@@ -2,6 +2,7 @@ const STORAGE_KEY = 'cafe-palmier-task-state';
 const TODAY_LIST_KEY = 'cafe-palmier-today-list';
 const DAY_LISTS_KEY = 'cafe-palmier-day-lists-v2';
 const SEASON_KEY = 'cafe-palmier-season';
+const SEASON_OVERRIDE_DATE_KEY = 'cafe-palmier-season-override-date';
 const STATIC_TASKS_PATH = './tasks.json';
 const TASK_DATA_VERSION = 5;
 const CELEBRATION_PROGRESS_KEY = 'cafe-palmier-five-task-celebration';
@@ -61,13 +62,40 @@ function normalizeSeason(value) {
   return ['winter', 'summer', 'both'].includes(value) ? value : 'both';
 }
 
-function getSavedSeason() {
+function getAutomaticSeason(date = new Date()) {
+  const month = date.getMonth();
+  const isWinterOrFirstHalfOfSpring = month === 11
+    || month <= 2
+    || (month === 3 && date.getDate() <= 15);
+  return isWinterOrFirstHalfOfSpring ? 'winter' : 'summer';
+}
+
+function getSavedSeason(date = new Date()) {
+  const automaticSeason = getAutomaticSeason(date);
   try {
-    return ['winter', 'summer'].includes(localStorage.getItem(SEASON_KEY))
-      ? localStorage.getItem(SEASON_KEY)
-      : 'winter';
+    const savedSeason = localStorage.getItem(SEASON_KEY);
+    const overrideDate = localStorage.getItem(SEASON_OVERRIDE_DATE_KEY);
+    if (overrideDate === localDateKey(date) && ['winter', 'summer'].includes(savedSeason)) {
+      return savedSeason;
+    }
+    localStorage.removeItem(SEASON_OVERRIDE_DATE_KEY);
+    localStorage.setItem(SEASON_KEY, automaticSeason);
+    return automaticSeason;
   } catch (error) {
-    return 'winter';
+    return automaticSeason;
+  }
+}
+
+function saveSeasonSelection(season, date = new Date()) {
+  try {
+    if (season === getAutomaticSeason(date)) {
+      localStorage.removeItem(SEASON_OVERRIDE_DATE_KEY);
+    } else {
+      localStorage.setItem(SEASON_OVERRIDE_DATE_KEY, localDateKey(date));
+    }
+    localStorage.setItem(SEASON_KEY, season);
+  } catch (error) {
+    // Keep the selection in memory when local storage is unavailable.
   }
 }
 
@@ -2194,6 +2222,13 @@ function initializeTimeTagSelects() {
   });
 }
 
+function updateSeasonSwitcher(switcher = document.querySelector('.season-switcher')) {
+  if (!switcher) return;
+  switcher.classList.toggle('is-summer', state.season === 'summer');
+  switcher.setAttribute('aria-pressed', String(state.season === 'summer'));
+  switcher.setAttribute('aria-label', `Switch displayed season. Currently showing ${seasonLabels[state.season]}.`);
+}
+
 function ensureAppChrome() {
   const topbar = document.querySelector('.topbar');
   if (topbar && !topbar.querySelector('.season-switcher')) {
@@ -2210,13 +2245,12 @@ function ensureAppChrome() {
     start.append(switcher, brand);
     switcher.addEventListener('click', () => {
       const nextSeason = state.season === 'winter' ? 'summer' : 'winter';
+      if (!window.confirm(`Are you sure you want to switch from ${seasonLabels[state.season]} to ${seasonLabels[nextSeason]}?`)) return;
       switcher.disabled = true;
-      switcher.classList.toggle('is-summer', nextSeason === 'summer');
-      switcher.setAttribute('aria-pressed', String(nextSeason === 'summer'));
-      switcher.setAttribute('aria-label', `Switch displayed season. Currently showing ${seasonLabels[nextSeason]}.`);
-      try { localStorage.setItem(SEASON_KEY, nextSeason); } catch (error) { /* Keep the in-memory selection. */ }
+      state.season = nextSeason;
+      updateSeasonSwitcher(switcher);
+      saveSeasonSelection(nextSeason);
       window.setTimeout(() => {
-        state.season = nextSeason;
         const payload = buildTaskPayload(state.tasks, new Date());
         state.tasks = payload.tasks;
         state.available = payload.available;
@@ -2286,6 +2320,8 @@ function scheduleMidnightRollover() {
   const now = new Date();
   const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 50);
   setTimeout(async () => {
+    state.season = getSavedSeason();
+    updateSeasonSwitcher();
     state.dayLists = null;
     getDayListsState();
     await loadTaskData();
@@ -2412,12 +2448,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('online', () => saveDayListsState(getDayListsState()));
   window.addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
+    state.season = getSavedSeason();
+    updateSeasonSwitcher();
     state.dayLists = null;
     loadTaskData();
   });
   window.addEventListener('storage', (event) => {
-    if (![STORAGE_KEY, DAY_LISTS_KEY, SEASON_KEY].includes(event.key)) return;
-    if (event.key === SEASON_KEY) state.season = getSavedSeason();
+    if (![STORAGE_KEY, DAY_LISTS_KEY, SEASON_KEY, SEASON_OVERRIDE_DATE_KEY].includes(event.key)) return;
+    if ([SEASON_KEY, SEASON_OVERRIDE_DATE_KEY].includes(event.key)) {
+      state.season = getSavedSeason();
+      updateSeasonSwitcher();
+    }
     state.dayLists = null;
     loadTaskData();
   });
