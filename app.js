@@ -680,16 +680,23 @@ function nextLocalDateKey(date = new Date()) {
 }
 
 function emptyDayList(date) {
-  return { date, taskIds: [], customItems: [], updatedAt: null };
+  return { date, taskIds: [], customItems: [], notes: [], updatedAt: null };
 }
 
 function normalizeDayList(value, date) {
+  const storedItems = Array.isArray(value?.customItems) ? value.customItems : [];
+  const storedNotes = Array.isArray(value?.notes)
+    ? value.notes
+    : storedItems.filter((item) => item?.kind === 'note');
   return {
     date,
     taskIds: Array.isArray(value?.taskIds) ? [...new Set(value.taskIds.filter(Boolean))] : [],
-    customItems: Array.isArray(value?.customItems)
-      ? value.customItems.filter((item) => item?.title).map((item) => ({ id: item.id || `custom-${Date.now()}`, title: String(item.title).trim() }))
-      : [],
+    customItems: storedItems
+      .filter((item) => item?.kind !== 'note' && item?.title)
+      .map((item) => ({ id: item.id || `custom-${Date.now()}`, title: String(item.title).trim() })),
+    notes: storedNotes
+      .filter((note) => note?.text || note?.title)
+      .map((note) => ({ id: note.id || `note-${Date.now()}`, text: String(note.text || note.title).trim() })),
     updatedAt: value?.updatedAt || value?.updated_at || null
   };
 }
@@ -749,7 +756,10 @@ function saveDayListsState(lists) {
         body: JSON.stringify({
           list_date: snapshot[day].date,
           task_ids: snapshot[day].taskIds,
-          custom_items: snapshot[day].customItems,
+          custom_items: [
+            ...snapshot[day].customItems,
+            ...snapshot[day].notes.map((note) => ({ id: note.id, text: note.text, kind: 'note' }))
+          ],
           updated_at: snapshot[day].updatedAt
         })
       }))));
@@ -777,11 +787,17 @@ async function loadDayLists() {
     today: normalizeDayList({
       taskIds: todayRow && !localTodayIsNewer ? todayRow.task_ids : localLists.today.taskIds,
       customItems: todayRow && !localTodayIsNewer ? todayRow.custom_items : localLists.today.customItems,
+      notes: todayRow && !localTodayIsNewer
+        ? (todayRow.custom_items || []).filter((item) => item?.kind === 'note')
+        : localLists.today.notes,
       updatedAt: todayRow && !localTodayIsNewer ? todayRow.updated_at : localLists.today.updatedAt
     }, todayDate),
     tomorrow: normalizeDayList({
       taskIds: tomorrowRow && !localTomorrowIsNewer ? tomorrowRow.task_ids : localLists.tomorrow.taskIds,
       customItems: tomorrowRow && !localTomorrowIsNewer ? tomorrowRow.custom_items : localLists.tomorrow.customItems,
+      notes: tomorrowRow && !localTomorrowIsNewer
+        ? (tomorrowRow.custom_items || []).filter((item) => item?.kind === 'note')
+        : localLists.tomorrow.notes,
       updatedAt: tomorrowRow && !localTomorrowIsNewer ? tomorrowRow.updated_at : localLists.tomorrow.updatedAt
     }, tomorrowDate)
   };
@@ -818,6 +834,20 @@ function removeCustomDayItem(day, customId) {
   saveDayListsState(lists);
   renderAll();
   if (day === 'today') recordMilestoneTask(customId);
+}
+
+function addDayNote(day, text) {
+  const lists = getDayListsState();
+  lists[day].notes.push({ id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text });
+  saveDayListsState(lists);
+  renderAll();
+}
+
+function removeDayNote(day, noteId) {
+  const lists = getDayListsState();
+  lists[day].notes = lists[day].notes.filter((note) => note.id !== noteId);
+  saveDayListsState(lists);
+  renderAll();
 }
 
 function ensureUrgentTasksInToday() {
@@ -1089,7 +1119,7 @@ function renderDayList(day) {
   const root = document.getElementById(day === 'today' ? 'todayList' : 'tomorrowList');
   if (!root) return;
   const lists = getDayListsState();
-  const { taskIds, customItems } = lists[day];
+  const { taskIds, customItems, notes } = lists[day];
   const dayTasks = taskIds
     .map((taskId) => state.tasks.find((task) => task.id === taskId))
     .filter(Boolean)
@@ -1129,6 +1159,24 @@ function renderDayList(day) {
         </div>
       `
       : `<div class="today-empty"><p>No tasks added yet.</p></div>`}
+    <section class="day-notes-section" aria-labelledby="${day}NotesTitle">
+      <div class="day-notes-heading">
+        <h3 id="${day}NotesTitle">Notes</h3>
+        <span class="group-badge">${notes.length}</span>
+      </div>
+      <form class="day-note-form" data-day-note-form="${day}">
+        <textarea name="note" rows="2" maxlength="1000" placeholder="Write a note…" aria-label="Add a note for ${day}" required></textarea>
+        <button class="secondary-btn" type="submit" disabled>Add note</button>
+      </form>
+      ${notes.length
+        ? `<div class="day-note-list">${notes.map((note) => `
+            <article class="day-note-item">
+              <p>${escapeHtml(note.text)}</p>
+              <button class="icon-btn" type="button" data-remove-note-id="${escapeHtml(note.id)}" data-day="${day}" aria-label="Remove note">Remove</button>
+            </article>
+          `).join('')}</div>`
+        : '<p class="day-notes-empty">No notes added yet.</p>'}
+    </section>
   `;
 
   const quickDayForm = root.querySelector('[data-quick-day]');
@@ -1184,6 +1232,20 @@ function renderDayList(day) {
   });
   root.querySelectorAll('[data-remove-custom-id]').forEach((button) => {
     button.addEventListener('click', () => removeCustomDayItem(button.dataset.day, button.dataset.removeCustomId));
+  });
+  const noteForm = root.querySelector('[data-day-note-form]');
+  const noteInput = noteForm?.elements.note;
+  const noteButton = noteForm?.querySelector('[type="submit"]');
+  noteInput?.addEventListener('input', () => {
+    if (noteButton) noteButton.disabled = !noteInput.value.trim();
+  });
+  noteForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const text = event.currentTarget.elements.note.value.trim();
+    if (text) addDayNote(day, text);
+  });
+  root.querySelectorAll('[data-remove-note-id]').forEach((button) => {
+    button.addEventListener('click', () => removeDayNote(button.dataset.day, button.dataset.removeNoteId));
   });
   bindInlineEditButtons(root);
   attachSwipeHandlers(root);
