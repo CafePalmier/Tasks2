@@ -23,6 +23,8 @@ const state = {
 let dayListRevision = 0;
 let dayListSyncQueue = Promise.resolve();
 let urgentDropdownDismissalBound = false;
+let pendingDayTaskChoice = null;
+let pendingNewTaskDay = null;
 
 const supabaseConfig = window.SUPABASE_CONFIG;
 const usesSupabase = Boolean(supabaseConfig?.url && supabaseConfig?.publishableKey)
@@ -1246,7 +1248,7 @@ function renderDayList(day) {
   quickDayForm?.addEventListener('submit', (event) => {
     event.preventDefault();
     const title = event.currentTarget.elements.title.value.trim();
-    if (title) addCustomDayItem(day, title);
+    if (title) openDayTaskTypeModal(day, title);
   });
   root.querySelectorAll('[data-remove-day-id]').forEach((button) => {
     button.addEventListener('click', () => removeTaskFromDay(button.dataset.removeDayId, button.dataset.day));
@@ -1959,20 +1961,26 @@ async function handleTaskSubmit(event) {
   }
 
   try {
+    let savedTask;
+    const targetDay = !form.elements.taskId.value ? pendingNewTaskDay : null;
     if (form.elements.taskId.value) {
-      await api(`/api/tasks/${form.elements.taskId.value}`, {
+      const result = await api(`/api/tasks/${form.elements.taskId.value}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
+      savedTask = result?.task;
     } else {
-      await api('/api/tasks', {
+      const result = await api('/api/tasks', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
+      savedTask = result?.task;
     }
 
     resetForm();
     await loadTaskData();
+    if (targetDay && savedTask?.id) addTaskToDay(savedTask.id, targetDay);
+    pendingNewTaskDay = null;
     closeTaskModal();
   } catch (error) {
     console.error('Failed to save task', error);
@@ -2463,6 +2471,30 @@ function ensureAppChrome() {
     topbar.insertBefore(addButton, topbar.querySelector('.nav'));
   }
   if (!document.getElementById('taskForm')) document.body.insertAdjacentHTML('beforeend', taskFormMarkup());
+  if (!document.getElementById('dayTaskTypeModal')) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="dayTaskTypeModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" data-close-day-task-type></div>
+        <div class="modal-card day-task-type-card" role="dialog" aria-modal="true" aria-labelledby="dayTaskTypeTitle">
+          <div class="modal-header">
+            <h2 id="dayTaskTypeTitle">What kind of task is this?</h2>
+            <button class="icon-btn" type="button" data-close-day-task-type>Close</button>
+          </div>
+          <p class="day-task-type-name" data-day-task-type-name></p>
+          <div class="day-task-type-options">
+            <button type="button" class="day-task-type-option" data-save-one-off>
+              <strong>One-off</strong>
+              <span>Save it only on this day’s list.</span>
+            </button>
+            <button type="button" class="day-task-type-option recurring" data-create-recurring>
+              <strong>Recurring task</strong>
+              <span>Open the full task setup to choose its schedule and details.</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `);
+  }
   if (!document.getElementById('completedModal')) {
     document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card"><div class="modal-header"><h2>Completed Tasks</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><ul id="completedList" class="mini-list modal-list"></ul></div></div>');
   }
@@ -2568,6 +2600,44 @@ function closeTaskModal() {
   if (!modal) return;
   modal.classList.add('hidden');
   modal.setAttribute('aria-hidden', 'true');
+  pendingNewTaskDay = null;
+}
+
+function openDayTaskTypeModal(day, title) {
+  const modal = document.getElementById('dayTaskTypeModal');
+  if (!modal) return;
+  pendingDayTaskChoice = { day, title };
+  const name = modal.querySelector('[data-day-task-type-name]');
+  if (name) name.textContent = title;
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  modal.querySelector('[data-save-one-off]')?.focus();
+}
+
+function closeDayTaskTypeModal() {
+  const modal = document.getElementById('dayTaskTypeModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  pendingDayTaskChoice = null;
+}
+
+function savePendingDayTaskAsOneOff() {
+  if (!pendingDayTaskChoice) return;
+  const { day, title } = pendingDayTaskChoice;
+  closeDayTaskTypeModal();
+  addCustomDayItem(day, title);
+}
+
+function openPendingRecurringTaskForm() {
+  if (!pendingDayTaskChoice) return;
+  const { day, title } = pendingDayTaskChoice;
+  closeDayTaskTypeModal();
+  resetForm();
+  pendingNewTaskDay = day;
+  const form = document.getElementById('taskForm');
+  if (form) form.elements.title.value = title;
+  openTaskModal();
 }
 
 function openClosingCompleteModal() {
@@ -2737,6 +2807,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelectorAll('[data-open-task-modal]').forEach((button) => button.addEventListener('click', () => { resetForm(); openTaskModal(); }));
   document.querySelectorAll('[data-close-task-modal]').forEach((button) => button.addEventListener('click', closeTaskModal));
+  document.querySelectorAll('[data-close-day-task-type]').forEach((button) => button.addEventListener('click', closeDayTaskTypeModal));
+  document.querySelector('[data-save-one-off]')?.addEventListener('click', savePendingDayTaskAsOneOff);
+  document.querySelector('[data-create-recurring]')?.addEventListener('click', openPendingRecurringTaskForm);
   document.querySelectorAll('[data-close-closing-complete]').forEach((button) => button.addEventListener('click', closeClosingCompleteModal));
   document.querySelectorAll('[data-confirm-door-lock-reminder]').forEach((button) => button.addEventListener('click', closeDoorLockReminderModal));
   document.querySelectorAll('[data-close-task-milestone]').forEach((button) => button.addEventListener('click', closeTaskMilestoneModal));
@@ -2752,6 +2825,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (event.key === 'Escape') {
       closeCompletedModal();
       closeTaskModal();
+      closeDayTaskTypeModal();
       closeClosingCompleteModal();
       closeTaskMilestoneModal();
     }
