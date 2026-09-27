@@ -483,6 +483,36 @@ h1 {
   margin-bottom: 0.8rem;
 }
 
+.completed-cycle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.65rem;
+}
+
+.completed-cycle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.62rem 0.78rem;
+  border: 1px solid rgba(49, 93, 58, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.78);
+  color: var(--forest-deep);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.completed-cycle-button strong {
+  display: grid;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--forest);
+  color: var(--white);
+  font-size: 0.78rem;
+}
+
 .period-progress-card {
   --period-progress-color: var(--forest);
   min-width: 0;
@@ -494,14 +524,7 @@ h1 {
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
-}
-
-.period-progress-card:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 253, 249, 0.9);
-  box-shadow: 0 8px 20px rgba(61, 44, 33, 0.09);
+  cursor: default;
 }
 
 .period-progress-card.weekly { --period-progress-color: #b96842; }
@@ -1719,8 +1742,20 @@ h1 {
 }
 
 .completed-search {
-  width: 100%;
-  margin: 0 0 0.75rem;
+  flex: 1 1 auto;
+  width: auto;
+  margin: 0;
+}
+
+.completed-modal-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.9rem;
+}
+
+.completed-sort-toggle {
+  flex: 0 0 auto;
 }
 
 .panel-card.has-active-suggestions {
@@ -1880,6 +1915,45 @@ h1 {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 650;
+}
+
+.completed-type-groups,
+.completed-date-groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.completed-type-section {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 253, 249, 0.5);
+}
+
+.completed-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+
+.completed-section-heading h3,
+.completed-date-section h4 {
+  margin: 0;
+  color: var(--forest-deep);
+}
+
+.completed-date-section h4 {
+  margin-bottom: 0.45rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.completed-type-section .completed-date-section + .completed-date-section {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border);
 }
 
 .empty-state {
@@ -2287,6 +2361,16 @@ textarea {
   .task-search-combobox {
     width: 100%;
     flex: 1 1 100%;
+  }
+
+  .completed-modal-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .completed-search,
+  .completed-sort-toggle {
+    width: 100%;
   }
 
   .quick-day-form {

@@ -29,6 +29,12 @@
     </header>
 
     <main class="page-shell">
+      <div class="completed-cycle-row">
+        <button type="button" class="completed-cycle-button" data-open-completed-cycle>
+          <span>Completed this cycle</span>
+          <strong id="completedCycleCount">0</strong>
+        </button>
+      </div>
       <section id="periodProgress" class="period-progress-grid" aria-label="Weekly, monthly, and yearly progress"></section>
 
       <section class="dashboard-available">
@@ -43,7 +49,7 @@
           <h2>Completed Tasks</h2>
           <button type="button" class="icon-btn" data-close-completed>Close</button>
         </div>
-        <ul id="completedList" class="mini-list modal-list"></ul>
+        <div id="completedList" class="modal-list"></div>
       </div>
     </div>
 

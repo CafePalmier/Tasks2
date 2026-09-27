@@ -3,6 +3,8 @@ const TODAY_LIST_KEY = 'cafe-palmier-today-list';
 const DAY_LISTS_KEY = 'cafe-palmier-day-lists-v2';
 const SEASON_KEY = 'cafe-palmier-season';
 const SEASON_OVERRIDE_DATE_KEY = 'cafe-palmier-season-override-date';
+const COMPLETED_ONE_OFFS_KEY = 'cafe-palmier-completed-one-offs';
+const COMPLETED_SORT_KEY = 'cafe-palmier-completed-sort';
 const STATIC_TASKS_PATH = './tasks.json';
 const TASK_DATA_VERSION = 5;
 const CELEBRATION_PROGRESS_KEY = 'cafe-palmier-five-task-celebration';
@@ -14,6 +16,8 @@ const state = {
   completedFilter: null,
   availableSearch: '',
   completedSearch: '',
+  completedOneOffs: getSavedCompletedOneOffs(),
+  completedSortMode: getCompletedSortMode(),
   hasTaskApi: null,
   dayLists: null,
   season: getSavedSeason(),
@@ -207,6 +211,45 @@ function saveSeasonSelection(season, date = new Date()) {
     localStorage.setItem(SEASON_KEY, season);
   } catch (error) {
     // Keep the selection in memory when local storage is unavailable.
+  }
+}
+
+function normalizeCompletedOneOffs(items) {
+  if (!Array.isArray(items)) return [];
+  const byId = new Map();
+  items.forEach((item) => {
+    const title = String(item?.title || '').trim();
+    const completedAt = item?.completedAt || item?.completed_at;
+    if (!item?.id || !title || !completedAt || Number.isNaN(new Date(completedAt).getTime())) return;
+    const normalized = { id: String(item.id), title, completedAt: new Date(completedAt).toISOString() };
+    const existing = byId.get(normalized.id);
+    if (!existing || new Date(normalized.completedAt) > new Date(existing.completedAt)) byId.set(normalized.id, normalized);
+  });
+  return [...byId.values()].sort((first, second) => new Date(second.completedAt) - new Date(first.completedAt));
+}
+
+function getSavedCompletedOneOffs() {
+  try {
+    return normalizeCompletedOneOffs(JSON.parse(localStorage.getItem(COMPLETED_ONE_OFFS_KEY) || '[]'));
+  } catch (error) {
+    return [];
+  }
+}
+
+function mergeCompletedOneOffs(items) {
+  state.completedOneOffs = normalizeCompletedOneOffs([...state.completedOneOffs, ...items]);
+  try {
+    localStorage.setItem(COMPLETED_ONE_OFFS_KEY, JSON.stringify(state.completedOneOffs));
+  } catch (error) {
+    console.warn('Could not save completed one-off history', error);
+  }
+}
+
+function getCompletedSortMode() {
+  try {
+    return localStorage.getItem(COMPLETED_SORT_KEY) === 'date' ? 'date' : 'type';
+  } catch (error) {
+    return 'type';
   }
 }
 
@@ -682,7 +725,7 @@ function nextLocalDateKey(date = new Date()) {
 }
 
 function emptyDayList(date) {
-  return { date, taskIds: [], customItems: [], notes: [], updatedAt: null };
+  return { date, taskIds: [], customItems: [], notes: [], completedOneOffs: [], updatedAt: null };
 }
 
 function normalizeDayList(value, date) {
@@ -690,15 +733,19 @@ function normalizeDayList(value, date) {
   const storedNotes = Array.isArray(value?.notes)
     ? value.notes
     : storedItems.filter((item) => item?.kind === 'note');
+  const storedCompletedOneOffs = Array.isArray(value?.completedOneOffs)
+    ? value.completedOneOffs
+    : storedItems.filter((item) => item?.kind === 'completed-one-off');
   return {
     date,
     taskIds: Array.isArray(value?.taskIds) ? [...new Set(value.taskIds.filter(Boolean))] : [],
     customItems: storedItems
-      .filter((item) => item?.kind !== 'note' && item?.title)
+      .filter((item) => !['note', 'completed-one-off'].includes(item?.kind) && item?.title)
       .map((item) => ({ id: item.id || `custom-${Date.now()}`, title: String(item.title).trim() })),
     notes: storedNotes
       .filter((note) => note?.text || note?.title)
       .map((note) => ({ id: note.id || `note-${Date.now()}`, text: String(note.text || note.title).trim() })),
+    completedOneOffs: normalizeCompletedOneOffs(storedCompletedOneOffs),
     updatedAt: value?.updatedAt || value?.updated_at || null
   };
 }
@@ -760,7 +807,8 @@ function saveDayListsState(lists) {
           task_ids: snapshot[day].taskIds,
           custom_items: [
             ...snapshot[day].customItems,
-            ...snapshot[day].notes.map((note) => ({ id: note.id, text: note.text, kind: 'note' }))
+            ...snapshot[day].notes.map((note) => ({ id: note.id, text: note.text, kind: 'note' })),
+            ...snapshot[day].completedOneOffs.map((item) => ({ ...item, kind: 'completed-one-off' }))
           ],
           updated_at: snapshot[day].updatedAt
         })
@@ -792,6 +840,9 @@ async function loadDayLists() {
       notes: todayRow && !localTodayIsNewer
         ? (todayRow.custom_items || []).filter((item) => item?.kind === 'note')
         : localLists.today.notes,
+      completedOneOffs: todayRow && !localTodayIsNewer
+        ? (todayRow.custom_items || []).filter((item) => item?.kind === 'completed-one-off')
+        : localLists.today.completedOneOffs,
       updatedAt: todayRow && !localTodayIsNewer ? todayRow.updated_at : localLists.today.updatedAt
     }, todayDate),
     tomorrow: normalizeDayList({
@@ -800,10 +851,25 @@ async function loadDayLists() {
       notes: tomorrowRow && !localTomorrowIsNewer
         ? (tomorrowRow.custom_items || []).filter((item) => item?.kind === 'note')
         : localLists.tomorrow.notes,
+      completedOneOffs: tomorrowRow && !localTomorrowIsNewer
+        ? (tomorrowRow.custom_items || []).filter((item) => item?.kind === 'completed-one-off')
+        : localLists.tomorrow.completedOneOffs,
       updatedAt: tomorrowRow && !localTomorrowIsNewer ? tomorrowRow.updated_at : localLists.tomorrow.updatedAt
     }, tomorrowDate)
   };
   state.dayLists = result;
+  mergeCompletedOneOffs([...result.today.completedOneOffs, ...result.tomorrow.completedOneOffs]);
+  try {
+    const historyStart = `${new Date().getFullYear()}-01-01`;
+    const historyRows = await supabaseRequest(`cafe_day_lists?select=custom_items&list_date=gte.${historyStart}&list_date=lte.${todayDate}`);
+    mergeCompletedOneOffs(historyRows.flatMap((row) => (
+      Array.isArray(row.custom_items)
+        ? row.custom_items.filter((item) => item?.kind === 'completed-one-off')
+        : []
+    )));
+  } catch (error) {
+    console.warn('Using locally saved one-off completion history', error);
+  }
   localStorage.setItem(DAY_LISTS_KEY, JSON.stringify(result));
   if (!todayRow || !tomorrowRow || localTodayIsNewer || localTomorrowIsNewer) saveDayListsState(result);
   return result;
@@ -835,7 +901,23 @@ function removeCustomDayItem(day, customId) {
   lists[day].customItems = lists[day].customItems.filter((item) => item.id !== customId);
   saveDayListsState(lists);
   renderAll();
-  if (day === 'today') recordMilestoneTask(customId);
+}
+
+function completeCustomDayItem(customId) {
+  const lists = getDayListsState();
+  const item = lists.today.customItems.find((customItem) => customItem.id === customId)
+    || lists.tomorrow.customItems.find((customItem) => customItem.id === customId);
+  const completedItem = item ? { id: item.id, title: item.title, completedAt: new Date().toISOString() } : null;
+  ['today', 'tomorrow'].forEach((day) => {
+    lists[day].customItems = lists[day].customItems.filter((item) => item.id !== customId);
+  });
+  if (completedItem) {
+    lists.today.completedOneOffs = normalizeCompletedOneOffs([...lists.today.completedOneOffs, completedItem]);
+    mergeCompletedOneOffs([completedItem]);
+  }
+  saveDayListsState(lists);
+  renderAll();
+  recordMilestoneTask(customId);
 }
 
 function addCustomItemToTomorrow(customId) {
@@ -1153,8 +1235,8 @@ function renderDayList(day) {
       ? `
         <div class="task-list today-task-list">
           ${dayTasks.map((task) => `
-            <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="${day === 'today' ? 'both' : 'none'}">
-              ${day === 'today' ? `<button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>` : ''}
+            <div class="task-swipe-shell" data-task-id="${task.id}" data-day="${day}" data-swipe-mode="${day === 'today' ? 'both' : 'complete'}">
+              <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
               ${day === 'today' ? `<button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(task.title)} to tomorrow">Tomorrow</button>` : ''}
               <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''} ${tomorrowTaskIds.has(task.id) ? 'scheduled-tomorrow' : ''}">
                 <div class="task-main"><h4>${escapeHtml(task.title)}</h4>${renderTaskDetails(task)}</div>
@@ -1165,19 +1247,15 @@ function renderDayList(day) {
               </article>
             </div>
           `).join('')}
-          ${customItems.map((item) => day === 'today' ? `
-            <div class="task-swipe-shell" data-custom-id="${escapeHtml(item.id)}" data-swipe-mode="tomorrow">
-              <button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(item.title)} to tomorrow">Tomorrow</button>
+          ${customItems.map((item) => `
+            <div class="task-swipe-shell" data-custom-id="${escapeHtml(item.id)}" data-day="${day}" data-swipe-mode="${day === 'today' ? 'both' : 'complete'}">
+              <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(item.title)}">Complete</button>
+              ${day === 'today' ? `<button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(item.title)} to tomorrow">Tomorrow</button>` : ''}
               <article class="task-item task-swipe-content task-item-no-check one-off-item ${tomorrowCustomIds.has(item.id) ? 'scheduled-tomorrow' : ''}">
                 <div class="task-main"><h4>${escapeHtml(item.title)}</h4><span class="meta-pill category-pill">One-off</span></div>
-                <button class="icon-btn" data-remove-custom-id="${escapeHtml(item.id)}" data-day="${day}">Done</button>
+                <button class="icon-btn" data-remove-custom-id="${escapeHtml(item.id)}" data-day="${day}">Remove</button>
               </article>
             </div>
-          ` : `
-            <article class="task-item task-item-no-check one-off-item scheduled-tomorrow">
-              <div class="task-main"><h4>${escapeHtml(item.title)}</h4><span class="meta-pill category-pill">One-off</span></div>
-              <button class="icon-btn" data-remove-custom-id="${escapeHtml(item.id)}" data-day="${day}">Remove</button>
-            </article>
           `).join('')}
         </div>
       `
@@ -1360,7 +1438,7 @@ function openCompletedModal(filterValue = '', filterType = 'category') {
     const filterLabel = filterType === 'period'
       ? periodLabels[filterValue]
       : categoryLabels[filterValue];
-    heading.textContent = filterValue ? `Completed ${filterLabel || filterValue} Tasks` : 'Completed Tasks';
+    heading.textContent = filterValue ? `Completed ${filterLabel || filterValue} Tasks` : 'Completed this cycle';
   }
   renderCompleted();
   modal.classList.remove('hidden');
@@ -1378,47 +1456,105 @@ function closeCompletedModal() {
 function renderCompleted() {
   const root = document.getElementById('completedList');
   if (!root) return;
-  const allCompletedTasks = state.completedFilter
-    ? state.completed.filter((task) => task[state.completedFilter.type] === state.completedFilter.value)
-    : state.completed.filter((task) => !shiftOnlyCategories.includes(task.category));
-  const completedTasks = state.completedSearch.trim()
-    ? allCompletedTasks.filter((task) => task.title.toLocaleLowerCase().includes(state.completedSearch.trim().toLocaleLowerCase()))
-    : allCompletedTasks;
+  const cycleStart = new Date(new Date().getFullYear(), 0, 1);
+  const completedTasks = state.completed
+    .filter((task) => state.completedFilter
+      ? task[state.completedFilter.type] === state.completedFilter.value
+      : !shiftOnlyCategories.includes(task.category))
+    .map((task) => ({ ...task, completionType: 'task', completedAt: task.lastCompletedAt }));
+  const completedOneOffs = state.completedFilter
+    ? []
+    : state.completedOneOffs
+      .filter((item) => new Date(item.completedAt) >= cycleStart)
+      .map((item) => ({ ...item, completionType: 'one-off', period: 'one-off' }));
+  const allCompletedItems = [...completedTasks, ...completedOneOffs];
+  const normalizedSearch = state.completedSearch.trim().toLocaleLowerCase();
+  const visibleItems = (normalizedSearch
+    ? allCompletedItems.filter((item) => item.title.toLocaleLowerCase().includes(normalizedSearch))
+    : allCompletedItems)
+    .sort((first, second) => new Date(second.completedAt) - new Date(first.completedAt));
 
   const modal = document.getElementById('completedModal');
   if (modal) {
     const searchInput = modal.querySelector('[data-completed-search]');
     if (searchInput) searchInput.value = state.completedSearch;
+    const sortToggle = modal.querySelector('[data-completed-sort]');
+    if (sortToggle) {
+      sortToggle.hidden = Boolean(state.completedFilter);
+      sortToggle.classList.toggle('is-time', state.completedSortMode === 'date');
+      sortToggle.setAttribute('aria-label', `Switch completed-task sorting. Currently sorted by ${state.completedSortMode === 'date' ? 'date completed' : 'type'}.`);
+    }
     bindTaskSearch(modal, {
       inputSelector: '[data-completed-search]',
       suggestionsSelector: '[data-completed-suggestions]',
-      tasks: allCompletedTasks,
+      tasks: allCompletedItems,
       valueKey: 'completedSearch',
-      onSelect: (task) => {
-        state.completedSearch = task?.title || '';
+      onSelect: (item) => {
+        state.completedSearch = item?.title || '';
         renderCompleted();
       }
     });
   }
 
-  if (!completedTasks.length) {
-    root.innerHTML = '<li class="empty-state">No completed items yet</li>';
+  if (!visibleItems.length) {
+    root.innerHTML = '<div class="empty-state">No completed items yet</div>';
     return;
   }
 
-  root.innerHTML = completedTasks.map((task) => `
-    <li>
-      <div class="completed-task-info">
-        <strong>${escapeHtml(task.title)}</strong>
-        <time datetime="${escapeHtml(task.lastCompletedAt || '')}">Completed ${formatCompletedAt(task.lastCompletedAt)}</time>
-      </div>
-      <button class="icon-btn" data-reopen-id="${task.id}">Reopen</button>
-    </li>
-  `).join('');
+  if (state.completedFilter || state.completedSortMode === 'date') {
+    root.innerHTML = renderCompletedDateGroups(visibleItems, !state.completedFilter);
+  } else {
+    const groups = [
+      ['weekly', 'Weekly'],
+      ['monthly', 'Monthly'],
+      ['yearly', 'Yearly'],
+      ['one-off', 'One-offs']
+    ];
+    root.innerHTML = `<div class="completed-type-groups">${groups.map(([period, label]) => {
+      const items = visibleItems.filter((item) => item.period === period);
+      return `
+        <section class="completed-type-section">
+          <div class="completed-section-heading"><h3>${label}</h3><span class="group-badge">${items.length}</span></div>
+          ${items.length ? renderCompletedDateGroups(items, false) : '<p class="empty-state">Nothing completed in this section yet.</p>'}
+        </section>
+      `;
+    }).join('')}</div>`;
+  }
 
   root.querySelectorAll('[data-reopen-id]').forEach((button) => {
     button.addEventListener('click', () => reopenTask(button.dataset.reopenId));
   });
+}
+
+function renderCompletedDateGroups(items, showType) {
+  const byDate = items.reduce((groups, item) => {
+    const date = new Date(item.completedAt);
+    const key = Number.isNaN(date.getTime()) ? 'unknown' : localDateKey(date);
+    groups[key] ||= [];
+    groups[key].push(item);
+    return groups;
+  }, {});
+  return `<div class="completed-date-groups">${Object.entries(byDate).map(([dateKey, dateItems]) => `
+    <section class="completed-date-section">
+      <h4>${dateKey === 'unknown' ? 'Date unavailable' : formatCompletedDateHeading(dateItems[0].completedAt)}</h4>
+      <ul class="mini-list">${dateItems.map((item) => `
+    <li>
+      <div class="completed-task-info">
+        <strong>${escapeHtml(item.title)}</strong>
+        <time datetime="${escapeHtml(item.completedAt || '')}">Completed ${formatCompletedAt(item.completedAt)}</time>
+        ${showType ? `<span class="meta-pill period-pill ${item.period}">${item.period === 'one-off' ? 'One-off' : periodLabels[item.period]}</span>` : ''}
+      </div>
+      ${item.completionType === 'task' ? `<button class="icon-btn" data-reopen-id="${item.id}">Reopen</button>` : ''}
+    </li>
+      `).join('')}</ul>
+    </section>
+  `).join('')}</div>`;
+}
+
+function formatCompletedDateHeading(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date unavailable';
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'full' }).format(date);
 }
 
 function formatCompletedAt(value) {
@@ -1489,6 +1625,11 @@ function renderPeriodProgress() {
   const root = document.getElementById('periodProgress');
   if (!root) return;
   const now = new Date();
+  const cycleStart = new Date(now.getFullYear(), 0, 1);
+  const completedCycleCount = state.completed.filter((task) => !shiftOnlyCategories.includes(task.category)).length
+    + state.completedOneOffs.filter((item) => new Date(item.completedAt) >= cycleStart).length;
+  const count = document.getElementById('completedCycleCount');
+  if (count) count.textContent = String(completedCycleCount);
 
   root.innerHTML = ['weekly', 'monthly', 'yearly'].map((period) => {
     const completed = state.completed.filter((task) => task.period === period && !shiftOnlyCategories.includes(task.category)).length;
@@ -1497,7 +1638,7 @@ function renderPeriodProgress() {
     const percentage = total ? Math.round((completed / total) * 100) : 0;
     const calendarProgress = getCalendarProgress(period, now);
     return `
-      <button type="button" class="period-progress-card ${period}" data-open-period-completed="${period}" aria-label="${periodLabels[period]}: ${completed} of ${total} completed. ${escapeHtml(calendarProgress.ariaLabel)}. View completed tasks.">
+      <article class="period-progress-card ${period}" aria-label="${periodLabels[period]}: ${completed} of ${total} completed. ${escapeHtml(calendarProgress.ariaLabel)}.">
         <div class="period-progress-heading">
           <strong>${periodLabels[period]}</strong>
           <span>${completed}/${total}</span>
@@ -1505,13 +1646,9 @@ function renderPeriodProgress() {
         <div class="progress-track" aria-hidden="true"><span style="width: ${percentage}%"></span></div>
         ${renderCalendarProgress(period, now)}
         <p>${getProgressMessage(completed, remaining, period)}</p>
-      </button>
+      </article>
     `;
   }).join('');
-
-  root.querySelectorAll('[data-open-period-completed]').forEach((button) => {
-    button.addEventListener('click', () => openCompletedModal(button.dataset.openPeriodCompleted, 'period'));
-  });
 }
 
 function getClosingSortMode() {
@@ -1839,7 +1976,9 @@ async function completeTask(taskId) {
       saveLocalTasks(state.tasks);
     }
     const lists = getDayListsState();
-    lists.today.taskIds = lists.today.taskIds.filter((id) => id !== taskId);
+    ['today', 'tomorrow'].forEach((day) => {
+      lists[day].taskIds = lists[day].taskIds.filter((id) => id !== taskId);
+    });
     saveDayListsState(lists);
     renderAll();
     const finishedClosingList = state.page === 'closing'
@@ -2094,7 +2233,7 @@ function attachSwipeHandlers(scope = document) {
       if (!isDragging) return;
 
       if (dragOffset <= -92 && ['complete', 'both'].includes(swipeMode)) {
-        commitSwipe('left', () => completeTask(taskId));
+        commitSwipe('left', () => customId ? completeCustomDayItem(customId) : completeTask(taskId));
         return;
       }
       if (dragOffset >= 92 && ['tomorrow', 'both'].includes(swipeMode)) {
@@ -2109,7 +2248,9 @@ function attachSwipeHandlers(scope = document) {
       resetPosition();
       delete shell.dataset.suppressCardClick;
     });
-    shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => commitSwipe('left', () => completeTask(taskId)));
+    shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => commitSwipe('left', () => (
+      customId ? completeCustomDayItem(customId) : completeTask(taskId)
+    )));
     shell.querySelector('[data-swipe-tomorrow]')?.addEventListener('click', () => commitSwipe('right', () => (
       customId ? addCustomItemToTomorrow(customId) : addTaskToDay(taskId, 'tomorrow')
     )));
@@ -2496,11 +2637,22 @@ function ensureAppChrome() {
     `);
   }
   if (!document.getElementById('completedModal')) {
-    document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card"><div class="modal-header"><h2>Completed Tasks</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><ul id="completedList" class="mini-list modal-list"></ul></div></div>');
+    document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card"><div class="modal-header"><h2>Completed this cycle</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><div id="completedList" class="modal-list"></div></div></div>');
   }
   const completedModal = document.getElementById('completedModal');
-  if (completedModal && !completedModal.querySelector('[data-completed-search]')) {
-    completedModal.querySelector('.modal-header')?.insertAdjacentHTML('afterend', '<div class="quick-day-combobox task-search-combobox completed-search"><input type="search" data-completed-search placeholder="Search completed tasks…" aria-label="Search completed tasks" aria-autocomplete="list" autocomplete="off" /><div class="quick-day-suggestions" data-completed-suggestions role="listbox" hidden></div></div>');
+  if (completedModal && !completedModal.querySelector('.completed-modal-controls')) {
+    completedModal.querySelector('.modal-header')?.insertAdjacentHTML('afterend', `
+      <div class="completed-modal-controls">
+        <div class="quick-day-combobox task-search-combobox completed-search">
+          <input type="search" data-completed-search placeholder="Search completed tasks…" aria-label="Search completed tasks" aria-autocomplete="list" autocomplete="off" />
+          <div class="quick-day-suggestions" data-completed-suggestions role="listbox" hidden></div>
+        </div>
+        <button class="sort-toggle completed-sort-toggle ${state.completedSortMode === 'date' ? 'is-time' : ''}" type="button" data-completed-sort>
+          <span class="sort-option">Type</span>
+          <span class="sort-option">Date</span>
+        </button>
+      </div>
+    `);
   }
   if (!document.getElementById('closingCompleteModal')) {
     document.body.insertAdjacentHTML('beforeend', `
@@ -2756,11 +2908,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadTaskData();
   });
   window.addEventListener('storage', (event) => {
-    if (![STORAGE_KEY, DAY_LISTS_KEY, SEASON_KEY, SEASON_OVERRIDE_DATE_KEY].includes(event.key)) return;
+    if (![STORAGE_KEY, DAY_LISTS_KEY, SEASON_KEY, SEASON_OVERRIDE_DATE_KEY, COMPLETED_ONE_OFFS_KEY, COMPLETED_SORT_KEY].includes(event.key)) return;
     if ([SEASON_KEY, SEASON_OVERRIDE_DATE_KEY].includes(event.key)) {
       state.season = getSavedSeason();
       updateSeasonSwitcher();
     }
+    if (event.key === COMPLETED_ONE_OFFS_KEY) state.completedOneOffs = getSavedCompletedOneOffs();
+    if (event.key === COMPLETED_SORT_KEY) state.completedSortMode = getCompletedSortMode();
     state.dayLists = null;
     loadTaskData();
   });
@@ -2804,6 +2958,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   document.querySelectorAll('[data-close-completed]').forEach((button) => {
     button.addEventListener('click', closeCompletedModal);
+  });
+  document.querySelectorAll('[data-open-completed-cycle]').forEach((button) => {
+    button.addEventListener('click', () => openCompletedModal());
+  });
+  document.querySelector('[data-completed-sort]')?.addEventListener('click', () => {
+    state.completedSortMode = state.completedSortMode === 'type' ? 'date' : 'type';
+    try { localStorage.setItem(COMPLETED_SORT_KEY, state.completedSortMode); } catch (error) { /* Keep the in-memory sort. */ }
+    renderCompleted();
   });
   document.querySelectorAll('[data-open-task-modal]').forEach((button) => button.addEventListener('click', () => { resetForm(); openTaskModal(); }));
   document.querySelectorAll('[data-close-task-modal]').forEach((button) => button.addEventListener('click', closeTaskModal));
