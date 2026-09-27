@@ -836,6 +836,16 @@ function removeCustomDayItem(day, customId) {
   if (day === 'today') recordMilestoneTask(customId);
 }
 
+function addCustomItemToTomorrow(customId) {
+  const lists = getDayListsState();
+  const item = lists.today.customItems.find((customItem) => customItem.id === customId);
+  if (item && !lists.tomorrow.customItems.some((customItem) => customItem.id === customId)) {
+    lists.tomorrow.customItems.push({ ...item });
+    saveDayListsState(lists);
+  }
+  renderAll();
+}
+
 function addDayNote(day, text) {
   const lists = getDayListsState();
   lists[day].notes.push({ id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text });
@@ -1120,6 +1130,8 @@ function renderDayList(day) {
   if (!root) return;
   const lists = getDayListsState();
   const { taskIds, customItems, notes } = lists[day];
+  const tomorrowTaskIds = new Set(lists.tomorrow.taskIds);
+  const tomorrowCustomIds = new Set(lists.tomorrow.customItems.map((item) => item.id));
   const dayTasks = taskIds
     .map((taskId) => state.tasks.find((task) => task.id === taskId))
     .filter(Boolean)
@@ -1139,9 +1151,10 @@ function renderDayList(day) {
       ? `
         <div class="task-list today-task-list">
           ${dayTasks.map((task) => `
-            <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="${day === 'today' ? 'complete' : 'none'}">
+            <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="${day === 'today' ? 'both' : 'none'}">
               ${day === 'today' ? `<button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>` : ''}
-              <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''} ${day === 'tomorrow' ? 'scheduled-tomorrow' : ''}">
+              ${day === 'today' ? `<button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(task.title)} to tomorrow">Tomorrow</button>` : ''}
+              <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''} ${tomorrowTaskIds.has(task.id) ? 'scheduled-tomorrow' : ''}">
                 <div class="task-main"><h4>${escapeHtml(task.title)}</h4>${renderTaskDetails(task)}</div>
                 <div class="task-actions">
                   <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
@@ -1150,10 +1163,18 @@ function renderDayList(day) {
               </article>
             </div>
           `).join('')}
-          ${customItems.map((item) => `
-            <article class="task-item task-item-no-check one-off-item ${day === 'tomorrow' ? 'scheduled-tomorrow' : ''}">
+          ${customItems.map((item) => day === 'today' ? `
+            <div class="task-swipe-shell" data-custom-id="${escapeHtml(item.id)}" data-swipe-mode="tomorrow">
+              <button class="task-swipe-action tomorrow" type="button" data-swipe-tomorrow aria-label="Add ${escapeHtml(item.title)} to tomorrow">Tomorrow</button>
+              <article class="task-item task-swipe-content task-item-no-check one-off-item ${tomorrowCustomIds.has(item.id) ? 'scheduled-tomorrow' : ''}">
+                <div class="task-main"><h4>${escapeHtml(item.title)}</h4><span class="meta-pill category-pill">One-off</span></div>
+                <button class="icon-btn" data-remove-custom-id="${escapeHtml(item.id)}" data-day="${day}">Done</button>
+              </article>
+            </div>
+          ` : `
+            <article class="task-item task-item-no-check one-off-item scheduled-tomorrow">
               <div class="task-main"><h4>${escapeHtml(item.title)}</h4><span class="meta-pill category-pill">One-off</span></div>
-              <button class="icon-btn" data-remove-custom-id="${item.id}" data-day="${day}">${day === 'today' ? 'Done' : 'Remove'}</button>
+              <button class="icon-btn" data-remove-custom-id="${escapeHtml(item.id)}" data-day="${day}">Remove</button>
             </article>
           `).join('')}
         </div>
@@ -1823,8 +1844,11 @@ async function completeTask(taskId) {
       && task
       && belongsOnClosingList(task)
       && !state.available.some(belongsOnClosingList);
+    const needsDoorLockReminder = state.page === 'closing' && isDoorLockReminderTask(task);
     await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
-    if (finishedClosingList) {
+    if (needsDoorLockReminder) {
+      openDoorLockReminderModal(finishedClosingList);
+    } else if (finishedClosingList) {
       openClosingCompleteModal();
     } else if (countsTowardMilestone) {
       recordMilestoneTask(taskId);
@@ -1846,6 +1870,10 @@ async function reopenTask(taskId) {
   } catch (error) {
     console.error('Failed to reopen task', error);
   }
+}
+
+function isDoorLockReminderTask(task) {
+  return task?.title?.trim().replace(/\s+/g, ' ').toLocaleLowerCase() === 'lock upstairs and side door';
 }
 
 async function deleteTask(taskId) {
@@ -1984,6 +2012,7 @@ function attachSwipeHandlers(scope = document) {
     shell.dataset.swipeReady = 'true';
     const content = shell.querySelector('.task-swipe-content');
     const taskId = shell.dataset.taskId;
+    const customId = shell.dataset.customId;
     const swipeMode = shell.dataset.swipeMode || 'complete';
     if (swipeMode === 'none') return;
     let startX = 0;
@@ -2042,8 +2071,9 @@ function attachSwipeHandlers(scope = document) {
       }
       if (!isHorizontal) return;
       event.preventDefault();
-      const allowsTomorrow = swipeMode === 'both';
-      dragOffset = Math.max(-128, Math.min(allowsTomorrow ? 128 : 0, deltaX));
+      const allowsComplete = ['complete', 'both'].includes(swipeMode);
+      const allowsTomorrow = ['tomorrow', 'both'].includes(swipeMode);
+      dragOffset = Math.max(allowsComplete ? -128 : 0, Math.min(allowsTomorrow ? 128 : 0, deltaX));
       if (Math.abs(dragOffset) > 8) shell.dataset.suppressCardClick = 'true';
       content.style.transform = `translate3d(${dragOffset}px, 0, 0)`;
       shell.classList.toggle('revealed', Math.abs(dragOffset) > 8);
@@ -2055,12 +2085,12 @@ function attachSwipeHandlers(scope = document) {
     shell.addEventListener('pointerup', () => {
       if (!isDragging) return;
 
-      if (dragOffset <= -92) {
+      if (dragOffset <= -92 && ['complete', 'both'].includes(swipeMode)) {
         commitSwipe('left', () => completeTask(taskId));
         return;
       }
-      if (dragOffset >= 92 && swipeMode === 'both') {
-        commitSwipe('right', () => addTaskToDay(taskId, 'tomorrow'));
+      if (dragOffset >= 92 && ['tomorrow', 'both'].includes(swipeMode)) {
+        commitSwipe('right', () => customId ? addCustomItemToTomorrow(customId) : addTaskToDay(taskId, 'tomorrow'));
         return;
       }
       resetPosition();
@@ -2072,7 +2102,9 @@ function attachSwipeHandlers(scope = document) {
       delete shell.dataset.suppressCardClick;
     });
     shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => commitSwipe('left', () => completeTask(taskId)));
-    shell.querySelector('[data-swipe-tomorrow]')?.addEventListener('click', () => commitSwipe('right', () => addTaskToDay(taskId, 'tomorrow')));
+    shell.querySelector('[data-swipe-tomorrow]')?.addEventListener('click', () => commitSwipe('right', () => (
+      customId ? addCustomItemToTomorrow(customId) : addTaskToDay(taskId, 'tomorrow')
+    )));
   });
 }
 
@@ -2457,6 +2489,18 @@ function ensureAppChrome() {
       </div>
     `);
   }
+  if (!document.getElementById('doorLockReminderModal')) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="doorLockReminderModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-card door-lock-reminder-card" role="dialog" aria-modal="true" aria-labelledby="doorLockReminderTitle">
+          <h2 id="doorLockReminderTitle">Confirm the doors are secure</h2>
+          <img src="./door-lock-guide.png" alt="Instructions for locking the upstairs and downstairs doors" />
+          <button type="button" class="primary-btn" data-confirm-door-lock-reminder>Confirmed</button>
+        </div>
+      </div>
+    `);
+  }
   if (!document.getElementById('taskMilestoneModal')) {
     document.body.insertAdjacentHTML('beforeend', `
       <div id="taskMilestoneModal" class="modal hidden" aria-hidden="true">
@@ -2542,6 +2586,25 @@ function closeClosingCompleteModal() {
   if (!modal) return;
   modal.classList.add('hidden');
   modal.setAttribute('aria-hidden', 'true');
+}
+
+function openDoorLockReminderModal(showClosingCompleteAfter = false) {
+  const modal = document.getElementById('doorLockReminderModal');
+  if (!modal) return;
+  modal.dataset.showClosingCompleteAfter = String(showClosingCompleteAfter);
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  modal.querySelector('[data-confirm-door-lock-reminder]')?.focus();
+}
+
+function closeDoorLockReminderModal() {
+  const modal = document.getElementById('doorLockReminderModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  const showClosingCompleteAfter = modal.dataset.showClosingCompleteAfter === 'true';
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  delete modal.dataset.showClosingCompleteAfter;
+  if (showClosingCompleteAfter) openClosingCompleteModal();
 }
 
 function todayStorageKey() {
@@ -2675,6 +2738,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('[data-open-task-modal]').forEach((button) => button.addEventListener('click', () => { resetForm(); openTaskModal(); }));
   document.querySelectorAll('[data-close-task-modal]').forEach((button) => button.addEventListener('click', closeTaskModal));
   document.querySelectorAll('[data-close-closing-complete]').forEach((button) => button.addEventListener('click', closeClosingCompleteModal));
+  document.querySelectorAll('[data-confirm-door-lock-reminder]').forEach((button) => button.addEventListener('click', closeDoorLockReminderModal));
   document.querySelectorAll('[data-close-task-milestone]').forEach((button) => button.addEventListener('click', closeTaskMilestoneModal));
   document.getElementById('deleteTaskButton')?.addEventListener('click', async () => {
     const taskId = document.getElementById('taskForm').elements.taskId.value;

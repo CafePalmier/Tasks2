@@ -9,6 +9,7 @@ const APP_SHELL = [
   './admin.html',
   './styles.css',
   './app.js',
+  './door-lock-guide.png',
   './tutorials.js',
   './supabase-config.js',
   './manifest.webmanifest',
