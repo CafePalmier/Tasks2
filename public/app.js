@@ -267,6 +267,11 @@ function normalizeChecklist(value) {
     .filter((item) => item.text);
 }
 
+function taskHasIncompleteChecklist(taskId) {
+  const checklist = normalizeChecklist(state.tasks.find((task) => task.id === taskId)?.checklist);
+  return checklist.length > 0 && checklist.some((item) => !item.checked);
+}
+
 function checklistFromText(value, existingChecklist = []) {
   const existing = normalizeChecklist(existingChecklist);
   const usedIndexes = new Set();
@@ -985,6 +990,12 @@ function renderTaskDetails(task) {
           `).join('')}
         </div>
         ${task.checklistImage ? `<img class="checklist-reference-image" src="${escapeHtml(task.checklistImage)}" alt="Checklist reference" />` : ''}
+        ${checklist.some((item) => !item.checked) ? `
+          <div class="checklist-confirm-panel" role="alert">
+            <p>Some checklist items are still unchecked.</p>
+            <button type="button" class="primary-btn checklist-confirm-all" data-confirm-checklist-task-id="${escapeHtml(task.id)}">Confirm all complete</button>
+          </div>
+        ` : ''}
       </div>
     </details>
   ` : '';
@@ -2193,6 +2204,23 @@ function attachSwipeHandlers(scope = document) {
       action();
     };
 
+    const attemptComplete = () => {
+      if (taskId && taskHasIncompleteChecklist(taskId)) {
+        resetPosition();
+        const checklistDetails = shell.querySelector('.task-checklist');
+        checklistDetails?.setAttribute('open', '');
+        shell.classList.add('checklist-confirm-required');
+        window.setTimeout(() => {
+          delete shell.dataset.suppressCardClick;
+          const confirmButton = shell.querySelector('[data-confirm-checklist-task-id]');
+          confirmButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          confirmButton?.focus({ preventScroll: true });
+        }, 0);
+        return;
+      }
+      commitSwipe('left', () => customId ? completeCustomDayItem(customId) : completeTask(taskId));
+    };
+
     shell.addEventListener('pointerdown', (event) => {
       if (event.target.closest('button, input, summary')) {
         return;
@@ -2233,7 +2261,7 @@ function attachSwipeHandlers(scope = document) {
       if (!isDragging) return;
 
       if (dragOffset <= -92 && ['complete', 'both'].includes(swipeMode)) {
-        commitSwipe('left', () => customId ? completeCustomDayItem(customId) : completeTask(taskId));
+        attemptComplete();
         return;
       }
       if (dragOffset >= 92 && ['tomorrow', 'both'].includes(swipeMode)) {
@@ -2248,9 +2276,7 @@ function attachSwipeHandlers(scope = document) {
       resetPosition();
       delete shell.dataset.suppressCardClick;
     });
-    shell.querySelector('[data-swipe-complete]')?.addEventListener('click', () => commitSwipe('left', () => (
-      customId ? completeCustomDayItem(customId) : completeTask(taskId)
-    )));
+    shell.querySelector('[data-swipe-complete]')?.addEventListener('click', attemptComplete);
     shell.querySelector('[data-swipe-tomorrow]')?.addEventListener('click', () => commitSwipe('right', () => (
       customId ? addCustomItemToTomorrow(customId) : addTaskToDay(taskId, 'tomorrow')
     )));
@@ -2521,6 +2547,33 @@ async function toggleChecklistItem(taskId, itemIndex, checked) {
     console.error('Failed to update checklist item', error);
     task.checklist = previousChecklist;
     await loadTaskData();
+  }
+}
+
+async function confirmChecklistAndComplete(taskId, button) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task) return;
+
+  const previousChecklist = normalizeChecklist(task.checklist);
+  if (!previousChecklist.length) {
+    await completeTask(taskId);
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Completing…';
+  task.checklist = previousChecklist.map((item) => ({ ...item, checked: true }));
+  saveLocalTasks(state.tasks);
+
+  try {
+    await api(`/api/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(task) });
+    await completeTask(taskId);
+  } catch (error) {
+    console.error('Failed to confirm checklist completion', error);
+    task.checklist = previousChecklist;
+    saveLocalTasks(state.tasks);
+    renderAll();
+    alert('Could not complete the checklist. Please try again.');
   }
 }
 
@@ -2932,6 +2985,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.addEventListener('click', (event) => {
+    const confirmChecklistButton = event.target.closest('[data-confirm-checklist-task-id]');
+    if (confirmChecklistButton) {
+      confirmChecklistAndComplete(confirmChecklistButton.dataset.confirmChecklistTaskId, confirmChecklistButton);
+      return;
+    }
     const addButton = event.target.closest('[data-add-checklist-item]');
     if (addButton) addChecklistEditorItem(addButton.closest('form'));
     const removeButton = event.target.closest('[data-remove-checklist-item]');

@@ -1413,6 +1413,33 @@ h1 {
   margin-top: 0.25rem;
 }
 
+.checklist-confirm-panel {
+  display: none;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.65rem;
+  border: 1px solid rgba(171, 101, 54, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 244, 220, 0.92);
+}
+
+.task-swipe-shell.checklist-confirm-required .checklist-confirm-panel {
+  display: flex;
+}
+
+.checklist-confirm-panel p {
+  margin: 0;
+  color: #704522;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.checklist-confirm-all {
+  flex: 0 0 auto;
+}
+
 .checklist-reference-image {
   width: 100%;
   max-width: 13rem;
@@ -2327,6 +2354,11 @@ textarea {
   .task-checklist-content {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.55rem;
+  }
+
+  .checklist-confirm-panel {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .checklist-reference-image {
