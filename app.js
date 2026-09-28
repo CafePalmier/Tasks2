@@ -1019,10 +1019,10 @@ function renderTaskDetails(task) {
       <div class="task-checklist-content">
         <div class="checklist-items">
           ${checklist.map((item, index) => `
-            <label class="checklist-item ${item.checked ? 'is-checked' : ''}">
-              <input type="checkbox" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" ${item.checked ? 'checked' : ''} />
+            <button type="button" class="checklist-item ${item.checked ? 'is-checked' : ''}" role="checkbox" aria-checked="${item.checked}" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" data-checklist-checked="${item.checked}" aria-label="Mark ${escapeHtml(item.text)} ${item.checked ? 'incomplete' : 'complete'}">
+              <span class="checklist-toggle" aria-hidden="true"></span>
               <span>${escapeHtml(item.text)}</span>
-            </label>
+            </button>
           `).join('')}
         </div>
         ${task.checklistImage ? `<img class="checklist-reference-image" src="${escapeHtml(task.checklistImage)}" alt="Checklist reference" />` : ''}
@@ -3042,14 +3042,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.addEventListener('click', (event) => {
-    const checklistInput = event.target.closest('[data-checklist-task-id]');
-    if (checklistInput) {
+    const checklistControl = event.target.closest('[data-checklist-task-id]');
+    if (checklistControl) {
       event.stopPropagation();
-      checklistInput.closest('.checklist-item')?.classList.toggle('is-checked', checklistInput.checked);
+      const checked = checklistControl.dataset.checklistChecked !== 'true';
+      checklistControl.dataset.checklistChecked = String(checked);
+      checklistControl.setAttribute('aria-checked', String(checked));
+      checklistControl.closest('.checklist-item')?.classList.toggle('is-checked', checked);
       toggleChecklistItem(
-        checklistInput.dataset.checklistTaskId,
-        Number(checklistInput.dataset.checklistIndex),
-        checklistInput.checked
+        checklistControl.dataset.checklistTaskId,
+        Number(checklistControl.dataset.checklistIndex),
+        checked
       );
       return;
     }
