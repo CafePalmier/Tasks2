@@ -1020,11 +1020,10 @@ function renderTaskDetails(task) {
       <div class="task-checklist-content">
         <div class="checklist-items">
           ${checklist.map((item, index) => `
-            <label class="checklist-item ${item.checked ? 'is-checked' : ''}">
-              <input type="checkbox" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" ${item.checked ? 'checked' : ''} />
+            <button type="button" class="checklist-item ${item.checked ? 'is-checked' : ''}" role="checkbox" aria-checked="${item.checked ? 'true' : 'false'}" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}">
               <span class="checklist-box" aria-hidden="true"></span>
               <span class="checklist-text">${escapeHtml(item.text)}</span>
-            </label>
+            </button>
           `).join('')}
         </div>
         ${task.checklistImage ? `<img class="checklist-reference-image" src="${escapeHtml(task.checklistImage)}" alt="Checklist reference" />` : ''}
@@ -2223,22 +2222,24 @@ function initializeTaskCardDetails() {
   });
 }
 
-function handleChecklistControlChange(event) {
+function handleChecklistControlClick(event) {
   const checklistControl = event.target.closest('[data-checklist-task-id]');
   if (!checklistControl) return;
   event.stopPropagation();
-  checklistControl.closest('.checklist-item')?.classList.toggle('is-checked', checklistControl.checked);
+  const checked = checklistControl.getAttribute('aria-checked') !== 'true';
+  checklistControl.setAttribute('aria-checked', String(checked));
+  checklistControl.classList.toggle('is-checked', checked);
   toggleChecklistItem(
     checklistControl.dataset.checklistTaskId,
     Number(checklistControl.dataset.checklistIndex),
-    checklistControl.checked
+    checked
   );
 }
 
 function bindChecklistControls() {
   if (document.documentElement.dataset.checklistControlsBound === 'true') return;
   document.documentElement.dataset.checklistControlsBound = 'true';
-  document.addEventListener('change', handleChecklistControlChange);
+  document.addEventListener('click', handleChecklistControlClick);
 }
 
 function attachSwipeHandlers(scope = document) {

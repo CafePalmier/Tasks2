@@ -1502,24 +1502,20 @@ h1 {
   padding: 0.24rem 0.38rem;
   border-radius: 7px;
   color: var(--ink);
+  border: 0;
+  background: transparent;
+  font-family: inherit;
   font-size: 0.8rem;
   font-weight: 550;
   text-align: left;
   cursor: pointer;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: background-color 150ms ease, color 150ms ease;
 }
 
 .checklist-item:hover {
   background: rgba(55,100,56,0.08);
-}
-
-.checklist-item input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
 }
 
 .checklist-box {
@@ -1535,13 +1531,17 @@ h1 {
   transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
 }
 
-.checklist-item input:checked + .checklist-box {
+.checklist-item:active .checklist-box {
+  transform: scale(0.94);
+}
+
+.checklist-item[aria-checked="true"] .checklist-box {
   border-color: var(--forest);
   background: var(--forest);
   transform: scale(1.03);
 }
 
-.checklist-item input:checked + .checklist-box::after {
+.checklist-item[aria-checked="true"] .checklist-box::after {
   content: '✓';
   color: var(--white);
   font-size: 0.76rem;
@@ -1549,7 +1549,7 @@ h1 {
   line-height: 1;
 }
 
-.checklist-item input:focus-visible + .checklist-box {
+.checklist-item:focus-visible .checklist-box {
   outline: 3px solid rgba(55,100,56,0.24);
   outline-offset: 2px;
 }
