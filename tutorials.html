@@ -33,6 +33,12 @@
         <div><p class="eyebrow">Learn at your own pace</p><h1>Tutorials</h1><p>Quick video guides for everyday tasks and processes.</p></div>
         <button class="primary-btn tutorial-add-button" type="button" data-open-tutorial-modal><span>＋</span> Add tutorial</button>
       </section>
+      <section class="tutorial-search" aria-label="Search tutorials">
+        <div class="quick-day-combobox tutorial-search-combobox">
+          <input id="tutorialSearch" type="search" placeholder="Search tutorials…" aria-label="Search tutorials" aria-autocomplete="list" aria-controls="tutorialSearchSuggestions" autocomplete="off" />
+          <div id="tutorialSearchSuggestions" class="quick-day-suggestions" role="listbox" hidden></div>
+        </div>
+      </section>
       <section id="tutorialGrid" class="tutorial-grid" aria-live="polite">
         <div class="tutorial-empty"><span aria-hidden="true">▶</span><h2>No tutorials yet</h2><p>Add your first video guide to get started.</p></div>
       </section>

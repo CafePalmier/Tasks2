@@ -117,6 +117,16 @@ function saveTasks(tasks) {
   fs.writeFileSync(path.join(ROOT_DIR, 'tasks.json'), payload, 'utf8');
 }
 
+function normalizeCompletionHistory(value, lastCompletedAt = null) {
+  const timestamps = Array.isArray(value) ? value : [];
+  return [...new Set([...timestamps, lastCompletedAt]
+    .filter(Boolean)
+    .map((timestamp) => new Date(timestamp))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .map((date) => date.toISOString()))]
+    .sort((first, second) => new Date(second) - new Date(first));
+}
+
 function normalizeTask(task, idx) {
   const category = task.category || 'general';
   return {
@@ -137,6 +147,7 @@ function normalizeTask(task, idx) {
     urgentOn: Array.isArray(task.urgentOn) ? task.urgentOn.map((day) => String(day).trim()) : [],
     isActive: task.isActive !== false,
     lastCompletedAt: task.lastCompletedAt || null,
+    completionHistory: normalizeCompletionHistory(task.completionHistory, task.lastCompletedAt),
     area: task.area || 'General',
     order: task.order ?? idx + 1
   };
@@ -374,6 +385,7 @@ const server = http.createServer(async (req, res) => {
         const segments = pathname.split('/').filter(Boolean);
         const id = segments[2];
         const action = segments[3];
+        const body = await readBody(req);
         const tasks = loadTasks();
         const taskIndex = tasks.findIndex((task) => task.id === id);
 
@@ -382,7 +394,9 @@ const server = http.createServer(async (req, res) => {
         }
 
         if (action === 'complete') {
-          tasks[taskIndex].lastCompletedAt = new Date().toISOString();
+          const completedAt = body.completedAt || new Date().toISOString();
+          tasks[taskIndex].lastCompletedAt = completedAt;
+          tasks[taskIndex].completionHistory = normalizeCompletionHistory(tasks[taskIndex].completionHistory, completedAt);
           saveTasks(tasks);
           return sendJson(res, 200, { task: tasks[taskIndex] });
         }

@@ -2,6 +2,7 @@ const TUTORIAL_DB_NAME = 'cafe-palmier-tutorials';
 const TUTORIAL_STORE_NAME = 'videos';
 const TUTORIAL_BUCKET = 'cafe-tutorial-videos';
 const supabaseConfig = window.SUPABASE_CONFIG;
+const tutorialState = { items: [], search: '' };
 
 function openLocalTutorialDatabase() {
   return new Promise((resolve, reject) => {
@@ -145,41 +146,102 @@ async function migrateDeviceTutorials() {
   }
 }
 
+function matchingTutorials(query = tutorialState.search) {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return normalizedQuery
+    ? tutorialState.items.filter((tutorial) => tutorial.title.toLocaleLowerCase().includes(normalizedQuery))
+    : tutorialState.items;
+}
+
+function renderTutorialGrid() {
+  const grid = document.getElementById('tutorialGrid');
+  const tutorials = matchingTutorials();
+  if (!tutorialState.items.length) {
+    grid.innerHTML = '<div class="tutorial-empty"><span aria-hidden="true">▶</span><h2>No tutorials yet</h2><p>Add your first video guide to get started.</p></div>';
+    return;
+  }
+  if (!tutorials.length) {
+    grid.innerHTML = `<div class="tutorial-empty"><span aria-hidden="true">⌕</span><h2>No matching tutorials</h2><p>Nothing shares “${escapeTutorialText(tutorialState.search.trim())}” yet.</p></div>`;
+    return;
+  }
+  grid.innerHTML = tutorials.map((tutorial) => `<article class="tutorial-card" tabindex="0" role="group" aria-label="Play ${escapeTutorialText(tutorial.title)} full screen">
+    <div class="tutorial-video-wrap"><video src="${publicVideoUrl(tutorial.storage_path)}#t=0.1" controls preload="metadata" muted playsinline aria-label="${escapeTutorialText(tutorial.title)}"></video><span class="tutorial-play-hint" aria-hidden="true">▶</span></div>
+    <div class="tutorial-card-copy"><h2>${escapeTutorialText(tutorial.title)}</h2><button class="icon-btn tutorial-delete" type="button" data-delete-tutorial="${escapeTutorialText(tutorial.id)}" aria-label="Delete ${escapeTutorialText(tutorial.title)}">Delete</button></div>
+  </article>`).join('');
+  grid.querySelectorAll('.tutorial-card').forEach((card) => {
+    const video = card.querySelector('video');
+    prepareTutorialPreview(video);
+    card.addEventListener('click', () => playTutorialFullscreen(card));
+    card.addEventListener('keydown', (event) => {
+      if (event.target !== card || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      playTutorialFullscreen(card);
+    });
+  });
+  grid.querySelectorAll('[data-delete-tutorial]').forEach((button) => button.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    const tutorial = tutorialState.items.find((item) => item.id === button.dataset.deleteTutorial);
+    if (!tutorial || !window.confirm('Delete this tutorial for everyone?')) return;
+    button.disabled = true;
+    try {
+      await deleteSharedTutorial(tutorial);
+      await renderTutorials();
+    } catch (error) {
+      button.disabled = false;
+      window.alert('This tutorial could not be deleted. Please try again.');
+    }
+  }));
+}
+
+function renderTutorialSuggestions() {
+  const suggestions = document.getElementById('tutorialSearchSuggestions');
+  const matches = tutorialState.search.trim() ? matchingTutorials().slice(0, 8) : [];
+  suggestions.hidden = !matches.length;
+  suggestions.innerHTML = matches.map((tutorial) => `
+    <button type="button" class="quick-day-suggestion" role="option" data-tutorial-search-id="${escapeTutorialText(tutorial.id)}">
+      <span>${escapeTutorialText(tutorial.title)}</span>
+      <span class="meta-pill category-pill">Tutorial</span>
+    </button>
+  `).join('');
+  suggestions.querySelectorAll('[data-tutorial-search-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const tutorial = tutorialState.items.find((item) => item.id === button.dataset.tutorialSearchId);
+      if (!tutorial) return;
+      const input = document.getElementById('tutorialSearch');
+      tutorialState.search = tutorial.title;
+      input.value = tutorial.title;
+      suggestions.hidden = true;
+      renderTutorialGrid();
+      document.querySelector('.tutorial-card')?.focus();
+    });
+  });
+}
+
+function bindTutorialSearch() {
+  const input = document.getElementById('tutorialSearch');
+  const suggestions = document.getElementById('tutorialSearchSuggestions');
+  input.addEventListener('input', () => {
+    tutorialState.search = input.value;
+    renderTutorialGrid();
+    renderTutorialSuggestions();
+  });
+  input.addEventListener('focus', renderTutorialSuggestions);
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') suggestions.hidden = true;
+  });
+  input.closest('.tutorial-search-combobox').addEventListener('focusout', () => {
+    window.setTimeout(() => {
+      if (!input.closest('.tutorial-search-combobox').contains(document.activeElement)) suggestions.hidden = true;
+    }, 0);
+  });
+}
+
 async function renderTutorials() {
   const grid = document.getElementById('tutorialGrid');
   try {
-    const tutorials = await listSharedTutorials();
-    if (!tutorials.length) {
-      grid.innerHTML = '<div class="tutorial-empty"><span aria-hidden="true">▶</span><h2>No tutorials yet</h2><p>Add your first video guide to get started.</p></div>';
-      return;
-    }
-    grid.innerHTML = tutorials.map((tutorial) => `<article class="tutorial-card" tabindex="0" role="group" aria-label="Play ${escapeTutorialText(tutorial.title)} full screen">
-      <div class="tutorial-video-wrap"><video src="${publicVideoUrl(tutorial.storage_path)}#t=0.1" controls preload="metadata" muted playsinline aria-label="${escapeTutorialText(tutorial.title)}"></video><span class="tutorial-play-hint" aria-hidden="true">▶</span></div>
-      <div class="tutorial-card-copy"><h2>${escapeTutorialText(tutorial.title)}</h2><button class="icon-btn tutorial-delete" type="button" data-delete-tutorial="${escapeTutorialText(tutorial.id)}" aria-label="Delete ${escapeTutorialText(tutorial.title)}">Delete</button></div>
-    </article>`).join('');
-    grid.querySelectorAll('.tutorial-card').forEach((card) => {
-      const video = card.querySelector('video');
-      prepareTutorialPreview(video);
-      card.addEventListener('click', () => playTutorialFullscreen(card));
-      card.addEventListener('keydown', (event) => {
-        if (event.target !== card || !['Enter', ' '].includes(event.key)) return;
-        event.preventDefault();
-        playTutorialFullscreen(card);
-      });
-    });
-    grid.querySelectorAll('[data-delete-tutorial]').forEach((button) => button.addEventListener('click', async (event) => {
-      event.stopPropagation();
-      const tutorial = tutorials.find((item) => item.id === button.dataset.deleteTutorial);
-      if (!tutorial || !window.confirm('Delete this tutorial for everyone?')) return;
-      button.disabled = true;
-      try {
-        await deleteSharedTutorial(tutorial);
-        await renderTutorials();
-      } catch (error) {
-        button.disabled = false;
-        window.alert('This tutorial could not be deleted. Please try again.');
-      }
-    }));
+    tutorialState.items = await listSharedTutorials();
+    renderTutorialGrid();
+    renderTutorialSuggestions();
   } catch (error) {
     console.error('Could not load shared tutorials', error);
     grid.innerHTML = '<div class="tutorial-empty"><h2>Shared tutorials need to be connected</h2><p>Run the latest Supabase setup, then refresh this page.</p></div>';
@@ -195,6 +257,7 @@ function setTutorialModal(open) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('tutorialForm');
+  bindTutorialSearch();
   document.querySelector('[data-open-tutorial-modal]').addEventListener('click', () => setTutorialModal(true));
   document.querySelectorAll('[data-close-tutorial-modal]').forEach((button) => button.addEventListener('click', () => setTutorialModal(false)));
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setTutorialModal(false); });

@@ -6,7 +6,7 @@ const SEASON_OVERRIDE_DATE_KEY = 'cafe-palmier-season-override-date';
 const COMPLETED_ONE_OFFS_KEY = 'cafe-palmier-completed-one-offs';
 const COMPLETED_SORT_KEY = 'cafe-palmier-completed-sort';
 const STATIC_TASKS_PATH = './tasks.json';
-const TASK_DATA_VERSION = 5;
+const TASK_DATA_VERSION = 6;
 const CELEBRATION_PROGRESS_KEY = 'cafe-palmier-five-task-celebration';
 
 const state = {
@@ -267,6 +267,16 @@ function normalizeChecklist(value) {
     .filter((item) => item.text);
 }
 
+function normalizeCompletionHistory(value, lastCompletedAt = null) {
+  const timestamps = Array.isArray(value) ? value : [];
+  return [...new Set([...timestamps, lastCompletedAt]
+    .filter(Boolean)
+    .map((timestamp) => new Date(timestamp))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .map((date) => date.toISOString()))]
+    .sort((first, second) => new Date(second) - new Date(first));
+}
+
 function taskHasIncompleteChecklist(taskId) {
   const checklist = normalizeChecklist(state.tasks.find((task) => task.id === taskId)?.checklist);
   return checklist.length > 0 && checklist.some((item) => !item.checked);
@@ -316,6 +326,16 @@ function readStoredChecklistImage(values) {
   return value ? value.slice('__checklistImage:'.length) : '';
 }
 
+function readStoredCompletionHistory(values, lastCompletedAt = null) {
+  const value = values.find((item) => typeof item === 'string' && item.startsWith('__completionHistory:'));
+  if (!value) return normalizeCompletionHistory([], lastCompletedAt);
+  try {
+    return normalizeCompletionHistory(JSON.parse(decodeURIComponent(value.slice('__completionHistory:'.length))), lastCompletedAt);
+  } catch (error) {
+    return normalizeCompletionHistory([], lastCompletedAt);
+  }
+}
+
 function categoryTagLabel(category) {
   const icon = categoryTagIcons[category];
   return `${icon ? `${icon} ` : ''}${categoryLabels[category] || category}`;
@@ -351,7 +371,11 @@ function getLocalTasks(fallbackTasks = []) {
     const savedById = new Map(savedTasks.map((task) => [task.id, task]));
     const refreshedTasks = fallbackTasks.map((task) => ({
       ...task,
-      lastCompletedAt: savedById.get(task.id)?.lastCompletedAt || task.lastCompletedAt
+      lastCompletedAt: savedById.get(task.id)?.lastCompletedAt || task.lastCompletedAt,
+      completionHistory: normalizeCompletionHistory(
+        savedById.get(task.id)?.completionHistory || task.completionHistory,
+        savedById.get(task.id)?.lastCompletedAt || task.lastCompletedAt
+      )
     }));
     const newLocalTasks = savedTasks.filter((task) => task.period !== 'daily' && !fallbackTasks.some((item) => item.id === task.id));
     const mergedTasks = [...refreshedTasks, ...newLocalTasks];
@@ -389,6 +413,7 @@ function localTaskApi(path, options = {}) {
       urgentOn: Array.isArray(body.urgentOn) ? body.urgentOn : [],
       isActive: true,
       lastCompletedAt: null,
+      completionHistory: [],
       area: body.area || 'General',
       order: Math.max(0, ...tasks.map((item) => Number(item.order) || 0)) + 1
     };
@@ -409,7 +434,9 @@ function localTaskApi(path, options = {}) {
   } else if (method === 'DELETE') {
     tasks = tasks.filter((task) => task.id !== taskId);
   } else if (method === 'POST' && action === 'complete') {
-    tasks[taskIndex].lastCompletedAt = new Date().toISOString();
+    const completedAt = body.completedAt || tasks[taskIndex].lastCompletedAt || new Date().toISOString();
+    tasks[taskIndex].lastCompletedAt = completedAt;
+    tasks[taskIndex].completionHistory = normalizeCompletionHistory(tasks[taskIndex].completionHistory, completedAt);
   } else if (method === 'POST' && action === 'reopen') {
     tasks[taskIndex].lastCompletedAt = null;
     tasks[taskIndex].checklist = uncheckedChecklist(tasks[taskIndex].checklist);
@@ -429,9 +456,10 @@ function fromDatabaseTask(task) {
   return {
     ...task,
     timeTag: task.time_tag || '',
-    urgentOn: urgentValues.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:'))),
+    urgentOn: urgentValues.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:') && !value.startsWith('__completionHistory:'))),
     isActive: task.is_active !== false,
     lastCompletedAt: task.last_completed_at || null,
+    completionHistory: readStoredCompletionHistory(urgentValues, task.last_completed_at),
     order: task.task_order ?? 0,
     checklist: readStoredChecklist(urgentValues) ?? normalizeChecklist(task.checklist),
     checklistImage: readStoredChecklistImage(urgentValues),
@@ -448,10 +476,11 @@ function toDatabaseTask(task) {
     description: task.description || '',
     time_tag: task.timeTag || '',
     urgent_on: [
-      ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:'))) : []),
+      ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:') && !value.startsWith('__completionHistory:'))) : []),
       `__season:${normalizeSeason(task.season)}`,
       `__checklist:${encodeURIComponent(JSON.stringify(normalizeChecklist(task.checklist)))}`,
-      `__checklistImage:${typeof task.checklistImage === 'string' ? task.checklistImage : ''}`
+      `__checklistImage:${typeof task.checklistImage === 'string' ? task.checklistImage : ''}`,
+      `__completionHistory:${encodeURIComponent(JSON.stringify(normalizeCompletionHistory(task.completionHistory, task.lastCompletedAt)))}`
     ],
     is_active: task.isActive !== false,
     last_completed_at: task.lastCompletedAt || null,
@@ -495,6 +524,7 @@ function supabaseTaskApi(path, options = {}) {
       period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || 'weekly'),
       isActive: true,
       lastCompletedAt: null,
+      completionHistory: [],
       area: body.area || 'General',
       order: Math.max(0, ...state.tasks.map((item) => Number(item.order) || 0)) + 1
     };
@@ -512,7 +542,12 @@ function supabaseTaskApi(path, options = {}) {
   if (method === 'PUT') {
     nextTask = { ...existing, ...body, period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || existing.period) };
   } else if (method === 'POST' && action === 'complete') {
-    nextTask = { ...existing, lastCompletedAt: new Date().toISOString() };
+    const completedAt = body.completedAt || existing.lastCompletedAt || new Date().toISOString();
+    nextTask = {
+      ...existing,
+      lastCompletedAt: completedAt,
+      completionHistory: normalizeCompletionHistory(existing.completionHistory, completedAt)
+    };
   } else if (method === 'POST' && action === 'reopen') {
     nextTask = { ...existing, lastCompletedAt: null, checklist: uncheckedChecklist(existing.checklist) };
   } else {
@@ -678,6 +713,7 @@ function buildTaskPayload(tasks, now = new Date()) {
   const sortedTasks = tasks.map((task) => ({
     ...task,
     checklist: checklistNeedsCycleReset(task, now) ? uncheckedChecklist(task.checklist) : normalizeChecklist(task.checklist),
+    completionHistory: normalizeCompletionHistory(task.completionHistory, task.lastCompletedAt),
     season: normalizeSeason(task.season)
   })).sort((a, b) => {
     const byPeriod = (taskPeriods.indexOf(a.period) >= 0 ? taskPeriods.indexOf(a.period) : 99) - (taskPeriods.indexOf(b.period) >= 0 ? taskPeriods.indexOf(b.period) : 99);
@@ -1080,18 +1116,6 @@ function renderGroups() {
   const todayTaskIds = new Set(getTodayListState().taskIds);
   const tomorrowTaskIds = new Set(getDayListsState().tomorrow.taskIds);
 
-  if (!homeTasks.length) {
-    root.innerHTML = `
-      <div class="panel-card">
-        <div class="list-title-row">
-          <div class="available-title"><h2>Available Tasks</h2><span class="group-badge">0 open</span></div>
-        </div>
-        <div class="empty-state">No available tasks right now. Everything is complete for this cycle.</div>
-      </div>
-    `;
-    return;
-  }
-
   const renderHomeTask = (task) => `
     <div class="task-swipe-shell" data-task-id="${task.id}" data-swipe-mode="both">
       <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
@@ -1153,7 +1177,11 @@ function renderGroups() {
           </section>
         `;
       }).join('')}</div>`;
-  const homeTaskMarkup = `<div class="available-home-groups">${urgentMarkup}${groupedTaskMarkup}</div>`;
+  const homeTaskMarkup = homeTasks.length
+    ? `<div class="available-home-groups">${urgentMarkup}${groupedTaskMarkup}</div>`
+    : `<div class="empty-state">${state.availableSearch.trim()
+      ? `No available tasks match “${escapeHtml(state.availableSearch.trim())}”.`
+      : 'No available tasks right now. Everything is complete for this cycle.'}</div>`;
 
   root.innerHTML = `
     <div class="panel-card">
@@ -1464,15 +1492,36 @@ function closeCompletedModal() {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+function getTaskCompletionEvents(task, now = new Date()) {
+  const { start, end } = getPeriodWindow(task.period, now);
+  return normalizeCompletionHistory(task.completionHistory, task.lastCompletedAt)
+    .filter((completedAt) => {
+      const date = new Date(completedAt);
+      return date >= start && date <= end;
+    })
+    .map((completedAt) => ({
+      ...task,
+      id: `${task.id}--${completedAt}`,
+      taskId: task.id,
+      completionType: 'task',
+      completedAt,
+      canReopen: Boolean(task.lastCompletedAt)
+        && new Date(task.lastCompletedAt).toISOString() === completedAt
+        && isCompletedInCurrentCycle(task, now)
+    }));
+}
+
 function renderCompleted() {
   const root = document.getElementById('completedList');
   if (!root) return;
+  const now = new Date();
   const cycleStart = new Date(new Date().getFullYear(), 0, 1);
-  const completedTasks = state.completed
+  const completedTasks = state.tasks
+    .filter((task) => task.isActive !== false)
     .filter((task) => state.completedFilter
       ? task[state.completedFilter.type] === state.completedFilter.value
       : !shiftOnlyCategories.includes(task.category))
-    .map((task) => ({ ...task, completionType: 'task', completedAt: task.lastCompletedAt }));
+    .flatMap((task) => getTaskCompletionEvents(task, now));
   const completedOneOffs = state.completedFilter
     ? []
     : state.completedOneOffs
@@ -1555,7 +1604,7 @@ function renderCompletedDateGroups(items, showType) {
         <time datetime="${escapeHtml(item.completedAt || '')}">Completed ${formatCompletedAt(item.completedAt)}</time>
         ${showType ? `<span class="meta-pill period-pill ${item.period}">${item.period === 'one-off' ? 'One-off' : periodLabels[item.period]}</span>` : ''}
       </div>
-      ${item.completionType === 'task' ? `<button class="icon-btn" data-reopen-id="${item.id}">Reopen</button>` : ''}
+      ${item.canReopen ? `<button class="icon-btn" data-reopen-id="${item.taskId}">Reopen</button>` : ''}
     </li>
       `).join('')}</ul>
     </section>
@@ -1637,7 +1686,9 @@ function renderPeriodProgress() {
   if (!root) return;
   const now = new Date();
   const cycleStart = new Date(now.getFullYear(), 0, 1);
-  const completedCycleCount = state.completed.filter((task) => !shiftOnlyCategories.includes(task.category)).length
+  const completedCycleCount = state.tasks
+    .filter((task) => task.isActive !== false && !shiftOnlyCategories.includes(task.category))
+    .flatMap((task) => getTaskCompletionEvents(task, now)).length
     + state.completedOneOffs.filter((item) => new Date(item.completedAt) >= cycleStart).length;
   const count = document.getElementById('completedCycleCount');
   if (count) count.textContent = String(completedCycleCount);
@@ -1974,12 +2025,15 @@ async function loadTaskData() {
 async function completeTask(taskId) {
   const task = state.tasks.find((item) => item.id === taskId);
   const previousCompletedAt = task?.lastCompletedAt || null;
+  const previousCompletionHistory = normalizeCompletionHistory(task?.completionHistory, previousCompletedAt);
+  const completedAt = new Date().toISOString();
   const countsTowardMilestone = ['home', 'today'].includes(state.page)
     && task
     && !shiftOnlyCategories.includes(task.category);
   try {
     if (task) {
-      task.lastCompletedAt = new Date().toISOString();
+      task.lastCompletedAt = completedAt;
+      task.completionHistory = normalizeCompletionHistory(task.completionHistory, completedAt);
       const payload = buildTaskPayload(state.tasks, new Date());
       state.tasks = payload.tasks;
       state.available = payload.available;
@@ -1997,7 +2051,7 @@ async function completeTask(taskId) {
       && belongsOnClosingList(task)
       && !state.available.some(belongsOnClosingList);
     const needsDoorLockReminder = state.page === 'closing' && isDoorLockReminderTask(task);
-    await api(`/api/tasks/${taskId}/complete`, { method: 'POST' });
+    await api(`/api/tasks/${taskId}/complete`, { method: 'POST', body: JSON.stringify({ completedAt }) });
     if (needsDoorLockReminder) {
       openDoorLockReminderModal(finishedClosingList);
     } else if (finishedClosingList) {
@@ -2008,7 +2062,9 @@ async function completeTask(taskId) {
   } catch (error) {
     console.error('Failed to complete task', error);
     if (task) {
-      task.lastCompletedAt = previousCompletedAt;
+      state.tasks = state.tasks.map((item) => item.id === taskId
+        ? { ...item, lastCompletedAt: previousCompletedAt, completionHistory: previousCompletionHistory }
+        : item);
       saveLocalTasks(state.tasks);
     }
     await loadTaskData();
@@ -2690,9 +2746,10 @@ function ensureAppChrome() {
     `);
   }
   if (!document.getElementById('completedModal')) {
-    document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card"><div class="modal-header"><h2>Completed this cycle</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><div id="completedList" class="modal-list"></div></div></div>');
+    document.body.insertAdjacentHTML('beforeend', '<div id="completedModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" data-close-completed></div><div class="modal-card completed-modal-card"><div class="modal-header"><h2>Completed this cycle</h2><button type="button" class="icon-btn" data-close-completed>Close</button></div><div id="completedList" class="modal-list"></div></div></div>');
   }
   const completedModal = document.getElementById('completedModal');
+  completedModal?.querySelector('.modal-card')?.classList.add('completed-modal-card');
   if (completedModal && !completedModal.querySelector('.completed-modal-controls')) {
     completedModal.querySelector('.modal-header')?.insertAdjacentHTML('afterend', `
       <div class="completed-modal-controls">
