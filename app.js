@@ -2220,8 +2220,32 @@ function initializeTaskCardDetails() {
   });
 }
 
+function handleChecklistControlClick(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const checklistControl = event.currentTarget;
+  const checked = checklistControl.dataset.checklistChecked !== 'true';
+  checklistControl.dataset.checklistChecked = String(checked);
+  checklistControl.setAttribute('aria-checked', String(checked));
+  checklistControl.classList.toggle('is-checked', checked);
+  toggleChecklistItem(
+    checklistControl.dataset.checklistTaskId,
+    Number(checklistControl.dataset.checklistIndex),
+    checked
+  );
+}
+
+function bindChecklistControls(scope = document) {
+  scope.querySelectorAll('[data-checklist-task-id]').forEach((control) => {
+    if (control.dataset.checklistBound === 'true') return;
+    control.dataset.checklistBound = 'true';
+    control.addEventListener('click', handleChecklistControlClick);
+  });
+}
+
 function attachSwipeHandlers(scope = document) {
   scope.querySelectorAll('.task-swipe-shell').forEach((shell) => {
+    bindChecklistControls(shell);
     if (shell.dataset.swipeReady === 'true') return;
     shell.dataset.swipeReady = 'true';
     const content = shell.querySelector('.task-swipe-content');
@@ -3042,20 +3066,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.addEventListener('click', (event) => {
-    const checklistControl = event.target.closest('[data-checklist-task-id]');
-    if (checklistControl) {
-      event.stopPropagation();
-      const checked = checklistControl.dataset.checklistChecked !== 'true';
-      checklistControl.dataset.checklistChecked = String(checked);
-      checklistControl.setAttribute('aria-checked', String(checked));
-      checklistControl.closest('.checklist-item')?.classList.toggle('is-checked', checked);
-      toggleChecklistItem(
-        checklistControl.dataset.checklistTaskId,
-        Number(checklistControl.dataset.checklistIndex),
-        checked
-      );
-      return;
-    }
     const confirmChecklistButton = event.target.closest('[data-confirm-checklist-task-id]');
     if (confirmChecklistButton) {
       confirmChecklistAndComplete(confirmChecklistButton.dataset.confirmChecklistTaskId, confirmChecklistButton);
