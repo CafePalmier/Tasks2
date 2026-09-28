@@ -2278,7 +2278,7 @@ function attachSwipeHandlers(scope = document) {
     };
 
     shell.addEventListener('pointerdown', (event) => {
-      if (event.target.closest('button, input, summary')) {
+      if (event.target.closest('button, input, summary, label, .task-checklist')) {
         return;
       }
 
@@ -3042,6 +3042,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.addEventListener('click', (event) => {
+    const checklistInput = event.target.closest('[data-checklist-task-id]');
+    if (checklistInput) {
+      event.stopPropagation();
+      checklistInput.closest('.checklist-item')?.classList.toggle('is-checked', checklistInput.checked);
+      toggleChecklistItem(
+        checklistInput.dataset.checklistTaskId,
+        Number(checklistInput.dataset.checklistIndex),
+        checklistInput.checked
+      );
+      return;
+    }
     const confirmChecklistButton = event.target.closest('[data-confirm-checklist-task-id]');
     if (confirmChecklistButton) {
       confirmChecklistAndComplete(confirmChecklistButton.dataset.confirmChecklistTaskId, confirmChecklistButton);
@@ -3061,8 +3072,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.addEventListener('change', (event) => {
-    const input = event.target.closest('[data-checklist-task-id]');
-    if (input) toggleChecklistItem(input.dataset.checklistTaskId, Number(input.dataset.checklistIndex), input.checked);
     const imageInput = event.target.closest('[data-checklist-image-input]');
     if (imageInput?.files?.[0]) {
       resizeChecklistImage(imageInput.files[0])

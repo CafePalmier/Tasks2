@@ -1496,12 +1496,14 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  min-height: 2.25rem;
   padding: 0.24rem 0.38rem;
   border-radius: 7px;
   color: var(--ink);
   font-size: 0.8rem;
   font-weight: 550;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .checklist-item:hover {
@@ -1521,6 +1523,7 @@ h1 {
   border: 1.5px solid rgba(55,100,56,0.55);
   border-radius: 5px;
   background: var(--white);
+  cursor: pointer;
 }
 
 .checklist-item input:checked {
@@ -2407,6 +2410,10 @@ textarea {
   .task-checklist-content {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.55rem;
+  }
+
+  .checklist-item {
+    min-height: 2.75rem;
   }
 
   .checklist-confirm-panel {
