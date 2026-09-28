@@ -1019,10 +1019,10 @@ function renderTaskDetails(task) {
       <div class="task-checklist-content">
         <div class="checklist-items">
           ${checklist.map((item, index) => `
-            <button type="button" class="checklist-item ${item.checked ? 'is-checked' : ''}" role="checkbox" aria-checked="${item.checked}" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" data-checklist-checked="${item.checked}" aria-label="Mark ${escapeHtml(item.text)} ${item.checked ? 'incomplete' : 'complete'}">
-              <span class="checklist-toggle" aria-hidden="true"></span>
+            <label class="checklist-item ${item.checked ? 'is-checked' : ''}">
+              <input type="checkbox" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" ${item.checked ? 'checked' : ''} />
               <span>${escapeHtml(item.text)}</span>
-            </button>
+            </label>
           `).join('')}
         </div>
         ${task.checklistImage ? `<img class="checklist-reference-image" src="${escapeHtml(task.checklistImage)}" alt="Checklist reference" />` : ''}
@@ -2220,18 +2220,14 @@ function initializeTaskCardDetails() {
   });
 }
 
-function handleChecklistControlClick(event) {
-  event.preventDefault();
+function handleChecklistControlChange(event) {
   event.stopPropagation();
   const checklistControl = event.currentTarget;
-  const checked = checklistControl.dataset.checklistChecked !== 'true';
-  checklistControl.dataset.checklistChecked = String(checked);
-  checklistControl.setAttribute('aria-checked', String(checked));
-  checklistControl.classList.toggle('is-checked', checked);
+  checklistControl.closest('.checklist-item')?.classList.toggle('is-checked', checklistControl.checked);
   toggleChecklistItem(
     checklistControl.dataset.checklistTaskId,
     Number(checklistControl.dataset.checklistIndex),
-    checked
+    checklistControl.checked
   );
 }
 
@@ -2239,7 +2235,7 @@ function bindChecklistControls(scope = document) {
   scope.querySelectorAll('[data-checklist-task-id]').forEach((control) => {
     if (control.dataset.checklistBound === 'true') return;
     control.dataset.checklistBound = 'true';
-    control.addEventListener('click', handleChecklistControlClick);
+    control.addEventListener('change', handleChecklistControlChange);
   });
 }
 

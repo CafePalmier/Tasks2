@@ -1499,9 +1499,7 @@ h1 {
   width: 100%;
   min-height: 2.25rem;
   padding: 0.24rem 0.38rem;
-  border: 0;
   border-radius: 7px;
-  background: transparent;
   color: var(--ink);
   font-size: 0.8rem;
   font-weight: 550;
@@ -1514,33 +1512,16 @@ h1 {
   background: rgba(55,100,56,0.08);
 }
 
-.checklist-toggle {
-  width: 1.05rem;
-  height: 1.05rem;
+.checklist-item input {
+  width: 1.2rem;
+  height: 1.2rem;
   margin: 0;
-  padding: 0;
-  display: grid;
   flex: 0 0 auto;
-  place-content: center;
-  border: 1.5px solid rgba(55,100,56,0.55);
-  border-radius: 5px;
-  background: var(--white);
+  accent-color: var(--forest);
   cursor: pointer;
 }
 
-.checklist-item[aria-checked="true"] .checklist-toggle {
-  border-color: var(--forest);
-  background: var(--forest);
-}
-
-.checklist-item[aria-checked="true"] .checklist-toggle::after {
-  content: '✓';
-  color: var(--white);
-  font-size: 0.7rem;
-  font-weight: 900;
-}
-
-.checklist-item:focus-visible {
+.checklist-item:has(input:focus-visible) {
   outline: 3px solid rgba(55,100,56,0.24);
   outline-offset: 2px;
 }
