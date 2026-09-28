@@ -2195,6 +2195,7 @@ async function handleTaskSubmit(event) {
 }
 
 function renderAll() {
+  bindChecklistControls();
   renderGroups();
   renderTodayList();
   renderTomorrowList();
@@ -2221,8 +2222,9 @@ function initializeTaskCardDetails() {
 }
 
 function handleChecklistControlChange(event) {
+  const checklistControl = event.target.closest('[data-checklist-task-id]');
+  if (!checklistControl) return;
   event.stopPropagation();
-  const checklistControl = event.currentTarget;
   checklistControl.closest('.checklist-item')?.classList.toggle('is-checked', checklistControl.checked);
   toggleChecklistItem(
     checklistControl.dataset.checklistTaskId,
@@ -2231,17 +2233,14 @@ function handleChecklistControlChange(event) {
   );
 }
 
-function bindChecklistControls(scope = document) {
-  scope.querySelectorAll('[data-checklist-task-id]').forEach((control) => {
-    if (control.dataset.checklistBound === 'true') return;
-    control.dataset.checklistBound = 'true';
-    control.addEventListener('change', handleChecklistControlChange);
-  });
+function bindChecklistControls() {
+  if (document.documentElement.dataset.checklistControlsBound === 'true') return;
+  document.documentElement.dataset.checklistControlsBound = 'true';
+  document.addEventListener('change', handleChecklistControlChange);
 }
 
 function attachSwipeHandlers(scope = document) {
   scope.querySelectorAll('.task-swipe-shell').forEach((shell) => {
-    bindChecklistControls(shell);
     if (shell.dataset.swipeReady === 'true') return;
     shell.dataset.swipeReady = 'true';
     const content = shell.querySelector('.task-swipe-content');
