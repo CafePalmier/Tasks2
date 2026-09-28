@@ -26,6 +26,7 @@ const state = {
 
 let dayListRevision = 0;
 let dayListSyncQueue = Promise.resolve();
+const checklistSaveQueues = new Map();
 let urgentDropdownDismissalBound = false;
 let pendingDayTaskChoice = null;
 let pendingNewTaskDay = null;
@@ -1021,7 +1022,8 @@ function renderTaskDetails(task) {
           ${checklist.map((item, index) => `
             <label class="checklist-item ${item.checked ? 'is-checked' : ''}">
               <input type="checkbox" data-checklist-task-id="${escapeHtml(task.id)}" data-checklist-index="${index}" ${item.checked ? 'checked' : ''} />
-              <span>${escapeHtml(item.text)}</span>
+              <span class="checklist-box" aria-hidden="true"></span>
+              <span class="checklist-text">${escapeHtml(item.text)}</span>
             </label>
           `).join('')}
         </div>
@@ -2600,7 +2602,6 @@ async function toggleChecklistItem(taskId, itemIndex, checked) {
   const task = state.tasks.find((item) => item.id === taskId);
   if (!task) return;
 
-  const previousChecklist = normalizeChecklist(task.checklist);
   const checklist = normalizeChecklist(task.checklist);
   if (!checklist[itemIndex]) return;
   checklist[itemIndex].checked = checked;
@@ -2616,12 +2617,21 @@ async function toggleChecklistItem(taskId, itemIndex, checked) {
     if (shell.dataset.taskId === taskId) shell.querySelector('.task-checklist')?.setAttribute('open', '');
   });
 
+  const savedTask = state.tasks.find((item) => item.id === taskId);
+  const requestBody = JSON.stringify(savedTask);
+  const previousSave = checklistSaveQueues.get(taskId) || Promise.resolve();
+  const currentSave = previousSave
+    .catch(() => {})
+    .then(() => api(`/api/tasks/${taskId}`, { method: 'PUT', body: requestBody }));
+  checklistSaveQueues.set(taskId, currentSave);
+
   try {
-    await api(`/api/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(task) });
+    await currentSave;
   } catch (error) {
     console.error('Failed to update checklist item', error);
-    task.checklist = previousChecklist;
-    await loadTaskData();
+    if (checklistSaveQueues.get(taskId) === currentSave) await loadTaskData();
+  } finally {
+    if (checklistSaveQueues.get(taskId) === currentSave) checklistSaveQueues.delete(taskId);
   }
 }
 
