@@ -243,6 +243,8 @@ function isUrgentTask(task, now) {
 
 function resetExpiredChecklist(task, now) {
   if (!task.lastCompletedAt || isCompletedInCurrentCycle(task, now) || !task.checklist.some((item) => item.checked)) return false;
+  task.completionHistory = normalizeCompletionHistory(task.completionHistory, task.lastCompletedAt);
+  task.lastCompletedAt = null;
   task.checklist = task.checklist.map((item) => ({ ...item, checked: false }));
   return true;
 }

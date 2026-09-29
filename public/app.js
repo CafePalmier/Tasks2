@@ -278,11 +278,6 @@ function normalizeCompletionHistory(value, lastCompletedAt = null) {
     .sort((first, second) => new Date(second) - new Date(first));
 }
 
-function taskHasIncompleteChecklist(taskId) {
-  const checklist = normalizeChecklist(state.tasks.find((task) => task.id === taskId)?.checklist);
-  return checklist.length > 0 && checklist.some((item) => !item.checked);
-}
-
 function checklistFromText(value, existingChecklist = []) {
   const existing = normalizeChecklist(existingChecklist);
   const usedIndexes = new Set();
@@ -707,16 +702,20 @@ function checklistNeedsCycleReset(task, now) {
     && hasCheckedChecklistItems(task);
 }
 
-function buildTaskPayload(tasks, now = new Date()) {
+function buildTaskPayload(tasks, now = new Date(), resetExpiredChecklists = false) {
   const available = [];
   const completed = [];
 
-  const sortedTasks = tasks.map((task) => ({
-    ...task,
-    checklist: checklistNeedsCycleReset(task, now) ? uncheckedChecklist(task.checklist) : normalizeChecklist(task.checklist),
-    completionHistory: normalizeCompletionHistory(task.completionHistory, task.lastCompletedAt),
-    season: normalizeSeason(task.season)
-  })).sort((a, b) => {
+  const sortedTasks = tasks.map((task) => {
+    const resetChecklist = resetExpiredChecklists && checklistNeedsCycleReset(task, now);
+    return {
+      ...task,
+      checklist: resetChecklist ? uncheckedChecklist(task.checklist) : normalizeChecklist(task.checklist),
+      lastCompletedAt: resetChecklist ? null : task.lastCompletedAt,
+      completionHistory: normalizeCompletionHistory(task.completionHistory, task.lastCompletedAt),
+      season: normalizeSeason(task.season)
+    };
+  }).sort((a, b) => {
     const byPeriod = (taskPeriods.indexOf(a.period) >= 0 ? taskPeriods.indexOf(a.period) : 99) - (taskPeriods.indexOf(b.period) >= 0 ? taskPeriods.indexOf(b.period) : 99);
     if (byPeriod !== 0) return byPeriod;
 
@@ -1027,12 +1026,6 @@ function renderTaskDetails(task) {
           `).join('')}
         </div>
         ${task.checklistImage ? `<img class="checklist-reference-image" src="${escapeHtml(task.checklistImage)}" alt="Checklist reference" />` : ''}
-        ${checklist.some((item) => !item.checked) ? `
-          <div class="checklist-confirm-panel" role="alert">
-            <p>Some checklist items are still unchecked.</p>
-            <button type="button" class="primary-btn checklist-confirm-all" data-confirm-checklist-task-id="${escapeHtml(task.id)}">Confirm all complete</button>
-          </div>
-        ` : ''}
       </div>
     </details>
   ` : '';
@@ -1947,7 +1940,7 @@ async function loadTaskData() {
   if (usesSupabase) {
     const cachedTasks = getLocalTasks([]);
     if (cachedTasks.length) {
-      const cachedPayload = buildTaskPayload(cachedTasks, new Date());
+      const cachedPayload = buildTaskPayload(cachedTasks, new Date(), true);
       state.tasks = cachedPayload.tasks;
       state.available = cachedPayload.available;
       state.completed = cachedPayload.completed;
@@ -1971,7 +1964,7 @@ async function loadTaskData() {
     }
     const now = new Date();
     const checklistResetIds = tasks.filter((task) => checklistNeedsCycleReset(task, now)).map((task) => task.id);
-    const payload = buildTaskPayload(tasks, now);
+    const payload = buildTaskPayload(tasks, now, true);
 
     state.tasks = payload.tasks || tasks;
     state.available = payload.available || [];
@@ -2007,7 +2000,7 @@ async function loadTaskData() {
         return response.json();
       });
       const fallbackTasks = getLocalTasks(Array.isArray(fallbackData.tasks) ? fallbackData.tasks : []);
-      const fallbackPayload = buildTaskPayload(fallbackTasks, new Date());
+      const fallbackPayload = buildTaskPayload(fallbackTasks, new Date(), true);
       state.tasks = fallbackPayload.tasks;
       state.available = fallbackPayload.available;
       state.completed = fallbackPayload.completed;
@@ -2283,19 +2276,6 @@ function attachSwipeHandlers(scope = document) {
     };
 
     const attemptComplete = () => {
-      if (taskId && taskHasIncompleteChecklist(taskId)) {
-        resetPosition();
-        const checklistDetails = shell.querySelector('.task-checklist');
-        checklistDetails?.setAttribute('open', '');
-        shell.classList.add('checklist-confirm-required');
-        window.setTimeout(() => {
-          delete shell.dataset.suppressCardClick;
-          const confirmButton = shell.querySelector('[data-confirm-checklist-task-id]');
-          confirmButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          confirmButton?.focus({ preventScroll: true });
-        }, 0);
-        return;
-      }
       commitSwipe('left', () => customId ? completeCustomDayItem(customId) : completeTask(taskId));
     };
 
@@ -2633,33 +2613,6 @@ async function toggleChecklistItem(taskId, itemIndex, checked) {
     if (checklistSaveQueues.get(taskId) === currentSave) await loadTaskData();
   } finally {
     if (checklistSaveQueues.get(taskId) === currentSave) checklistSaveQueues.delete(taskId);
-  }
-}
-
-async function confirmChecklistAndComplete(taskId, button) {
-  const task = state.tasks.find((item) => item.id === taskId);
-  if (!task) return;
-
-  const previousChecklist = normalizeChecklist(task.checklist);
-  if (!previousChecklist.length) {
-    await completeTask(taskId);
-    return;
-  }
-
-  button.disabled = true;
-  button.textContent = 'Completing…';
-  task.checklist = previousChecklist.map((item) => ({ ...item, checked: true }));
-  saveLocalTasks(state.tasks);
-
-  try {
-    await api(`/api/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(task) });
-    await completeTask(taskId);
-  } catch (error) {
-    console.error('Failed to confirm checklist completion', error);
-    task.checklist = previousChecklist;
-    saveLocalTasks(state.tasks);
-    renderAll();
-    alert('Could not complete the checklist. Please try again.');
   }
 }
 
@@ -3072,11 +3025,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.addEventListener('click', (event) => {
-    const confirmChecklistButton = event.target.closest('[data-confirm-checklist-task-id]');
-    if (confirmChecklistButton) {
-      confirmChecklistAndComplete(confirmChecklistButton.dataset.confirmChecklistTaskId, confirmChecklistButton);
-      return;
-    }
     const addButton = event.target.closest('[data-add-checklist-item]');
     if (addButton) addChecklistEditorItem(addButton.closest('form'));
     const removeButton = event.target.closest('[data-remove-checklist-item]');
