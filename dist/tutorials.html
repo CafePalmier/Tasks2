@@ -11,7 +11,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="./Assets/app-icon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="./Assets/app-icon-180.png" />
-    <link rel="stylesheet" href="./styles.css?v=8" />
+    <link rel="stylesheet" href="./styles.css?v=9" />
     <script src="./pwa.js?v=8" defer></script>
   </head>
   <body data-page="tutorials">
@@ -55,7 +55,8 @@
             <legend>Tags</legend>
             <div class="tutorial-tag-picker" data-tutorial-tag-picker>
               <label><input type="checkbox" name="tags" value="Technology" /><span>Technology</span></label>
-              <label><input type="checkbox" name="tags" value="Closing &amp; Opening" /><span>Closing &amp; Opening</span></label>
+              <label><input type="checkbox" name="tags" value="Closing" /><span>Closing</span></label>
+              <label><input type="checkbox" name="tags" value="Opening" /><span>Opening</span></label>
               <label><input type="checkbox" name="tags" value="Cleaning &amp; Prep" /><span>Cleaning &amp; Prep</span></label>
               <label><input type="checkbox" name="tags" value="Equipment" /><span>Equipment</span></label>
             </div>
@@ -69,7 +70,18 @@
         </form>
       </div>
     </div>
+    <div id="tutorialDetailModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-tutorial-detail></div>
+      <div class="modal-card tutorial-detail-card" role="dialog" aria-modal="true" aria-labelledby="tutorialDetailTitle">
+        <div class="modal-header">
+          <div class="tutorial-detail-heading"><div class="tutorial-detail-tags" data-tutorial-detail-tags></div><h2 id="tutorialDetailTitle" data-tutorial-detail-title></h2></div>
+          <button class="icon-btn" type="button" data-close-tutorial-detail>Close</button>
+        </div>
+        <div class="tutorial-detail-track" data-tutorial-detail-track aria-live="polite"></div>
+        <div class="tutorial-detail-footer"><span data-tutorial-detail-counter></span><div><button class="secondary-btn" type="button" data-tutorial-detail-prev>Previous</button><button class="primary-btn" type="button" data-tutorial-detail-next>Next slide</button></div></div>
+      </div>
+    </div>
     <script src="./supabase-config.js"></script>
-    <script src="./tutorials.js?v=6"></script>
+    <script src="./tutorials.js?v=9"></script>
   </body>
 </html>

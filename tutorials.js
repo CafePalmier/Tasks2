@@ -3,6 +3,7 @@ const TUTORIAL_STORE_NAME = 'videos';
 const TUTORIAL_BUCKET = 'cafe-tutorial-videos';
 const supabaseConfig = window.SUPABASE_CONFIG;
 const tutorialState = { items: [], search: '', slideIndices: new Map() };
+const tutorialDetailState = { tutorialId: '', slideIndex: 0 };
 
 function openLocalTutorialDatabase() {
   return new Promise((resolve, reject) => {
@@ -79,7 +80,10 @@ function normalizeTutorial(tutorial) {
     ...tutorial,
     id: String(tutorial.id),
     title: String(tutorial.title || 'Untitled tutorial').trim(),
-    tags: Array.isArray(tutorial.tags) ? tutorial.tags.map((tag) => String(tag).trim()).filter(Boolean) : [],
+    tags: Array.isArray(tutorial.tags) ? tutorial.tags.flatMap((tag) => {
+      const normalizedTag = String(tag).trim();
+      return normalizedTag === 'Closing & Opening' ? ['Closing', 'Opening'] : [normalizedTag];
+    }).filter(Boolean) : [],
     slides: slides.filter((slide) => slide.storage_path).sort((a, b) => a.order - b.order)
   };
 }
@@ -178,22 +182,6 @@ function prepareTutorialPreview(video) {
   if (video.readyState >= 2) revealThumbnail();
 }
 
-function playTutorialFullscreen(media) {
-  if (!media) return;
-  if (media.tagName === 'VIDEO') {
-    media.controls = true;
-    const playRequest = media.play();
-    if (playRequest?.catch) playRequest.catch(() => {});
-  }
-  const target = media.tagName === 'VIDEO' ? media : media.closest('.tutorial-media-stage');
-  if (target?.requestFullscreen) {
-    const request = target.requestFullscreen();
-    if (request?.catch) request.catch(() => {});
-  } else if (media.webkitEnterFullscreen) {
-    try { media.webkitEnterFullscreen(); } catch (error) { /* iOS may wait for a direct gesture. */ }
-  }
-}
-
 async function migrateDeviceTutorials() {
   const localTutorials = await localTutorialStore('readonly', (store) => store.getAll());
   for (const tutorial of localTutorials) {
@@ -222,7 +210,7 @@ function renderTutorialTags(tutorial) {
 
 function renderSlideMedia(slide, tutorial) {
   const url = `${publicMediaUrl(slide.storage_path)}${slide.media_type === 'video' ? '#t=0.1' : ''}`;
-  if (slide.media_type === 'video') return `<video src="${url}" controls preload="metadata" muted playsinline aria-label="${escapeTutorialText(slide.title || tutorial.title)}"></video><span class="tutorial-play-hint" aria-hidden="true">▶</span>`;
+  if (slide.media_type === 'video') return `<video src="${url}" controls preload="metadata" muted playsinline aria-label="${escapeTutorialText(slide.title || tutorial.title)}"></video>`;
   return `<img src="${url}" alt="${escapeTutorialText(slide.title || tutorial.title)}" loading="lazy" />`;
 }
 
@@ -254,6 +242,54 @@ function renderTutorialCardSlide(card, tutorial, index) {
   if (nextButton) nextButton.disabled = safeIndex === slides.length - 1;
 }
 
+function renderTutorialDetailMedia(slide, tutorial) {
+  const url = `${publicMediaUrl(slide.storage_path)}${slide.media_type === 'video' ? '#t=0.1' : ''}`;
+  if (slide.media_type === 'video') return `<video src="${url}" controls preload="metadata" playsinline aria-label="${escapeTutorialText(slide.title || tutorial.title)}"></video>`;
+  return `<img src="${url}" alt="${escapeTutorialText(slide.title || tutorial.title)}" />`;
+}
+
+function renderTutorialDetail() {
+  const tutorial = tutorialState.items.find((item) => item.id === tutorialDetailState.tutorialId);
+  const track = document.querySelector('[data-tutorial-detail-track]');
+  if (!tutorial || !track) return;
+  const slides = tutorial.slides || [];
+  const index = Math.min(Math.max(tutorialDetailState.slideIndex, 0), Math.max(slides.length - 1, 0));
+  tutorialDetailState.slideIndex = index;
+  const activeSlide = slides[index];
+  const nextSlide = slides[index + 1];
+  document.querySelector('[data-tutorial-detail-title]').textContent = tutorial.title;
+  document.querySelector('[data-tutorial-detail-tags]').innerHTML = renderTutorialTags(tutorial);
+  track.innerHTML = [
+    activeSlide ? `<article class="tutorial-detail-slide active"><div class="tutorial-detail-media">${renderTutorialDetailMedia(activeSlide, tutorial)}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${index + 1}</span><h3>${escapeTutorialText(activeSlide.title || `Step ${index + 1}`)}</h3><p${activeSlide.description ? '' : ' hidden'}>${escapeTutorialText(activeSlide.description)}</p></div></article>` : '',
+    nextSlide ? `<article class="tutorial-detail-slide next" data-open-next-detail><div class="tutorial-detail-media">${renderTutorialDetailMedia(nextSlide, tutorial)}<span class="tutorial-detail-next-label">Next slide <b>${index + 2}</b></span></div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Up next</span><h3>${escapeTutorialText(nextSlide.title || `Step ${index + 2}`)}</h3><p${nextSlide.description ? '' : ' hidden'}>${escapeTutorialText(nextSlide.description)}</p></div></article>` : ''
+  ].join('');
+  const previous = document.querySelector('[data-tutorial-detail-prev]');
+  const next = document.querySelector('[data-tutorial-detail-next]');
+  previous.disabled = index === 0;
+  next.disabled = index >= slides.length - 1;
+  next.textContent = index >= slides.length - 1 ? 'End of tutorial' : 'Next slide';
+  document.querySelector('[data-tutorial-detail-counter]').textContent = `${index + 1} of ${slides.length}`;
+  track.querySelector('[data-open-next-detail]')?.addEventListener('click', () => {
+    tutorialDetailState.slideIndex += 1;
+    renderTutorialDetail();
+  });
+  track.querySelectorAll('video').forEach(prepareTutorialPreview);
+}
+
+function setTutorialDetailModal(open) {
+  const modal = document.getElementById('tutorialDetailModal');
+  if (!modal) return;
+  modal.classList.toggle('hidden', !open);
+  modal.setAttribute('aria-hidden', String(!open));
+}
+
+function openTutorialDetail(tutorial, index = 0) {
+  tutorialDetailState.tutorialId = tutorial.id;
+  tutorialDetailState.slideIndex = index;
+  renderTutorialDetail();
+  setTutorialDetailModal(true);
+}
+
 function renderTutorialGrid() {
   const grid = document.getElementById('tutorialGrid');
   const tutorials = matchingTutorials();
@@ -267,9 +303,9 @@ function renderTutorialGrid() {
   }
   grid.innerHTML = tutorials.map((tutorial) => {
     const slides = tutorial.slides || [];
-    return `<article class="tutorial-card" data-tutorial-id="${escapeTutorialText(tutorial.id)}">
+    return `<article class="tutorial-card" data-tutorial-id="${escapeTutorialText(tutorial.id)}" tabindex="0" role="button" aria-label="Open ${escapeTutorialText(tutorial.title)} details">
       <div class="tutorial-media-shell">
-        <div class="tutorial-media-stage" data-tutorial-stage role="button" tabindex="0" aria-label="Open tutorial media full screen"></div>
+        <div class="tutorial-media-stage" data-tutorial-stage aria-hidden="true"></div>
         ${slides.length > 1 ? `<button class="tutorial-slide-arrow previous" type="button" data-tutorial-prev aria-label="Previous slide">‹</button><button class="tutorial-slide-arrow next" type="button" data-tutorial-next aria-label="Next slide">›</button>` : ''}
         <div class="tutorial-slide-numbers" role="tablist" aria-label="Tutorial slides">${slides.map((slide, index) => `<button type="button" role="tab" class="tutorial-slide-number" data-tutorial-slide="${index}" aria-label="Slide ${index + 1}">${index + 1}</button>`).join('')}</div>
         <span class="tutorial-slide-counter" data-tutorial-counter>${slides.length ? `1 / ${slides.length}` : '0 / 0'}</span>
@@ -281,12 +317,14 @@ function renderTutorialGrid() {
     const tutorial = tutorialState.items.find((item) => item.id === card.dataset.tutorialId);
     if (!tutorial) return;
     renderTutorialCardSlide(card, tutorial, tutorialState.slideIndices.get(tutorial.id) || 0);
-    card.querySelector('[data-tutorial-stage]').addEventListener('click', (event) => {
-      if (event.target.closest('video')?.controls && event.target.tagName === 'VIDEO') return;
-      playTutorialFullscreen(card.querySelector('[data-tutorial-stage] video, [data-tutorial-stage] img'));
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('button, video, input, textarea, a')) return;
+      openTutorialDetail(tutorial, tutorialState.slideIndices.get(tutorial.id) || 0);
     });
-    card.querySelector('[data-tutorial-stage]').addEventListener('keydown', (event) => {
-      if (['Enter', ' '].includes(event.key)) { event.preventDefault(); playTutorialFullscreen(card.querySelector('[data-tutorial-stage] video, [data-tutorial-stage] img')); }
+    card.addEventListener('keydown', (event) => {
+      if (event.target !== card || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      openTutorialDetail(tutorial, tutorialState.slideIndices.get(tutorial.id) || 0);
     });
     card.querySelectorAll('[data-tutorial-slide]').forEach((button) => button.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -418,6 +456,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   resetTutorialEditor();
   document.querySelector('[data-open-tutorial-modal]').addEventListener('click', () => { resetTutorialEditor(); setTutorialModal(true); });
   document.querySelectorAll('[data-close-tutorial-modal]').forEach((button) => button.addEventListener('click', () => setTutorialModal(false)));
+  document.querySelectorAll('[data-close-tutorial-detail]').forEach((button) => button.addEventListener('click', () => setTutorialDetailModal(false)));
+  document.querySelector('[data-tutorial-detail-prev]').addEventListener('click', () => {
+    if (tutorialDetailState.slideIndex <= 0) return;
+    tutorialDetailState.slideIndex -= 1;
+    renderTutorialDetail();
+  });
+  document.querySelector('[data-tutorial-detail-next]').addEventListener('click', () => {
+    const tutorial = tutorialState.items.find((item) => item.id === tutorialDetailState.tutorialId);
+    if (!tutorial || tutorialDetailState.slideIndex >= tutorial.slides.length - 1) return;
+    tutorialDetailState.slideIndex += 1;
+    renderTutorialDetail();
+  });
   document.querySelector('[data-add-tutorial-slide]').addEventListener('click', () => {
     const list = document.querySelector('[data-tutorial-slide-editor-list]');
     list.insertAdjacentHTML('beforeend', slideEditorMarkup({ id: `slide-${list.children.length + 1}` }, list.children.length, true));
@@ -431,7 +481,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     remove.closest('[data-slide-editor]').remove();
     updateSlideEditorLabels();
   });
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setTutorialModal(false); });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    setTutorialModal(false);
+    setTutorialDetailModal(false);
+  });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const status = form.querySelector('[data-tutorial-status]');

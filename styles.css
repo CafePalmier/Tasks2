@@ -2902,3 +2902,199 @@ body[data-page="tutorials"] .tutorial-empty h2 {
   .tutorial-editor-heading { align-items: flex-start; }
   .tutorial-editor-heading .secondary-btn { white-space: nowrap; }
 }
+
+/* Tutorial detail view: keep the pager below the media and preview the next step. */
+.tutorial-media-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.tutorial-media-stage {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.tutorial-slide-numbers {
+  position: static;
+  grid-column: 1;
+  grid-row: 2;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.55rem 0.75rem 0.62rem;
+  border-radius: 0;
+  background: rgba(232, 241, 248, 0.92);
+  backdrop-filter: none;
+}
+
+.tutorial-slide-number {
+  border-color: rgba(59, 100, 130, 0.34);
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--forest-deep);
+}
+
+.tutorial-slide-number.is-active {
+  border-color: var(--forest);
+  background: var(--forest);
+  color: #fff;
+}
+
+.tutorial-slide-counter {
+  position: static;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  margin-right: 0.75rem;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+  backdrop-filter: none;
+}
+
+.tutorial-card {
+  cursor: pointer;
+}
+
+.tutorial-card video {
+  cursor: default;
+}
+
+.tutorial-detail-card {
+  width: min(1120px, 100%);
+  max-height: min(88vh, 900px);
+  padding: clamp(1rem, 2vw, 1.35rem);
+  background: rgba(249, 252, 255, 0.98);
+}
+
+.tutorial-detail-heading {
+  min-width: 0;
+}
+
+.tutorial-detail-heading h2 {
+  margin-top: 0.35rem;
+  color: var(--forest-deep);
+  font-size: clamp(1.2rem, 2.4vw, 1.7rem);
+}
+
+.tutorial-detail-tags .tutorial-tags {
+  margin: 0;
+}
+
+.tutorial-detail-track {
+  display: flex;
+  gap: 0.9rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.15rem 0.75rem;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+
+.tutorial-detail-slide {
+  position: relative;
+  min-width: 0;
+  flex: 0 0 72%;
+  overflow: hidden;
+  border: 1px solid rgba(59, 100, 130, 0.18);
+  border-radius: 20px;
+  background: #eef5fa;
+  scroll-snap-align: start;
+}
+
+.tutorial-detail-slide.next {
+  flex-basis: 38%;
+  cursor: pointer;
+}
+
+.tutorial-detail-media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #152c3c;
+}
+
+.tutorial-detail-media video,
+.tutorial-detail-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #152c3c;
+}
+
+.tutorial-detail-media img {
+  object-fit: cover;
+}
+
+.tutorial-detail-copy {
+  padding: 0.9rem 1rem 1.05rem;
+}
+
+.tutorial-detail-step {
+  color: var(--forest);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tutorial-detail-copy h3 {
+  margin-top: 0.28rem;
+  color: var(--forest-deep);
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+}
+
+.tutorial-detail-copy p {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.tutorial-detail-next-label {
+  position: absolute;
+  left: 0.65rem;
+  bottom: 0.65rem;
+  padding: 0.28rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(18, 43, 59, 0.78);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
+}
+
+.tutorial-detail-next-label b {
+  display: inline-grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-left: 0.2rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+}
+
+.tutorial-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.tutorial-detail-footer > div {
+  display: flex;
+  gap: 0.45rem;
+}
+
+@media (max-width: 640px) {
+  .tutorial-detail-slide.active { flex-basis: 88%; }
+  .tutorial-detail-slide.next { flex-basis: 64%; }
+  .tutorial-detail-footer { align-items: stretch; flex-direction: column; }
+  .tutorial-detail-footer > div { width: 100%; }
+  .tutorial-detail-footer button { flex: 1 1 0; }
+}
