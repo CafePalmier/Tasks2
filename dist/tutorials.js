@@ -260,6 +260,11 @@ function updateTutorialDetailControls(tutorial, index) {
     next.textContent = index >= tutorial.slides.length - 1 ? 'End of tutorial' : 'Next slide';
   }
   if (counter) counter.textContent = `${index + 1} of ${tutorial.slides.length}`;
+  document.querySelectorAll('[data-tutorial-detail-dot]').forEach((dot) => {
+    const isActive = Number(dot.dataset.tutorialDetailDot) === index;
+    dot.classList.toggle('is-active', isActive);
+    dot.setAttribute('aria-selected', String(isActive));
+  });
 }
 
 function bindTutorialDetailScroll(track) {
@@ -300,6 +305,13 @@ function renderTutorialDetail() {
   document.querySelector('[data-tutorial-detail-title]').textContent = tutorial.title;
   document.querySelector('[data-tutorial-detail-tags]').innerHTML = renderTutorialTags(tutorial);
   track.innerHTML = slides.map((slide, slideIndex) => `<article class="tutorial-detail-slide${slideIndex === index ? ' active' : ''}" data-tutorial-detail-slide="${slideIndex}"><div class="tutorial-detail-media">${renderTutorialDetailMedia(slide, tutorial)}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${slideIndex + 1}</span><h3>${escapeTutorialText(slide.title || `Step ${slideIndex + 1}`)}</h3><p${slide.description ? '' : ' hidden'}>${escapeTutorialText(slide.description)}</p></div></article>`).join('');
+  const dots = document.querySelector('[data-tutorial-detail-dots]');
+  if (dots) {
+    dots.innerHTML = slides.map((slide, slideIndex) => `<button class="tutorial-detail-dot${slideIndex === index ? ' is-active' : ''}" type="button" role="tab" data-tutorial-detail-dot="${slideIndex}" aria-label="Go to slide ${slideIndex + 1}" aria-selected="${slideIndex === index}"></button>`).join('');
+    dots.querySelectorAll('[data-tutorial-detail-dot]').forEach((dot) => dot.addEventListener('click', () => {
+      scrollTutorialDetailTo(Number(dot.dataset.tutorialDetailDot));
+    }));
+  }
   bindTutorialDetailScroll(track);
   updateTutorialDetailControls(tutorial, index);
   window.requestAnimationFrame(() => {

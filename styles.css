@@ -3284,7 +3284,11 @@ body[data-page="tutorials"] .tutorial-tag {
   scroll-behavior: smooth;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.tutorial-detail-track::-webkit-scrollbar {
+  display: none;
 }
 
 .tutorial-detail-slide,
@@ -3307,4 +3311,27 @@ body[data-page="tutorials"] .tutorial-tag {
 .tutorial-media-stage img,
 .tutorial-detail-media img {
   object-fit: contain;
+}
+
+.tutorial-detail-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-height: 2.2rem;
+  padding: 0.15rem 0;
+}
+
+.tutorial-detail-dot {
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #c5ced5 0 0.28rem, transparent 0.31rem);
+  cursor: pointer;
+}
+
+.tutorial-detail-dot.is-active {
+  background: radial-gradient(circle, #536c7c 0 0.32rem, transparent 0.35rem);
 }
