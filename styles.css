@@ -3292,3 +3292,19 @@ body[data-page="tutorials"] .tutorial-tag {
   min-width: 100%;
   flex: 0 0 100%;
 }
+
+/* Give portrait photos and videos a taller canvas so they use the card width naturally. */
+.tutorial-media-stage,
+.tutorial-detail-media {
+  aspect-ratio: 4 / 5;
+}
+
+.tutorial-media-stage,
+.tutorial-detail-media {
+  background: #dceaf5;
+}
+
+.tutorial-media-stage img,
+.tutorial-detail-media img {
+  object-fit: contain;
+}
