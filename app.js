@@ -2,7 +2,7 @@ const STORAGE_KEY = 'cafe-palmier-task-state';
 const TODAY_LIST_KEY = 'cafe-palmier-today-list';
 const DAY_LISTS_KEY = 'cafe-palmier-day-lists-v2';
 const SEASON_KEY = 'cafe-palmier-season';
-const SEASON_OVERRIDE_DATE_KEY = 'cafe-palmier-season-override-date';
+const SEASON_OVERRIDE_DATE_KEY = 'cafe-palmier-season-override-date-v2';
 const COMPLETED_ONE_OFFS_KEY = 'cafe-palmier-completed-one-offs';
 const COMPLETED_SORT_KEY = 'cafe-palmier-completed-sort';
 const STATIC_TASKS_PATH = './tasks.json';
@@ -180,7 +180,7 @@ function normalizeSeason(value) {
 
 function getAutomaticSeason(date = new Date()) {
   const month = date.getMonth();
-  const isWinterOrFirstHalfOfSpring = month === 11
+  const isWinterOrFirstHalfOfSpring = month >= 9
     || month <= 2
     || (month === 3 && date.getDate() <= 15);
   return isWinterOrFirstHalfOfSpring ? 'winter' : 'summer';
@@ -2659,12 +2659,14 @@ function initializeTimeTagSelects() {
 
 function updateSeasonSwitcher(switcher = document.querySelector('.season-switcher')) {
   if (!switcher) return;
+  document.body.dataset.season = state.season;
   switcher.classList.toggle('is-summer', state.season === 'summer');
   switcher.setAttribute('aria-pressed', String(state.season === 'summer'));
   switcher.setAttribute('aria-label', `Switch displayed season. Currently showing ${seasonLabels[state.season]}.`);
 }
 
 function ensureAppChrome() {
+  document.body.dataset.season = state.season;
   const topbar = document.querySelector('.topbar');
   if (topbar && !topbar.querySelector('.season-switcher')) {
     const brand = topbar.querySelector('.brand-wrap');

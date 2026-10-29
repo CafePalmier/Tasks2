@@ -6,17 +6,17 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#efd7cb",
-  "theme_color": "#efd7cb",
+  "background_color": "#dce8f2",
+  "theme_color": "#dce8f2",
   "icons": [
     {
-      "src": "./assets/app-icon-192.png",
+      "src": "./Assets/app-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "./assets/app-icon-512.png",
+      "src": "./Assets/app-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

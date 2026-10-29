@@ -28,8 +28,13 @@ create table if not exists public.cafe_tutorials (
   id text primary key,
   title text not null,
   storage_path text not null unique,
+  tags jsonb not null default '[]'::jsonb,
+  slides jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.cafe_tutorials add column if not exists tags jsonb not null default '[]'::jsonb;
+alter table public.cafe_tutorials add column if not exists slides jsonb not null default '[]'::jsonb;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -37,7 +42,10 @@ values (
   'cafe-tutorial-videos',
   true,
   209715200,
-  array['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v', 'video/ogg']
+  array[
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v', 'video/ogg'
+  ]
 )
 on conflict (id) do update set
   public = excluded.public,

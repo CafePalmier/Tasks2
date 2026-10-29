@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#dce8f2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Cafe Palmier" />
+    <title>Cafe Palmier Tutorials</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./Assets/app-icon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./Assets/app-icon-180.png" />
+    <link rel="stylesheet" href="./styles.css?v=8" />
+    <script src="./pwa.js?v=8" defer></script>
+  </head>
+  <body data-page="tutorials">
+    <header class="topbar">
+      <a class="brand-wrap brand-home" href="./index.html" aria-label="Cafe Palmier Tasks home">
+        <img class="brand-logo" src="./Assets/logo-eng.png" alt="Cafe Palmier logo" />
+      </a>
+      <nav class="nav">
+        <a class="nav-link" href="./index.html">Available Tasks</a>
+        <a class="nav-link" href="./opening.html">Opening</a>
+        <a class="nav-link" href="./closing.html">Closing</a>
+        <a class="nav-link" href="./today.html">Today &amp; Tomorrow</a>
+        <a class="nav-link active" href="./tutorials.html">Tutorials</a>
+      </nav>
+    </header>
+
+    <main class="page-shell tutorials-page">
+      <section class="tutorials-heading">
+        <div><p class="eyebrow">Winter learning library</p><h1>Tutorials</h1><p>Swipe through every step, with photos and videos in one place.</p></div>
+        <button class="primary-btn tutorial-add-button" type="button" data-open-tutorial-modal><span>＋</span> Add tutorial</button>
+      </section>
+      <section class="tutorial-search" aria-label="Search tutorials">
+        <div class="quick-day-combobox tutorial-search-combobox">
+          <input id="tutorialSearch" type="search" placeholder="Search tutorials or tags…" aria-label="Search tutorials" aria-autocomplete="list" aria-controls="tutorialSearchSuggestions" autocomplete="off" />
+          <div id="tutorialSearchSuggestions" class="quick-day-suggestions" role="listbox" hidden></div>
+        </div>
+      </section>
+      <section id="tutorialGrid" class="tutorial-grid" aria-live="polite">
+        <div class="tutorial-empty"><span aria-hidden="true">✦</span><h2>No tutorials yet</h2><p>Add your first step-by-step guide to get started.</p></div>
+      </section>
+    </main>
+
+    <div id="tutorialModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-tutorial-modal></div>
+      <div class="modal-card tutorial-modal-card" role="dialog" aria-modal="true" aria-labelledby="tutorialModalTitle">
+        <div class="modal-header"><h2 id="tutorialModalTitle">Add a tutorial</h2><button class="icon-btn" type="button" data-close-tutorial-modal>Close</button></div>
+        <form id="tutorialForm" class="tutorial-form">
+          <input type="hidden" name="tutorialId" />
+          <label><span>Tutorial title</span><input name="title" type="text" placeholder="e.g. How to close the patio" required /></label>
+          <fieldset class="tutorial-tag-field">
+            <legend>Tags</legend>
+            <div class="tutorial-tag-picker" data-tutorial-tag-picker>
+              <label><input type="checkbox" name="tags" value="Technology" /><span>Technology</span></label>
+              <label><input type="checkbox" name="tags" value="Closing &amp; Opening" /><span>Closing &amp; Opening</span></label>
+              <label><input type="checkbox" name="tags" value="Cleaning &amp; Prep" /><span>Cleaning &amp; Prep</span></label>
+              <label><input type="checkbox" name="tags" value="Equipment" /><span>Equipment</span></label>
+            </div>
+          </fieldset>
+          <div class="tutorial-slides-editor">
+            <div class="tutorial-editor-heading"><div><span class="eyebrow">Step-by-step media</span><h3>Slides</h3></div><button class="secondary-btn" type="button" data-add-tutorial-slide>＋ Add slide</button></div>
+            <div class="tutorial-slide-editor-list" data-tutorial-slide-editor-list></div>
+          </div>
+          <div class="form-actions"><button class="primary-btn" type="submit">Save tutorial</button><button class="secondary-btn" type="button" data-close-tutorial-modal>Cancel</button></div>
+          <p class="tutorial-form-status" data-tutorial-status role="status"></p>
+        </form>
+      </div>
+    </div>
+    <script src="./supabase-config.js"></script>
+    <script src="./tutorials.js?v=6"></script>
+  </body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#dce8f2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Cafe Palmier" />
+    <title>Cafe Palmier Closing List</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./Assets/app-icon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./Assets/app-icon-180.png" />
+    <link rel="stylesheet" href="./styles.css?v=8" />
+    <script src="./pwa.js?v=8" defer></script>
+  </head>
+  <body data-page="closing">
+    <header class="topbar">
+      <a class="brand-wrap brand-home" href="./index.html" aria-label="Cafe Palmier Tasks home">
+        <img class="brand-logo" src="./Assets/logo-eng.png" alt="Cafe Palmier logo" />
+      </a>
+      <nav class="nav">
+        <a class="nav-link" href="./index.html">Available Tasks</a>
+        <a class="nav-link" href="./opening.html">Opening</a>
+        <a class="nav-link active" href="./closing.html">Closing</a>
+        <a class="nav-link" href="./today.html">Today &amp; Tomorrow</a>
+        <a class="nav-link" href="./tutorials.html">Tutorials</a>
+      </nav>
+    </header>
+
+    <main class="page-shell">
+      <section class="panel-card">
+        <div id="closingList" class="closing-list"></div>
+      </section>
+    </main>
+
+    <script src="./supabase-config.js"></script>
+    <script src="./app.js?v=8"></script>
+  </body>
+</html>

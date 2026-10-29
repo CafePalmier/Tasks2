@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cafe-palmier-shell-v7';
+const CACHE_NAME = 'cafe-palmier-shell-v8';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,14 +7,14 @@ const APP_SHELL = [
   './today.html',
   './tutorials.html',
   './admin.html',
-  './styles.css?v=6',
-  './app.js?v=7',
+  './styles.css?v=8',
+  './app.js?v=8',
   './door-lock-guide.png',
-  './tutorials.js?v=6',
+  './tutorials.js?v=8',
   './supabase-config.js',
   './manifest.webmanifest',
-  './assets/app-icon-192.png',
-  './assets/app-icon-512.png'
+  './Assets/app-icon-192.png',
+  './Assets/app-icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
