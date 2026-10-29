@@ -2,8 +2,9 @@ const TUTORIAL_DB_NAME = 'cafe-palmier-tutorials';
 const TUTORIAL_STORE_NAME = 'videos';
 const TUTORIAL_BUCKET = 'cafe-tutorial-videos';
 const SHARED_REFRESH_INTERVAL_MS = 30_000;
+const DEFAULT_TUTORIAL_TAGS = ['Technology', 'Closing', 'Opening', 'Cleaning & Prep', 'Equipment'];
 const supabaseConfig = window.SUPABASE_CONFIG;
-const tutorialState = { items: [], search: '', slideIndices: new Map() };
+const tutorialState = { items: [], search: '', selectedTag: '', slideIndices: new Map() };
 const tutorialDetailState = { tutorialId: '', slideIndex: 0 };
 let tutorialRefreshPromise = null;
 
@@ -199,11 +200,31 @@ async function migrateDeviceTutorials() {
 
 function matchingTutorials(query = tutorialState.search) {
   const normalizedQuery = query.trim().toLocaleLowerCase();
-  if (!normalizedQuery) return tutorialState.items;
   return tutorialState.items.filter((tutorial) => {
+    if (tutorialState.selectedTag && !tutorial.tags.includes(tutorialState.selectedTag)) return false;
+    if (!normalizedQuery) return true;
     const searchable = [tutorial.title, ...(tutorial.tags || []), ...(tutorial.slides || []).flatMap((slide) => [slide.title, slide.description])].join(' ');
     return searchable.toLocaleLowerCase().includes(normalizedQuery);
   });
+}
+
+function renderTutorialTagNav() {
+  const nav = document.querySelector('[data-tutorial-tag-nav]');
+  if (!nav) return;
+  const tags = [...new Set([
+    ...DEFAULT_TUTORIAL_TAGS,
+    ...tutorialState.items.flatMap((tutorial) => tutorial.tags || [])
+  ])];
+  nav.innerHTML = [
+    `<button class="tutorial-filter-tag${tutorialState.selectedTag ? '' : ' is-active'}" type="button" data-tutorial-filter="" aria-pressed="${String(!tutorialState.selectedTag)}">All</button>`,
+    ...tags.map((tag) => `<button class="tutorial-filter-tag${tutorialState.selectedTag === tag ? ' is-active' : ''}" type="button" data-tutorial-filter="${escapeTutorialText(tag)}" aria-pressed="${String(tutorialState.selectedTag === tag)}">${escapeTutorialText(tag)}</button>`)
+  ].join('');
+  nav.querySelectorAll('[data-tutorial-filter]').forEach((button) => button.addEventListener('click', () => {
+    tutorialState.selectedTag = button.dataset.tutorialFilter || '';
+    renderTutorialTagNav();
+    renderTutorialGrid();
+    renderTutorialSuggestions();
+  }));
 }
 
 function renderTutorialTags(tutorial) {
@@ -488,6 +509,7 @@ async function renderTutorials() {
   const grid = document.getElementById('tutorialGrid');
   try {
     tutorialState.items = await listSharedTutorials();
+    renderTutorialTagNav();
     renderTutorialGrid();
     renderTutorialSuggestions();
   } catch (error) {

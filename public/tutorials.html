@@ -11,7 +11,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="./Assets/app-icon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="./Assets/app-icon-180.png" />
-    <link rel="stylesheet" href="./styles.css?v=17" />
+    <link rel="stylesheet" href="./styles.css?v=18" />
     <script src="./pwa.js?v=8" defer></script>
   </head>
   <body data-page="tutorials">
@@ -39,6 +39,7 @@
           <div id="tutorialSearchSuggestions" class="quick-day-suggestions" role="listbox" hidden></div>
         </div>
       </section>
+      <nav class="tutorial-tag-nav" data-tutorial-tag-nav aria-label="Filter tutorials by tag"></nav>
       <section id="tutorialGrid" class="tutorial-grid" aria-live="polite">
         <div class="tutorial-empty"><span aria-hidden="true">✦</span><h2>No tutorials yet</h2><p>Add your first step-by-step guide to get started.</p></div>
       </section>
@@ -83,6 +84,6 @@
       </div>
     </div>
     <script src="./supabase-config.js"></script>
-    <script src="./tutorials.js?v=17"></script>
+    <script src="./tutorials.js?v=18"></script>
   </body>
 </html>

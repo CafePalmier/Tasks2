@@ -3335,3 +3335,44 @@ body[data-page="tutorials"] .tutorial-tag {
 .tutorial-detail-dot.is-active {
   background: radial-gradient(circle, #536c7c 0 0.32rem, transparent 0.35rem);
 }
+
+.tutorial-tag-nav {
+  display: flex;
+  gap: 0.45rem;
+  max-width: 100%;
+  margin: -0.45rem 0 1.1rem;
+  padding: 0.2rem 0.1rem 0.45rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tutorial-tag-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.tutorial-filter-tag {
+  flex: 0 0 auto;
+  padding: 0.52rem 0.82rem;
+  border: 1px solid rgba(59, 100, 130, 0.24);
+  border-radius: 999px;
+  background: rgba(232, 241, 248, 0.82);
+  color: #355970;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.tutorial-filter-tag:hover {
+  transform: translateY(-1px);
+  border-color: rgba(59, 100, 130, 0.4);
+  color: #173b55;
+}
+
+.tutorial-filter-tag.is-active {
+  border-color: #3b6482;
+  background: #3b6482;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(49, 76, 99, 0.15);
+}
