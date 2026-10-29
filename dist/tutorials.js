@@ -1,9 +1,11 @@
 const TUTORIAL_DB_NAME = 'cafe-palmier-tutorials';
 const TUTORIAL_STORE_NAME = 'videos';
 const TUTORIAL_BUCKET = 'cafe-tutorial-videos';
+const SHARED_REFRESH_INTERVAL_MS = 30_000;
 const supabaseConfig = window.SUPABASE_CONFIG;
 const tutorialState = { items: [], search: '', slideIndices: new Map() };
 const tutorialDetailState = { tutorialId: '', slideIndex: 0 };
+let tutorialRefreshPromise = null;
 
 function openLocalTutorialDatabase() {
   return new Promise((resolve, reject) => {
@@ -449,8 +451,28 @@ async function renderTutorials() {
   }
 }
 
+async function refreshSharedTutorials() {
+  if (!supabaseConfig?.url || !supabaseConfig?.publishableKey || document.visibilityState !== 'visible' || tutorialRefreshPromise) return;
+  if (document.querySelector('.modal:not(.hidden)')) return;
+  tutorialRefreshPromise = renderTutorials()
+    .catch((error) => console.warn('Background tutorial refresh failed', error))
+    .finally(() => { tutorialRefreshPromise = null; });
+  await tutorialRefreshPromise;
+}
+
+function startSharedTutorialRefresh() {
+  if (!supabaseConfig?.url || !supabaseConfig?.publishableKey) return;
+  window.setInterval(refreshSharedTutorials, SHARED_REFRESH_INTERVAL_MS);
+  window.addEventListener('focus', refreshSharedTutorials);
+  window.addEventListener('online', refreshSharedTutorials);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshSharedTutorials();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('tutorialForm');
+  startSharedTutorialRefresh();
   bindTutorialSearch();
   resetTutorialEditor();
   document.querySelector('[data-open-tutorial-modal]').addEventListener('click', () => { resetTutorialEditor(); setTutorialModal(true); });

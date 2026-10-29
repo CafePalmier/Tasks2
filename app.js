@@ -8,6 +8,7 @@ const COMPLETED_SORT_KEY = 'cafe-palmier-completed-sort';
 const STATIC_TASKS_PATH = './tasks.json';
 const TASK_DATA_VERSION = 6;
 const CELEBRATION_PROGRESS_KEY = 'cafe-palmier-five-task-celebration';
+const SHARED_REFRESH_INTERVAL_MS = 30_000;
 
 const state = {
   tasks: [],
@@ -30,6 +31,7 @@ const checklistSaveQueues = new Map();
 let urgentDropdownDismissalBound = false;
 let pendingDayTaskChoice = null;
 let pendingNewTaskDay = null;
+let sharedRefreshPromise = null;
 
 const supabaseConfig = window.SUPABASE_CONFIG;
 const usesSupabase = Boolean(supabaseConfig?.url && supabaseConfig?.publishableKey)
@@ -1936,8 +1938,8 @@ function renderAdminList() {
   });
 }
 
-async function loadTaskData() {
-  if (usesSupabase) {
+async function loadTaskData({ showCached = true } = {}) {
+  if (usesSupabase && showCached) {
     const cachedTasks = getLocalTasks([]);
     if (cachedTasks.length) {
       const cachedPayload = buildTaskPayload(cachedTasks, new Date(), true);
@@ -2014,6 +2016,25 @@ async function loadTaskData() {
       });
     }
   }
+}
+
+async function refreshSharedTaskData() {
+  if (!usesSupabase || document.visibilityState !== 'visible' || sharedRefreshPromise) return;
+  if (document.querySelector('.modal:not(.hidden)')) return;
+  sharedRefreshPromise = loadTaskData({ showCached: false })
+    .catch((error) => console.warn('Background task refresh failed', error))
+    .finally(() => { sharedRefreshPromise = null; });
+  await sharedRefreshPromise;
+}
+
+function startSharedTaskRefresh() {
+  if (!usesSupabase) return;
+  window.setInterval(refreshSharedTaskData, SHARED_REFRESH_INTERVAL_MS);
+  window.addEventListener('focus', refreshSharedTaskData);
+  window.addEventListener('online', refreshSharedTaskData);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshSharedTaskData();
+  });
 }
 
 async function completeTask(taskId) {
@@ -2990,6 +3011,7 @@ function closeTaskMilestoneModal() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   ensureAppChrome();
+  startSharedTaskRefresh();
   initializeTaskCardDetails();
   initializeNavIndicator();
   updateStickyHeaderOffset();
