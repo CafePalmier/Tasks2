@@ -3274,7 +3274,7 @@ body[data-page="tutorials"] .tutorial-tag {
   color: #1d4b67;
 }
 
-/* iPad-friendly tutorial detail: show one slide at a time with a clear swipe cue. */
+/* iPad-friendly tutorial detail: show one slide at a time with a smooth carousel transition. */
 .tutorial-detail-track {
   display: block;
   overflow: hidden;
@@ -3293,36 +3293,21 @@ body[data-page="tutorials"] .tutorial-tag {
   display: none;
 }
 
-.tutorial-swipe-hint {
-  position: absolute;
-  top: 50%;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.42rem 0.56rem;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 999px;
-  background: rgba(18, 43, 59, 0.78);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  pointer-events: none;
-  transform: translateY(-50%);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 5px 16px rgba(7, 25, 36, 0.2);
+.tutorial-detail-slide.active {
+  will-change: transform, opacity;
+  animation: tutorial-slide-enter-next 260ms cubic-bezier(.22, 1, .36, 1) both;
 }
 
-.tutorial-swipe-hint.next { right: 0.8rem; }
-.tutorial-swipe-hint.previous { left: 0.8rem; }
+.tutorial-detail-slide.active.tutorial-slide-enter-previous {
+  animation-name: tutorial-slide-enter-previous;
+}
 
-.tutorial-swipe-hint b {
-  display: grid;
-  width: 1.45rem;
-  height: 1.45rem;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 50%;
-  font-size: 1rem;
-  line-height: 1;
+@keyframes tutorial-slide-enter-next {
+  from { opacity: 0.45; transform: translate3d(4%, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes tutorial-slide-enter-previous {
+  from { opacity: 0.45; transform: translate3d(-4%, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
 }

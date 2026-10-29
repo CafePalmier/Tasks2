@@ -4,7 +4,7 @@ const TUTORIAL_BUCKET = 'cafe-tutorial-videos';
 const SHARED_REFRESH_INTERVAL_MS = 30_000;
 const supabaseConfig = window.SUPABASE_CONFIG;
 const tutorialState = { items: [], search: '', slideIndices: new Map() };
-const tutorialDetailState = { tutorialId: '', slideIndex: 0 };
+const tutorialDetailState = { tutorialId: '', slideIndex: 0, transitionDirection: '' };
 let tutorialRefreshPromise = null;
 
 function openLocalTutorialDatabase() {
@@ -269,8 +269,14 @@ function bindTutorialDetailSwipe(track) {
     const tutorial = tutorialState.items.find((item) => item.id === tutorialDetailState.tutorialId);
     if (!tutorial) return;
     const lastIndex = tutorial.slides.length - 1;
-    if (deltaX < 0 && tutorialDetailState.slideIndex < lastIndex) tutorialDetailState.slideIndex += 1;
-    if (deltaX > 0 && tutorialDetailState.slideIndex > 0) tutorialDetailState.slideIndex -= 1;
+    if (deltaX < 0 && tutorialDetailState.slideIndex < lastIndex) {
+      tutorialDetailState.transitionDirection = 'next';
+      tutorialDetailState.slideIndex += 1;
+    }
+    if (deltaX > 0 && tutorialDetailState.slideIndex > 0) {
+      tutorialDetailState.transitionDirection = 'previous';
+      tutorialDetailState.slideIndex -= 1;
+    }
     renderTutorialDetail();
   }, { passive: true });
   track.dataset.swipeBound = 'true';
@@ -284,11 +290,13 @@ function renderTutorialDetail() {
   const index = Math.min(Math.max(tutorialDetailState.slideIndex, 0), Math.max(slides.length - 1, 0));
   tutorialDetailState.slideIndex = index;
   const activeSlide = slides[index];
+  const transitionClass = tutorialDetailState.transitionDirection ? ` tutorial-slide-enter-${tutorialDetailState.transitionDirection}` : '';
   document.querySelector('[data-tutorial-detail-title]').textContent = tutorial.title;
   document.querySelector('[data-tutorial-detail-tags]').innerHTML = renderTutorialTags(tutorial);
   track.innerHTML = [
-    activeSlide ? `<article class="tutorial-detail-slide active"><div class="tutorial-detail-media">${renderTutorialDetailMedia(activeSlide, tutorial)}${slides.length > 1 && index < slides.length - 1 ? '<span class="tutorial-swipe-hint next" aria-hidden="true"><b>→</b><span>Swipe for next</span></span>' : ''}${slides.length > 1 && index === slides.length - 1 ? '<span class="tutorial-swipe-hint previous" aria-hidden="true"><span>Swipe back</span><b>←</b></span>' : ''}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${index + 1}</span><h3>${escapeTutorialText(activeSlide.title || `Step ${index + 1}`)}</h3><p${activeSlide.description ? '' : ' hidden'}>${escapeTutorialText(activeSlide.description)}</p></div></article>` : ''
+    activeSlide ? `<article class="tutorial-detail-slide active${transitionClass}"><div class="tutorial-detail-media">${renderTutorialDetailMedia(activeSlide, tutorial)}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${index + 1}</span><h3>${escapeTutorialText(activeSlide.title || `Step ${index + 1}`)}</h3><p${activeSlide.description ? '' : ' hidden'}>${escapeTutorialText(activeSlide.description)}</p></div></article>` : ''
   ].join('');
+  tutorialDetailState.transitionDirection = '';
   bindTutorialDetailSwipe(track);
   const previous = document.querySelector('[data-tutorial-detail-prev]');
   const next = document.querySelector('[data-tutorial-detail-next]');
@@ -309,6 +317,7 @@ function setTutorialDetailModal(open) {
 function openTutorialDetail(tutorial, index = 0) {
   tutorialDetailState.tutorialId = tutorial.id;
   tutorialDetailState.slideIndex = index;
+  tutorialDetailState.transitionDirection = '';
   renderTutorialDetail();
   setTutorialDetailModal(true);
 }
@@ -501,12 +510,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('[data-close-tutorial-detail]').forEach((button) => button.addEventListener('click', () => setTutorialDetailModal(false)));
   document.querySelector('[data-tutorial-detail-prev]').addEventListener('click', () => {
     if (tutorialDetailState.slideIndex <= 0) return;
+    tutorialDetailState.transitionDirection = 'previous';
     tutorialDetailState.slideIndex -= 1;
     renderTutorialDetail();
   });
   document.querySelector('[data-tutorial-detail-next]').addEventListener('click', () => {
     const tutorial = tutorialState.items.find((item) => item.id === tutorialDetailState.tutorialId);
     if (!tutorial || tutorialDetailState.slideIndex >= tutorial.slides.length - 1) return;
+    tutorialDetailState.transitionDirection = 'next';
     tutorialDetailState.slideIndex += 1;
     renderTutorialDetail();
   });
