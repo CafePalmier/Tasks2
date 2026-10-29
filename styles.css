@@ -3273,3 +3273,56 @@ body[data-page="tutorials"] .tutorial-tag {
   background: #d9eaf4;
   color: #1d4b67;
 }
+
+/* iPad-friendly tutorial detail: show one slide at a time with a clear swipe cue. */
+.tutorial-detail-track {
+  display: block;
+  overflow: hidden;
+  padding: 0.15rem 0.15rem 0.75rem;
+  touch-action: pan-y;
+}
+
+.tutorial-detail-slide,
+.tutorial-detail-slide.active {
+  width: 100%;
+  min-width: 100%;
+  flex: 0 0 100%;
+}
+
+.tutorial-detail-slide.next {
+  display: none;
+}
+
+.tutorial-swipe-hint {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.56rem;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  background: rgba(18, 43, 59, 0.78);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  transform: translateY(-50%);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 5px 16px rgba(7, 25, 36, 0.2);
+}
+
+.tutorial-swipe-hint.next { right: 0.8rem; }
+.tutorial-swipe-hint.previous { left: 0.8rem; }
+
+.tutorial-swipe-hint b {
+  display: grid;
+  width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+}

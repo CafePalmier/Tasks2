@@ -250,6 +250,32 @@ function renderTutorialDetailMedia(slide, tutorial) {
   return `<img src="${url}" alt="${escapeTutorialText(slide.title || tutorial.title)}" />`;
 }
 
+function bindTutorialDetailSwipe(track) {
+  if (!track || track.dataset.swipeBound) return;
+  let startX = 0;
+  let startY = 0;
+  track.addEventListener('touchstart', (event) => {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    startX = touch.clientX;
+    startY = touch.clientY;
+  }, { passive: true });
+  track.addEventListener('touchend', (event) => {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    if (Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
+    const tutorial = tutorialState.items.find((item) => item.id === tutorialDetailState.tutorialId);
+    if (!tutorial) return;
+    const lastIndex = tutorial.slides.length - 1;
+    if (deltaX < 0 && tutorialDetailState.slideIndex < lastIndex) tutorialDetailState.slideIndex += 1;
+    if (deltaX > 0 && tutorialDetailState.slideIndex > 0) tutorialDetailState.slideIndex -= 1;
+    renderTutorialDetail();
+  }, { passive: true });
+  track.dataset.swipeBound = 'true';
+}
+
 function renderTutorialDetail() {
   const tutorial = tutorialState.items.find((item) => item.id === tutorialDetailState.tutorialId);
   const track = document.querySelector('[data-tutorial-detail-track]');
@@ -258,23 +284,18 @@ function renderTutorialDetail() {
   const index = Math.min(Math.max(tutorialDetailState.slideIndex, 0), Math.max(slides.length - 1, 0));
   tutorialDetailState.slideIndex = index;
   const activeSlide = slides[index];
-  const nextSlide = slides[index + 1];
   document.querySelector('[data-tutorial-detail-title]').textContent = tutorial.title;
   document.querySelector('[data-tutorial-detail-tags]').innerHTML = renderTutorialTags(tutorial);
   track.innerHTML = [
-    activeSlide ? `<article class="tutorial-detail-slide active"><div class="tutorial-detail-media">${renderTutorialDetailMedia(activeSlide, tutorial)}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${index + 1}</span><h3>${escapeTutorialText(activeSlide.title || `Step ${index + 1}`)}</h3><p${activeSlide.description ? '' : ' hidden'}>${escapeTutorialText(activeSlide.description)}</p></div></article>` : '',
-    nextSlide ? `<article class="tutorial-detail-slide next" data-open-next-detail><div class="tutorial-detail-media">${renderTutorialDetailMedia(nextSlide, tutorial)}<span class="tutorial-detail-next-label">Next slide <b>${index + 2}</b></span></div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Up next</span><h3>${escapeTutorialText(nextSlide.title || `Step ${index + 2}`)}</h3><p${nextSlide.description ? '' : ' hidden'}>${escapeTutorialText(nextSlide.description)}</p></div></article>` : ''
+    activeSlide ? `<article class="tutorial-detail-slide active"><div class="tutorial-detail-media">${renderTutorialDetailMedia(activeSlide, tutorial)}${slides.length > 1 && index < slides.length - 1 ? '<span class="tutorial-swipe-hint next" aria-hidden="true"><b>→</b><span>Swipe for next</span></span>' : ''}${slides.length > 1 && index === slides.length - 1 ? '<span class="tutorial-swipe-hint previous" aria-hidden="true"><span>Swipe back</span><b>←</b></span>' : ''}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${index + 1}</span><h3>${escapeTutorialText(activeSlide.title || `Step ${index + 1}`)}</h3><p${activeSlide.description ? '' : ' hidden'}>${escapeTutorialText(activeSlide.description)}</p></div></article>` : ''
   ].join('');
+  bindTutorialDetailSwipe(track);
   const previous = document.querySelector('[data-tutorial-detail-prev]');
   const next = document.querySelector('[data-tutorial-detail-next]');
   previous.disabled = index === 0;
   next.disabled = index >= slides.length - 1;
   next.textContent = index >= slides.length - 1 ? 'End of tutorial' : 'Next slide';
   document.querySelector('[data-tutorial-detail-counter]').textContent = `${index + 1} of ${slides.length}`;
-  track.querySelector('[data-open-next-detail]')?.addEventListener('click', () => {
-    tutorialDetailState.slideIndex += 1;
-    renderTutorialDetail();
-  });
   track.querySelectorAll('video').forEach(prepareTutorialPreview);
 }
 
