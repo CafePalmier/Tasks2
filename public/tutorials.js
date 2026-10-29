@@ -428,6 +428,7 @@ function resetTutorialEditor() {
   form.elements.tutorialId.value = '';
   document.getElementById('tutorialModalTitle').textContent = 'Add a tutorial';
   form.querySelector('[type="submit"]').textContent = 'Save tutorial';
+  form.querySelector('[data-delete-tutorial]').hidden = true;
   renderSlideEditors([{ id: 'slide-1' }]);
   form.querySelector('[data-tutorial-status]').textContent = '';
 }
@@ -440,6 +441,7 @@ function openTutorialEditor(tutorial) {
   form.querySelectorAll('input[name="tags"]').forEach((input) => { input.checked = tutorial.tags.includes(input.value); });
   document.getElementById('tutorialModalTitle').textContent = 'Edit tutorial';
   form.querySelector('[type="submit"]').textContent = 'Save changes';
+  form.querySelector('[data-delete-tutorial]').hidden = false;
   renderSlideEditors(tutorial.slides.length ? tutorial.slides : [{ id: 'slide-1' }]);
   setTutorialModal(true);
 }
@@ -564,6 +566,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       status.textContent = 'This tutorial could not be saved. Check the shared Supabase setup, file size, and connection.';
     } finally {
       submit.disabled = false;
+    }
+  });
+  form.querySelector('[data-delete-tutorial]').addEventListener('click', async () => {
+    const tutorialId = form.elements.tutorialId.value.trim();
+    const tutorial = tutorialState.items.find((item) => item.id === tutorialId);
+    if (!tutorial || !window.confirm(`Delete “${tutorial.title}”? This will remove the tutorial and its media for everyone.`)) return;
+    const deleteButton = form.querySelector('[data-delete-tutorial]');
+    const status = form.querySelector('[data-tutorial-status]');
+    deleteButton.disabled = true;
+    status.textContent = 'Deleting tutorial…';
+    try {
+      await deleteSharedTutorial(tutorial);
+      setTutorialModal(false);
+      resetTutorialEditor();
+      await renderTutorials();
+    } catch (error) {
+      console.error('Could not delete tutorial', error);
+      status.textContent = 'This tutorial could not be deleted. Check the shared Supabase setup and connection.';
+    } finally {
+      deleteButton.disabled = false;
     }
   });
   try { await migrateDeviceTutorials(); } catch (error) { console.warn('Existing device tutorials will be migrated after shared storage is configured.', error); }
