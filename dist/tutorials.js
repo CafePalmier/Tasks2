@@ -308,7 +308,6 @@ function renderTutorialGrid() {
         <div class="tutorial-media-stage" data-tutorial-stage aria-hidden="true"></div>
         ${slides.length > 1 ? `<button class="tutorial-slide-arrow previous" type="button" data-tutorial-prev aria-label="Previous slide">‹</button><button class="tutorial-slide-arrow next" type="button" data-tutorial-next aria-label="Next slide">›</button>` : ''}
         <div class="tutorial-slide-numbers" role="tablist" aria-label="Tutorial slides">${slides.map((slide, index) => `<button type="button" role="tab" class="tutorial-slide-number" data-tutorial-slide="${index}" aria-label="Slide ${index + 1}">${index + 1}</button>`).join('')}</div>
-        <span class="tutorial-slide-counter" data-tutorial-counter>${slides.length ? `1 / ${slides.length}` : '0 / 0'}</span>
       </div>
       <div class="tutorial-card-copy"><div class="tutorial-card-content">${renderTutorialTags(tutorial)}<h2>${escapeTutorialText(tutorial.title)}</h2><h3 data-tutorial-slide-title hidden></h3><p data-tutorial-slide-description hidden></p></div><button class="icon-btn tutorial-edit" type="button" data-edit-tutorial="${escapeTutorialText(tutorial.id)}" aria-label="Edit ${escapeTutorialText(tutorial.title)}">Edit</button></div>
     </article>`;
@@ -468,12 +467,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     tutorialDetailState.slideIndex += 1;
     renderTutorialDetail();
   });
-  document.querySelector('[data-add-tutorial-slide]').addEventListener('click', () => {
-    const list = document.querySelector('[data-tutorial-slide-editor-list]');
-    list.insertAdjacentHTML('beforeend', slideEditorMarkup({ id: `slide-${list.children.length + 1}` }, list.children.length, true));
-    updateSlideEditorLabels();
-  });
   document.addEventListener('click', (event) => {
+    const addSlide = event.target.closest('[data-add-tutorial-slide]');
+    if (addSlide) {
+      event.preventDefault();
+      const list = document.querySelector('[data-tutorial-slide-editor-list]');
+      if (list) {
+        list.insertAdjacentHTML('beforeend', slideEditorMarkup({ id: `slide-${list.children.length + 1}` }, list.children.length, true));
+        updateSlideEditorLabels();
+      }
+      return;
+    }
     const remove = event.target.closest('[data-remove-tutorial-slide]');
     if (!remove) return;
     const list = document.querySelector('[data-tutorial-slide-editor-list]');
