@@ -6,12 +6,18 @@
       "category": "cleaning",
       "period": "weekly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
-      "lastCompletedAt": null,
+      "lastCompletedAt": "2026-10-29T19:16:10.337Z",
+      "completionHistory": [
+        "2026-10-29T19:16:10.337Z"
+      ],
       "area": "General",
-      "order": 23,
-      "season": "both"
+      "order": 23
     },
     {
       "id": "task-24",
@@ -19,12 +25,16 @@
       "category": "stocking",
       "period": "weekly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 24,
-      "season": "both"
+      "order": 24
     },
     {
       "id": "task-25",
@@ -32,12 +42,16 @@
       "category": "prep",
       "period": "weekly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 25,
-      "season": "both"
+      "order": 25
     },
     {
       "id": "task-26",
@@ -45,12 +59,16 @@
       "category": "stocking",
       "period": "weekly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 26,
-      "season": "both"
+      "order": 26
     },
     {
       "id": "task-water-plants",
@@ -58,12 +76,16 @@
       "category": "general",
       "period": "weekly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 27,
-      "season": "both"
+      "order": 27
     },
     {
       "id": "task-27",
@@ -71,12 +93,16 @@
       "category": "cleaning",
       "period": "monthly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 27,
-      "season": "both"
+      "order": 27
     },
     {
       "id": "task-28",
@@ -84,12 +110,16 @@
       "category": "stocking",
       "period": "monthly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 28,
-      "season": "both"
+      "order": 28
     },
     {
       "id": "task-29",
@@ -97,12 +127,16 @@
       "category": "stocking",
       "period": "monthly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 29,
-      "season": "both"
+      "order": 29
     },
     {
       "id": "task-30",
@@ -110,12 +144,16 @@
       "category": "prep",
       "period": "monthly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 30,
-      "season": "both"
+      "order": 30
     },
     {
       "id": "task-31",
@@ -123,12 +161,16 @@
       "category": "general",
       "period": "yearly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 31,
-      "season": "both"
+      "order": 31
     },
     {
       "id": "task-32",
@@ -136,12 +178,16 @@
       "category": "general",
       "period": "yearly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 32,
-      "season": "both"
+      "order": 32
     },
     {
       "id": "task-33",
@@ -149,12 +195,16 @@
       "category": "general",
       "period": "yearly",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 33,
-      "season": "both"
+      "order": 33
     },
     {
       "id": "task-34",
@@ -162,12 +212,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Outside",
-      "order": 34,
-      "season": "both"
+      "order": 34
     },
     {
       "id": "task-35",
@@ -175,12 +229,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Outside",
-      "order": 35,
-      "season": "both"
+      "order": 35
     },
     {
       "id": "task-36",
@@ -188,12 +246,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Outside",
-      "order": 36,
-      "season": "both"
+      "order": 36
     },
     {
       "id": "task-37",
@@ -201,12 +263,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Outside",
-      "order": 37,
-      "season": "both"
+      "order": 37
     },
     {
       "id": "task-38",
@@ -214,12 +280,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Outside",
-      "order": 38,
-      "season": "both"
+      "order": 38
     },
     {
       "id": "task-39",
@@ -227,12 +297,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Outside",
-      "order": 39,
-      "season": "both"
+      "order": 39
     },
     {
       "id": "task-40",
@@ -240,12 +314,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Upstairs",
-      "order": 40,
-      "season": "both"
+      "order": 40
     },
     {
       "id": "task-41",
@@ -253,12 +331,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Upstairs",
-      "order": 41,
-      "season": "both"
+      "order": 41
     },
     {
       "id": "task-42",
@@ -266,12 +348,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Upstairs",
-      "order": 42,
-      "season": "both"
+      "order": 42
     },
     {
       "id": "task-43",
@@ -279,12 +365,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Upstairs",
-      "order": 43,
-      "season": "both"
+      "order": 43
     },
     {
       "id": "task-44",
@@ -292,12 +382,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Upstairs",
-      "order": 44,
-      "season": "both"
+      "order": 44
     },
     {
       "id": "task-45",
@@ -305,13 +399,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:00PM+",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Upstairs",
-      "order": 45,
-      "season": "both"
+      "order": 45
     },
     {
       "id": "task-46",
@@ -319,12 +416,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Upstairs",
-      "order": 46,
-      "season": "both"
+      "order": 46
     },
     {
       "id": "task-47",
@@ -332,12 +433,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 47,
-      "season": "both"
+      "order": 47
     },
     {
       "id": "task-48",
@@ -345,12 +450,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 48,
-      "season": "both"
+      "order": 48
     },
     {
       "id": "task-49",
@@ -358,12 +467,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 49,
-      "season": "both"
+      "order": 49
     },
     {
       "id": "task-50",
@@ -371,12 +484,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 50,
-      "season": "both"
+      "order": 50
     },
     {
       "id": "task-51",
@@ -384,12 +501,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 51,
-      "season": "both"
+      "order": 51
     },
     {
       "id": "task-52",
@@ -397,12 +518,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 52,
-      "season": "both"
+      "order": 52
     },
     {
       "id": "task-53",
@@ -410,12 +535,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 53,
-      "season": "both"
+      "order": 53
     },
     {
       "id": "task-54",
@@ -423,12 +552,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 54,
-      "season": "both"
+      "order": 54
     },
     {
       "id": "task-55",
@@ -436,12 +569,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 55,
-      "season": "both"
+      "order": 55
     },
     {
       "id": "task-56",
@@ -449,14 +586,18 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [
         "Friday"
       ],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 56,
-      "season": "both"
+      "order": 56
     },
     {
       "id": "task-57",
@@ -464,12 +605,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 57,
-      "season": "both"
+      "order": 57
     },
     {
       "id": "task-58",
@@ -477,13 +622,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "4:00PM+",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 6,
-      "season": "both"
+      "order": 6
     },
     {
       "id": "task-59",
@@ -491,12 +639,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 59,
-      "season": "both"
+      "order": 59
     },
     {
       "id": "task-60",
@@ -504,12 +656,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 60,
-      "season": "both"
+      "order": 60
     },
     {
       "id": "task-61",
@@ -517,12 +673,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 61,
-      "season": "both"
+      "order": 61
     },
     {
       "id": "task-62",
@@ -530,12 +690,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Kitchen",
-      "order": 62,
-      "season": "both"
+      "order": 62
     },
     {
       "id": "task-63",
@@ -543,12 +707,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Kitchen",
-      "order": 63,
-      "season": "both"
+      "order": 63
     },
     {
       "id": "task-64",
@@ -556,12 +724,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Kitchen",
-      "order": 64,
-      "season": "both"
+      "order": 64
     },
     {
       "id": "task-65",
@@ -569,12 +741,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Kitchen",
-      "order": 65,
-      "season": "both"
+      "order": 65
     },
     {
       "id": "task-66",
@@ -582,12 +758,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Kitchen",
-      "order": 66,
-      "season": "both"
+      "order": 66
     },
     {
       "id": "task-67",
@@ -595,13 +775,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "4:50PM+",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 16,
-      "season": "both"
+      "order": 16
     },
     {
       "id": "task-68",
@@ -609,12 +792,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 68,
-      "season": "both"
+      "order": 68
     },
     {
       "id": "task-87",
@@ -622,13 +809,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "4:30PM+",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 12,
-      "season": "both"
+      "order": 12
     },
     {
       "id": "task-69",
@@ -636,12 +826,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 15,
-      "season": "both"
+      "order": 15
     },
     {
       "id": "task-70",
@@ -649,12 +843,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 71,
-      "season": "both"
+      "order": 71
     },
     {
       "id": "task-71",
@@ -662,12 +860,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 72,
-      "season": "both"
+      "order": 72
     },
     {
       "id": "task-72",
@@ -675,12 +877,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 73,
-      "season": "both"
+      "order": 73
     },
     {
       "id": "task-73",
@@ -688,12 +894,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 74,
-      "season": "both"
+      "order": 74
     },
     {
       "id": "task-74",
@@ -701,12 +911,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 75,
-      "season": "both"
+      "order": 75
     },
     {
       "id": "task-75",
@@ -714,12 +928,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 76,
-      "season": "both"
+      "order": 76
     },
     {
       "id": "task-76",
@@ -727,12 +945,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 77,
-      "season": "both"
+      "order": 77
     },
     {
       "id": "task-77",
@@ -740,12 +962,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 78,
-      "season": "both"
+      "order": 78
     },
     {
       "id": "task-78",
@@ -753,12 +979,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 79,
-      "season": "both"
+      "order": 79
     },
     {
       "id": "task-79",
@@ -766,12 +996,16 @@
       "category": "opening",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 79,
-      "season": "both"
+      "order": 79
     },
     {
       "id": "task-80",
@@ -779,12 +1013,16 @@
       "category": "opening",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 80,
-      "season": "both"
+      "order": 80
     },
     {
       "id": "task-81",
@@ -792,12 +1030,16 @@
       "category": "opening",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 81,
-      "season": "both"
+      "order": 81
     },
     {
       "id": "task-82",
@@ -805,12 +1047,16 @@
       "category": "opening",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 82,
-      "season": "both"
+      "order": 82
     },
     {
       "id": "task-83",
@@ -818,12 +1064,16 @@
       "category": "opening",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 83,
-      "season": "both"
+      "order": 83
     },
     {
       "id": "task-84",
@@ -831,12 +1081,16 @@
       "category": "opening",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 84,
-      "season": "both"
+      "order": 84
     },
     {
       "id": "task-85",
@@ -844,12 +1098,16 @@
       "category": "opening",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 85,
-      "season": "both"
+      "order": 85
     },
     {
       "id": "task-86",
@@ -857,221 +1115,339 @@
       "category": "opening",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 86,
-      "season": "both"
+      "order": 86
     },
     {
       "id": "task-88",
       "title": "Remove black coffee mats + excess bar dishes",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "2:30PM+ — Start Close",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 1,
-      "season": "both"
+      "order": 1
     },
     {
       "id": "task-89",
       "title": "Restock milks",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "2:30PM+ — Start Close",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 2,
-      "season": "both"
+      "order": 2
     },
     {
       "id": "task-90",
       "title": "Dump grinds into coffee bucket",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "2:30PM+ — Start Close",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 3,
-      "season": "both"
+      "order": 3
     },
     {
       "id": "task-91",
       "title": "Start dusting coffee machines",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "2:30PM+ — Start Close",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 4,
-      "season": "both"
+      "order": 4
     },
     {
       "id": "task-92",
       "title": "Remove floor mats",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:00PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 5,
-      "season": "both"
+      "order": 5
     },
     {
       "id": "task-93",
       "title": "Pull pastries for next day",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:00PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 6,
-      "season": "both"
+      "order": 6
     },
     {
       "id": "task-94",
       "title": "Reduce pastry plates",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:00PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 7,
-      "season": "both"
+      "order": 7
     },
     {
       "id": "task-95",
       "title": "Make pastry boxes",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:00PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 8,
-      "season": "both"
+      "order": 8
     },
     {
       "id": "task-96",
       "title": "Dishes",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:00PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 9,
-      "season": "both"
+      "order": 9
     },
     {
       "id": "task-97",
       "title": "Remove / clean pastry tags",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:00PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 10,
-      "season": "both"
+      "order": 10
     },
     {
       "id": "task-98",
       "title": "Garbages",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:30PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 1,
-      "season": "both"
+      "order": 1
     },
     {
       "id": "task-99",
       "title": "Bathrooms",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:30PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 2,
-      "season": "both"
+      "order": 2
     },
     {
       "id": "task-100",
       "title": "Dishes",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:30PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 3,
-      "season": "both"
+      "order": 3
     },
     {
       "id": "task-101",
       "title": "Pre-sweep",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:30PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 4,
-      "season": "both"
+      "order": 4
     },
     {
       "id": "task-102",
       "title": "Clean machine",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "3:30PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Downstairs",
-      "order": 5,
-      "season": "both"
+      "order": 5
     },
     {
       "id": "task-103",
       "title": "Milk + cream pitchers — clean + put in fridge",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "4:00PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 11,
-      "season": "both"
+      "order": 11
     },
     {
       "id": "task-104",
       "title": "Slowly put pastries away",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "4:30PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 13,
-      "season": "both"
+      "order": 13
     },
     {
       "id": "task-105",
       "title": "Clean filter coffees",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "4:30PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 14,
-      "season": "both"
+      "order": 14
     },
     {
       "id": "task-106",
       "title": "Clean bins",
       "category": "closing",
       "period": "shift",
+      "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
       "timeTag": "4:30PM+",
+      "urgentOn": [],
       "isActive": true,
+      "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "Bar",
-      "order": 17,
-      "season": "both"
+      "order": 17
     },
     {
       "id": "task-108",
@@ -1079,12 +1455,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 108,
-      "season": "both"
+      "order": 108
     },
     {
       "id": "task-109",
@@ -1092,12 +1472,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 109,
-      "season": "both"
+      "order": 109
     },
     {
       "id": "task-110",
@@ -1105,12 +1489,16 @@
       "category": "closing",
       "period": "shift",
       "description": "",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 110,
-      "season": "both"
+      "order": 110
     },
     {
       "id": "task-111",
@@ -1118,14 +1506,18 @@
       "category": "prep",
       "period": "weekly",
       "description": "Get the weekend coffee beans prepared well before the rush.",
+      "checklist": [],
+      "checklistImage": "",
+      "season": "both",
+      "timeTag": "",
       "urgentOn": [
         "Friday"
       ],
       "isActive": true,
       "lastCompletedAt": null,
+      "completionHistory": [],
       "area": "General",
-      "order": 111,
-      "season": "both"
+      "order": 111
     }
   ]
 }
