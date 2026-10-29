@@ -277,8 +277,8 @@ function updateTutorialDetailControls(tutorial, index) {
   const counter = document.querySelector('[data-tutorial-detail-counter]');
   if (previous) previous.disabled = index === 0;
   if (next) {
-    next.disabled = index >= tutorial.slides.length - 1;
-    next.textContent = index >= tutorial.slides.length - 1 ? 'End of tutorial' : 'Next slide';
+    next.disabled = false;
+    next.textContent = index >= tutorial.slides.length - 1 ? 'Done' : 'Next slide';
   }
   if (counter) counter.textContent = `${index + 1} of ${tutorial.slides.length}`;
   document.querySelectorAll('[data-tutorial-detail-dot]').forEach((dot) => {
@@ -551,7 +551,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelector('[data-tutorial-detail-next]').addEventListener('click', () => {
     const tutorial = tutorialState.items.find((item) => item.id === tutorialDetailState.tutorialId);
-    if (!tutorial || tutorialDetailState.slideIndex >= tutorial.slides.length - 1) return;
+    if (!tutorial) return;
+    if (tutorialDetailState.slideIndex >= tutorial.slides.length - 1) {
+      setTutorialDetailModal(false);
+      return;
+    }
     scrollTutorialDetailTo(tutorialDetailState.slideIndex + 1);
   });
   document.addEventListener('click', (event) => {
