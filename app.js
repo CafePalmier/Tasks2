@@ -6,9 +6,10 @@ const SEASON_OVERRIDE_DATE_KEY = 'cafe-palmier-season-override-date-v2';
 const COMPLETED_ONE_OFFS_KEY = 'cafe-palmier-completed-one-offs';
 const COMPLETED_SORT_KEY = 'cafe-palmier-completed-sort';
 const STATIC_TASKS_PATH = './tasks.json';
-const TASK_DATA_VERSION = 6;
+const TASK_DATA_VERSION = 7;
 const CELEBRATION_PROGRESS_KEY = 'cafe-palmier-five-task-celebration';
 const SHARED_REFRESH_INTERVAL_MS = 30_000;
+const TUTORIAL_BUCKET = 'cafe-tutorial-videos';
 
 const state = {
   tasks: [],
@@ -32,6 +33,8 @@ let urgentDropdownDismissalBound = false;
 let pendingDayTaskChoice = null;
 let pendingNewTaskDay = null;
 let sharedRefreshPromise = null;
+const taskTutorialState = { items: [], search: '', loaded: false, loadPromise: null };
+const taskTutorialDetailState = { tutorialId: '', slideIndex: 0 };
 
 const supabaseConfig = window.SUPABASE_CONFIG;
 const usesSupabase = Boolean(supabaseConfig?.url && supabaseConfig?.publishableKey)
@@ -406,6 +409,7 @@ function localTaskApi(path, options = {}) {
       id: `task-${Date.now()}`,
       period: shiftOnlyCategories.includes(body.category) ? 'shift' : (body.period || 'weekly'),
       description: body.description || '',
+      tutorialId: body.tutorialId || '',
       checklist: normalizeChecklist(body.checklist),
       season: normalizeSeason(body.season),
       urgentOn: Array.isArray(body.urgentOn) ? body.urgentOn : [],
@@ -454,6 +458,7 @@ function fromDatabaseTask(task) {
   return {
     ...task,
     timeTag: task.time_tag || '',
+    tutorialId: task.tutorial_id || '',
     urgentOn: urgentValues.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:') && !value.startsWith('__completionHistory:'))),
     isActive: task.is_active !== false,
     lastCompletedAt: task.last_completed_at || null,
@@ -472,6 +477,7 @@ function toDatabaseTask(task) {
     category: task.category || 'general',
     period: task.period || 'weekly',
     description: task.description || '',
+    tutorial_id: task.tutorialId || null,
     time_tag: task.timeTag || '',
     urgent_on: [
       ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:') && !value.startsWith('__completionHistory:'))) : []),
@@ -626,6 +632,278 @@ function escapeHtml(value = '') {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function normalizeTaskTutorialSlide(slide, index = 0) {
+  const storagePath = String(slide?.storage_path || slide?.storagePath || '').trim();
+  const mediaType = String(slide?.media_type || slide?.mediaType || storagePath).toLowerCase().startsWith('video') ? 'video' : 'image';
+  return {
+    id: String(slide?.id || `slide-${index + 1}`),
+    storage_path: storagePath,
+    media_type: mediaType,
+    title: String(slide?.title || '').trim(),
+    description: String(slide?.description || '').trim(),
+    order: Number.isFinite(Number(slide?.order)) ? Number(slide.order) : index
+  };
+}
+
+function normalizeTaskTutorial(tutorial) {
+  let slides = Array.isArray(tutorial?.slides) ? tutorial.slides.map(normalizeTaskTutorialSlide) : [];
+  if (!slides.length && tutorial?.storage_path) {
+    slides = [normalizeTaskTutorialSlide({ storage_path: tutorial.storage_path, media_type: 'video' })];
+  }
+  return {
+    ...tutorial,
+    id: String(tutorial?.id || ''),
+    title: String(tutorial?.title || 'Untitled tutorial').trim(),
+    tags: Array.isArray(tutorial?.tags) ? tutorial.tags.flatMap((tag) => {
+      const normalizedTag = String(tag).trim();
+      return normalizedTag === 'Closing & Opening' ? ['Closing', 'Opening'] : [normalizedTag];
+    }).filter(Boolean) : [],
+    slides: slides.filter((slide) => slide.storage_path).sort((a, b) => a.order - b.order)
+  };
+}
+
+function taskTutorialHeaders(extra = {}) {
+  return {
+    apikey: supabaseConfig.publishableKey,
+    Authorization: `Bearer ${supabaseConfig.publishableKey}`,
+    ...extra
+  };
+}
+
+function publicTaskTutorialUrl(storagePath, mediaType = '') {
+  const encodedPath = String(storagePath).split('/').map(encodeURIComponent).join('/');
+  return `${supabaseConfig.url}/storage/v1/object/public/${TUTORIAL_BUCKET}/${encodedPath}${mediaType === 'video' ? '#t=0.1' : ''}`;
+}
+
+async function loadTaskTutorials({ force = false } = {}) {
+  if (!supabaseConfig?.url || !supabaseConfig?.publishableKey) {
+    taskTutorialState.loaded = true;
+    taskTutorialState.items = [];
+    return [];
+  }
+  if (!force && taskTutorialState.loaded) return taskTutorialState.items;
+  if (taskTutorialState.loadPromise) return taskTutorialState.loadPromise;
+
+  taskTutorialState.loadPromise = fetch(`${supabaseConfig.url}/rest/v1/cafe_tutorials?select=*&order=created_at.desc`, {
+    headers: taskTutorialHeaders()
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Tutorial request failed with ${response.status}`);
+      return response.json();
+    })
+    .then((items) => {
+      taskTutorialState.items = Array.isArray(items) ? items.map(normalizeTaskTutorial).filter((tutorial) => tutorial.id) : [];
+      taskTutorialState.loaded = true;
+      const form = document.getElementById('taskForm');
+      if (form) {
+        const selectedTutorialId = form.elements.tutorialId?.value || '';
+        if (selectedTutorialId) setTaskTutorialSelection(form, selectedTutorialId);
+        renderTaskTutorialSuggestions(form);
+      }
+      return taskTutorialState.items;
+    })
+    .finally(() => { taskTutorialState.loadPromise = null; });
+
+  return taskTutorialState.loadPromise;
+}
+
+function matchingTaskTutorials(query = taskTutorialState.search) {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return taskTutorialState.items.filter((tutorial) => {
+    if (!normalizedQuery) return true;
+    const searchable = [tutorial.title, ...(tutorial.tags || []), ...(tutorial.slides || []).flatMap((slide) => [slide.title, slide.description])].join(' ');
+    return searchable.toLocaleLowerCase().includes(normalizedQuery);
+  });
+}
+
+function renderTaskTutorialSuggestions(form, { show = false } = {}) {
+  const input = form?.querySelector('[data-task-tutorial-search]');
+  const suggestions = form?.querySelector('[data-task-tutorial-suggestions]');
+  if (!input || !suggestions) return;
+  const matches = input.value.trim() ? matchingTaskTutorials(input.value).slice(0, 8) : [];
+  suggestions.innerHTML = matches.map((tutorial) => `
+    <button type="button" class="quick-day-suggestion" role="option" data-task-tutorial-id="${escapeHtml(tutorial.id)}">
+      <span>${escapeHtml(tutorial.title)}</span>
+      <span class="meta-pill category-pill">${escapeHtml(tutorial.tags?.[0] || `${tutorial.slides.length} slides`)}</span>
+    </button>
+  `).join('');
+  suggestions.hidden = !(show && matches.length);
+  suggestions.querySelectorAll('[data-task-tutorial-id]').forEach((button) => button.addEventListener('click', () => {
+    setTaskTutorialSelection(form, button.dataset.taskTutorialId);
+  }));
+}
+
+function setTaskTutorialSelection(form, tutorialId) {
+  if (!form) return;
+  const hiddenInput = form.elements.tutorialId;
+  const input = form.querySelector('[data-task-tutorial-search]');
+  const selection = form.querySelector('[data-task-tutorial-selection]');
+  const clearButton = form.querySelector('[data-clear-task-tutorial]');
+  const tutorial = taskTutorialState.items.find((item) => item.id === String(tutorialId || ''));
+  if (hiddenInput) hiddenInput.value = tutorial?.id || (tutorialId || '');
+  if (input) {
+    input.value = tutorial?.title || '';
+    taskTutorialState.search = input.value;
+  }
+  if (selection) selection.textContent = tutorial ? `Linked tutorial: ${tutorial.title}` : (tutorialId ? 'Linked tutorial is unavailable.' : 'No tutorial linked.');
+  if (clearButton) clearButton.hidden = !tutorialId;
+  renderTaskTutorialSuggestions(form);
+}
+
+function bindTaskTutorialPicker(form) {
+  if (!form || form.dataset.taskTutorialPickerBound === 'true') return;
+  form.dataset.taskTutorialPickerBound = 'true';
+  const input = form.querySelector('[data-task-tutorial-search]');
+  const suggestions = form.querySelector('[data-task-tutorial-suggestions]');
+  const combobox = input?.closest('.quick-day-combobox');
+  if (!input || !suggestions) return;
+
+  input.addEventListener('input', () => {
+    taskTutorialState.search = input.value;
+    const selectedTutorial = taskTutorialState.items.find((item) => item.id === form.elements.tutorialId?.value);
+    if (!input.value.trim() || input.value !== selectedTutorial?.title) {
+      form.elements.tutorialId.value = '';
+      form.querySelector('[data-task-tutorial-selection]').textContent = 'No tutorial linked.';
+      form.querySelector('[data-clear-task-tutorial]').hidden = true;
+    }
+    renderTaskTutorialSuggestions(form, { show: true });
+  });
+  input.addEventListener('focus', async () => {
+    try { await loadTaskTutorials(); } catch (error) { console.warn('Could not load tutorials for task editor', error); }
+    renderTaskTutorialSuggestions(form, { show: true });
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') suggestions.hidden = true;
+  });
+  combobox?.addEventListener('focusout', () => window.setTimeout(() => {
+    if (!combobox.contains(document.activeElement)) suggestions.hidden = true;
+  }, 0));
+  form.querySelector('[data-clear-task-tutorial]')?.addEventListener('click', () => setTaskTutorialSelection(form, ''));
+}
+
+function renderTaskTutorialButton(task) {
+  return task?.tutorialId
+    ? `<button class="secondary-btn task-tutorial-button" type="button" data-open-task-tutorial="${escapeHtml(task.tutorialId)}">Tutorial</button>`
+    : '';
+}
+
+function prepareTaskTutorialVideo(video) {
+  if (!video) return;
+  video.defaultMuted = true;
+  video.muted = true;
+  const revealThumbnail = () => video.closest('.tutorial-detail-media')?.classList.add('thumbnail-ready');
+  const seekToThumbnail = () => {
+    if (!Number.isFinite(video.duration) || video.duration <= 0 || video.currentTime > 0) return;
+    try { video.currentTime = Math.min(0.1, video.duration / 2); } catch (error) { /* The first loaded frame is still fine. */ }
+  };
+  video.addEventListener('loadedmetadata', seekToThumbnail, { once: true });
+  video.addEventListener('loadeddata', revealThumbnail, { once: true });
+  if (video.readyState >= 1) seekToThumbnail();
+  if (video.readyState >= 2) revealThumbnail();
+}
+
+function renderTaskTutorialTags(tutorial) {
+  return tutorial.tags?.length
+    ? `<div class="tutorial-tags">${tutorial.tags.map((tag) => `<span class="tutorial-tag">${escapeHtml(tag)}</span>`).join('')}</div>`
+    : '';
+}
+
+function renderTaskTutorialDetailMedia(slide, tutorial) {
+  const url = publicTaskTutorialUrl(slide.storage_path, slide.media_type);
+  if (slide.media_type === 'video') return `<video src="${url}" controls preload="metadata" playsinline aria-label="${escapeHtml(slide.title || tutorial.title)}"></video>`;
+  return `<img src="${url}" alt="${escapeHtml(slide.title || tutorial.title)}" />`;
+}
+
+function updateTaskTutorialDetailControls(tutorial, index) {
+  const modal = document.getElementById('tutorialDetailModal');
+  if (!modal) return;
+  const previous = modal.querySelector('[data-tutorial-detail-prev]');
+  const next = modal.querySelector('[data-tutorial-detail-next]');
+  const counter = modal.querySelector('[data-tutorial-detail-counter]');
+  if (previous) previous.disabled = index === 0;
+  if (next) {
+    next.disabled = false;
+    next.textContent = index >= tutorial.slides.length - 1 ? 'Done' : 'Next slide';
+  }
+  if (counter) counter.textContent = `${index + 1} of ${tutorial.slides.length}`;
+  modal.querySelectorAll('[data-tutorial-detail-dot]').forEach((dot) => {
+    const isActive = Number(dot.dataset.tutorialDetailDot) === index;
+    dot.classList.toggle('is-active', isActive);
+    dot.setAttribute('aria-selected', String(isActive));
+  });
+}
+
+function scrollTaskTutorialDetailTo(index, behavior = 'smooth') {
+  const tutorial = taskTutorialState.items.find((item) => item.id === taskTutorialDetailState.tutorialId);
+  const modal = document.getElementById('tutorialDetailModal');
+  const track = modal?.querySelector('[data-tutorial-detail-track]');
+  if (!tutorial || !track) return;
+  const safeIndex = Math.min(Math.max(index, 0), Math.max(tutorial.slides.length - 1, 0));
+  const target = track.children[safeIndex];
+  if (!target) return;
+  taskTutorialDetailState.slideIndex = safeIndex;
+  updateTaskTutorialDetailControls(tutorial, safeIndex);
+  track.scrollTo({ left: target.offsetLeft, behavior });
+}
+
+function renderTaskTutorialDetail() {
+  const tutorial = taskTutorialState.items.find((item) => item.id === taskTutorialDetailState.tutorialId);
+  const modal = document.getElementById('tutorialDetailModal');
+  const track = modal?.querySelector('[data-tutorial-detail-track]');
+  if (!tutorial || !track) return;
+  const slides = tutorial.slides || [];
+  const index = Math.min(Math.max(taskTutorialDetailState.slideIndex, 0), Math.max(slides.length - 1, 0));
+  taskTutorialDetailState.slideIndex = index;
+  modal.querySelector('[data-tutorial-detail-title]').textContent = tutorial.title;
+  modal.querySelector('[data-tutorial-detail-tags]').innerHTML = renderTaskTutorialTags(tutorial);
+  track.innerHTML = slides.map((slide, slideIndex) => `<article class="tutorial-detail-slide${slideIndex === index ? ' active' : ''}" data-tutorial-detail-slide="${slideIndex}"><div class="tutorial-detail-media">${renderTaskTutorialDetailMedia(slide, tutorial)}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${slideIndex + 1}</span><h3>${escapeHtml(slide.title || `Step ${slideIndex + 1}`)}</h3><p${slide.description ? '' : ' hidden'}>${escapeHtml(slide.description)}</p></div></article>`).join('');
+  const dots = modal.querySelector('[data-tutorial-detail-dots]');
+  dots.innerHTML = slides.map((slide, slideIndex) => `<button class="tutorial-detail-dot${slideIndex === index ? ' is-active' : ''}" type="button" role="tab" data-tutorial-detail-dot="${slideIndex}" aria-label="Go to slide ${slideIndex + 1}" aria-selected="${slideIndex === index}"></button>`).join('');
+  dots.querySelectorAll('[data-tutorial-detail-dot]').forEach((dot) => dot.addEventListener('click', () => scrollTaskTutorialDetailTo(Number(dot.dataset.tutorialDetailDot))));
+  if (!track.dataset.taskTutorialScrollBound) {
+    track.addEventListener('scroll', () => {
+      const currentTutorial = taskTutorialState.items.find((item) => item.id === taskTutorialDetailState.tutorialId);
+      if (!currentTutorial || !track.clientWidth || !track.children.length) return;
+      const nearestIndex = Math.min(Math.max(Math.round(track.scrollLeft / track.clientWidth), 0), currentTutorial.slides.length - 1);
+      if (nearestIndex === taskTutorialDetailState.slideIndex) return;
+      taskTutorialDetailState.slideIndex = nearestIndex;
+      updateTaskTutorialDetailControls(currentTutorial, nearestIndex);
+    }, { passive: true });
+    track.dataset.taskTutorialScrollBound = 'true';
+  }
+  updateTaskTutorialDetailControls(tutorial, index);
+  window.requestAnimationFrame(() => {
+    const target = track.children[index];
+    if (target) track.scrollLeft = target.offsetLeft;
+  });
+  track.querySelectorAll('video').forEach(prepareTaskTutorialVideo);
+}
+
+function setTaskTutorialDetailModal(open) {
+  const modal = document.getElementById('tutorialDetailModal');
+  if (!modal) return;
+  modal.classList.toggle('hidden', !open);
+  modal.setAttribute('aria-hidden', String(!open));
+}
+
+async function openTaskTutorial(tutorialId) {
+  try {
+    await loadTaskTutorials();
+    const tutorial = taskTutorialState.items.find((item) => item.id === String(tutorialId));
+    if (!tutorial) {
+      alert('This tutorial is no longer available.');
+      return;
+    }
+    taskTutorialDetailState.tutorialId = tutorial.id;
+    taskTutorialDetailState.slideIndex = 0;
+    setTaskTutorialDetailModal(true);
+    renderTaskTutorialDetail();
+  } catch (error) {
+    console.error('Could not open task tutorial', error);
+    alert('Could not load this tutorial. Check the connection and try again.');
+  }
 }
 
 function startOfWeek(date) {
@@ -1128,6 +1406,7 @@ function renderGroups() {
         </div>
         <div class="task-actions">
           <button class="secondary-btn" data-add-today-id="${task.id}">${todayTaskIds.has(task.id) ? 'Remove today' : 'Today'}</button>
+          ${renderTaskTutorialButton(task)}
           <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
         </div>
       </article>
@@ -1276,6 +1555,7 @@ function renderDayList(day) {
               <article class="task-item task-swipe-content task-item-no-check ${task.urgentToday ? 'urgent' : ''} ${tomorrowTaskIds.has(task.id) ? 'scheduled-tomorrow' : ''}">
                 <div class="task-main"><h4>${escapeHtml(task.title)}</h4>${renderTaskDetails(task)}</div>
                 <div class="task-actions">
+                  ${renderTaskTutorialButton(task)}
                   <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
                   <button class="icon-btn" data-remove-day-id="${task.id}" data-day="${day}">Remove</button>
                 </div>
@@ -1416,7 +1696,7 @@ function renderOpeningList() {
           <button class="task-swipe-action" type="button" data-swipe-complete aria-label="Complete ${escapeHtml(task.title)}">Complete</button>
           <article class="task-item task-swipe-content task-item-no-check">
             <div class="task-main"><h4>${escapeHtml(task.title)}</h4>${renderTaskDetails(task)}</div>
-            <div class="task-actions"><button class="icon-btn" data-edit-id="${task.id}">Edit</button></div>
+            <div class="task-actions">${renderTaskTutorialButton(task)}<button class="icon-btn" data-edit-id="${task.id}">Edit</button></div>
           </article>
         </div>
       `).join('')}</div>` : '<div class="empty-state">No tasks assigned yet.</div>'}
@@ -1771,6 +2051,7 @@ function renderClosingTask(task, showAreaTag) {
           ${renderTaskDetails(task)}
         </div>
         <div class="task-actions">
+          ${renderTaskTutorialButton(task)}
           <button class="icon-btn" data-edit-id="${task.id}">Edit</button>
         </div>
       </article>
@@ -1912,6 +2193,7 @@ function renderAdminList() {
                     </div>
                   </div>
                   <div class="actions">
+                    ${renderTaskTutorialButton(task)}
                     <button class="secondary-btn" data-edit-id="${task.id}">Edit</button>
                     <button class="icon-btn" data-delete-id="${task.id}">Delete</button>
                   </div>
@@ -2121,6 +2403,7 @@ function populateForm(task) {
   form.elements.season.value = normalizeSeason(task.season);
   setUrgentDays(form, task.urgentOn || []);
   form.elements.timeTag.value = task.timeTag || '';
+  setTaskTutorialSelection(form, task.tutorialId || '');
   setChecklistEditorItems(form, normalizeChecklist(task.checklist).length
     ? task.checklist
     : checklistFromText(task.description));
@@ -2152,6 +2435,7 @@ function resetForm() {
   form.querySelector('[data-urgent-dropdown]')?.removeAttribute('open');
   document.getElementById('formTitle').textContent = 'Add a task';
   form.elements.taskId.value = '';
+  setTaskTutorialSelection(form, '');
   const deleteButton = document.getElementById('deleteTaskButton');
   if (deleteButton) deleteButton.hidden = true;
   updatePeriodVisibility();
@@ -2173,7 +2457,8 @@ async function handleTaskSubmit(event) {
     checklist: getChecklistEditorItems(form, existingTask?.checklist),
     checklistImage: form.elements.checklistImage?.value || '',
     timeTag: form.elements.timeTag.value.trim(),
-    urgentOn: getSelectedUrgentDays(form)
+    urgentOn: getSelectedUrgentDays(form),
+    tutorialId: form.elements.tutorialId?.value || ''
   };
 
   if (!payload.title) {
@@ -2474,6 +2759,16 @@ function taskFormMarkup() {
             <label><span data-time-tag-label>Time tag</span><select name="timeTag">${timeTagOptions()}</select></label>
             ${urgentDaysFieldMarkup()}
           </div>
+          <div class="form-field task-tutorial-field" data-task-tutorial-picker>
+            <span>Tutorial</span>
+            <input type="hidden" name="tutorialId" />
+            <div class="quick-day-combobox task-tutorial-combobox">
+              <input type="search" data-task-tutorial-search placeholder="Search tutorials…" aria-label="Search tutorials to link to this task" aria-autocomplete="list" autocomplete="off" />
+              <div class="quick-day-suggestions" data-task-tutorial-suggestions role="listbox" hidden></div>
+            </div>
+            <div class="task-tutorial-selection" data-task-tutorial-selection>No tutorial linked.</div>
+            <div class="task-tutorial-actions"><small data-task-tutorial-status>Type to search shared tutorials.</small><button class="icon-btn" type="button" data-clear-task-tutorial hidden>Clear</button></div>
+          </div>
           ${checklistEditorMarkup()}
           <div class="form-actions"><button type="submit" class="primary-btn">Save task</button><button type="button" class="secondary-btn" id="resetForm">Clear form</button><button type="button" class="danger-btn" id="deleteTaskButton" hidden>Delete task</button></div>
         </form>
@@ -2727,6 +3022,22 @@ function ensureAppChrome() {
     topbar.insertBefore(addButton, topbar.querySelector('.nav'));
   }
   if (!document.getElementById('taskForm')) document.body.insertAdjacentHTML('beforeend', taskFormMarkup());
+  if (!document.getElementById('tutorialDetailModal')) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="tutorialDetailModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" data-close-tutorial-detail></div>
+        <div class="modal-card tutorial-detail-card" role="dialog" aria-modal="true" aria-labelledby="tutorialDetailTitle">
+          <div class="modal-header">
+            <div class="tutorial-detail-heading"><div class="tutorial-detail-tags" data-tutorial-detail-tags></div><h2 id="tutorialDetailTitle" data-tutorial-detail-title></h2></div>
+            <button class="icon-btn" type="button" data-close-tutorial-detail>Close</button>
+          </div>
+          <div class="tutorial-detail-track" data-tutorial-detail-track aria-live="polite"></div>
+          <div class="tutorial-detail-dots" data-tutorial-detail-dots role="tablist" aria-label="Tutorial slides"></div>
+          <div class="tutorial-detail-footer"><span data-tutorial-detail-counter></span><div><button class="secondary-btn" type="button" data-tutorial-detail-prev>Previous</button><button class="primary-btn" type="button" data-tutorial-detail-next>Next slide</button></div></div>
+        </div>
+      </div>
+    `);
+  }
   if (!document.getElementById('dayTaskTypeModal')) {
     document.body.insertAdjacentHTML('beforeend', `
       <div id="dayTaskTypeModal" class="modal hidden" aria-hidden="true">
@@ -2851,6 +3162,7 @@ function openTaskModal(task) {
     form.elements.season.value = normalizeSeason(task.season);
     setUrgentDays(form, task.urgentOn || []);
     form.elements.timeTag.value = task.timeTag || '';
+    setTaskTutorialSelection(form, task.tutorialId || '');
     setChecklistEditorItems(form, normalizeChecklist(task.checklist).length
       ? task.checklist
       : checklistFromText(task.description));
@@ -2860,6 +3172,7 @@ function openTaskModal(task) {
   }
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
+  loadTaskTutorials().catch((error) => console.warn('Could not load tutorials for task editor', error));
   setTimeout(() => document.getElementById('taskForm')?.elements.title.focus(), 0);
 }
 
@@ -3040,6 +3353,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initializeUrgentDayDropdowns();
   const form = document.getElementById('taskForm');
   if (form) {
+    bindTaskTutorialPicker(form);
     form.addEventListener('submit', handleTaskSubmit);
     document.getElementById('resetForm').addEventListener('click', resetForm);
     const categorySelect = form.elements.category;
@@ -3084,6 +3398,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelectorAll('[data-open-task-modal]').forEach((button) => button.addEventListener('click', () => { resetForm(); openTaskModal(); }));
   document.querySelectorAll('[data-close-task-modal]').forEach((button) => button.addEventListener('click', closeTaskModal));
+  document.querySelectorAll('[data-close-tutorial-detail]').forEach((button) => button.addEventListener('click', () => setTaskTutorialDetailModal(false)));
+  document.querySelector('[data-tutorial-detail-prev]')?.addEventListener('click', () => {
+    if (taskTutorialDetailState.slideIndex > 0) scrollTaskTutorialDetailTo(taskTutorialDetailState.slideIndex - 1);
+  });
+  document.querySelector('[data-tutorial-detail-next]')?.addEventListener('click', () => {
+    const tutorial = taskTutorialState.items.find((item) => item.id === taskTutorialDetailState.tutorialId);
+    if (!tutorial) return;
+    if (taskTutorialDetailState.slideIndex >= tutorial.slides.length - 1) setTaskTutorialDetailModal(false);
+    else scrollTaskTutorialDetailTo(taskTutorialDetailState.slideIndex + 1);
+  });
   document.querySelectorAll('[data-close-day-task-type]').forEach((button) => button.addEventListener('click', closeDayTaskTypeModal));
   document.querySelector('[data-save-one-off]')?.addEventListener('click', savePendingDayTaskAsOneOff);
   document.querySelector('[data-create-recurring]')?.addEventListener('click', openPendingRecurringTaskForm);
@@ -3102,10 +3426,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (event.key === 'Escape') {
       closeCompletedModal();
       closeTaskModal();
+      setTaskTutorialDetailModal(false);
       closeDayTaskTypeModal();
       closeClosingCompleteModal();
       closeTaskMilestoneModal();
     }
+  });
+
+  document.addEventListener('click', (event) => {
+    const tutorialButton = event.target.closest('[data-open-task-tutorial]');
+    if (tutorialButton) openTaskTutorial(tutorialButton.dataset.openTaskTutorial);
   });
 
   await loadTaskData();

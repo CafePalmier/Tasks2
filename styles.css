@@ -1858,6 +1858,39 @@ h1 {
   box-shadow: 0 12px 28px rgba(61, 44, 33, 0.14);
 }
 
+.task-tutorial-field {
+  grid-column: 1 / -1;
+  gap: 0.45rem;
+}
+
+.task-tutorial-combobox {
+  max-width: 34rem;
+}
+
+.task-tutorial-selection {
+  color: var(--forest);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.task-tutorial-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  max-width: 34rem;
+}
+
+.task-tutorial-actions small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.task-tutorial-button {
+  white-space: nowrap;
+}
+
 .quick-day-suggestion {
   display: flex;
   align-items: center;

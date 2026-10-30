@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
 const ROOT_ASSETS_DIR = path.join(ROOT_DIR, 'Assets');
@@ -135,6 +135,7 @@ function normalizeTask(task, idx) {
     category,
     period: ['opening', 'closing'].includes(category) ? 'shift' : (task.period || 'weekly'),
     description: task.description || '',
+    tutorialId: task.tutorialId || '',
     checklist: Array.isArray(task.checklist)
       ? task.checklist.map((item) => typeof item === 'string'
         ? { text: item.trim(), checked: false }

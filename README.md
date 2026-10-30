@@ -14,6 +14,8 @@ The project deliberately uses the Supabase publishable key and public database p
 
 Tutorials always use the shared Supabase video library, including on `localhost`. Task pages intentionally use the local Node task store on `localhost`, so production task edits will not appear there and local testing cannot accidentally change the live board. Use the deployed site when you need to inspect the current shared task data.
 
+Run `npm start`, then open `http://localhost:8000/index.html` for the local task board.
+
 ## Home-screen app and favourite icon
 
 The site includes a web app manifest, Apple touch icon, favicon, and service worker. Once deployed over HTTPS, use **Add to Home Screen** or **Install app** in the browser menu. The supplied Cafe Palmier icon will be used for the installed app and browser favourite.
