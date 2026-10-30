@@ -458,13 +458,12 @@ function fromDatabaseTask(task) {
 }
 
 function toDatabaseTask(task) {
-  return {
+  const databaseTask = {
     id: task.id,
     title: task.title,
     category: task.category || 'general',
     period: task.period || 'weekly',
     description: task.description || '',
-    tutorial_id: task.tutorialId || null,
     time_tag: task.timeTag || '',
     urgent_on: [
       ...(Array.isArray(task.urgentOn) ? task.urgentOn.filter((value) => typeof value !== 'string' || (!value.startsWith('__season:') && !value.startsWith('__checklist:') && !value.startsWith('__checklistImage:') && !value.startsWith('__completionHistory:'))) : []),
@@ -479,6 +478,10 @@ function toDatabaseTask(task) {
     task_order: Number(task.order) || 0,
     updated_at: new Date().toISOString()
   };
+  // Older Supabase projects may not have run the tutorial migration yet.
+  // Do not make ordinary task saves depend on this optional column.
+  if (task.tutorialId) databaseTask.tutorial_id = task.tutorialId;
+  return databaseTask;
 }
 
 function supabaseRequest(path, options = {}) {
@@ -2508,7 +2511,10 @@ async function handleTaskSubmit(event) {
     closeTaskModal();
   } catch (error) {
     console.error('Failed to save task', error);
-    alert('Could not save the task.');
+    const errorMessage = String(error?.message || '');
+    alert(errorMessage.includes('tutorial_id')
+      ? 'Could not save the task because the Supabase tutorial migration has not been run yet.'
+      : 'Could not save the task. Check your connection and try again.');
   }
 }
 
