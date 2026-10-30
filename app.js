@@ -10,6 +10,7 @@ const TASK_DATA_VERSION = 7;
 const CELEBRATION_PROGRESS_KEY = 'cafe-palmier-five-task-celebration';
 const SHARED_REFRESH_INTERVAL_MS = 30_000;
 const TUTORIAL_BUCKET = 'cafe-tutorial-videos';
+const DEFAULT_SEASON = 'winter';
 
 const state = {
   tasks: [],
@@ -33,6 +34,7 @@ let urgentDropdownDismissalBound = false;
 let pendingDayTaskChoice = null;
 let pendingNewTaskDay = null;
 let sharedRefreshPromise = null;
+const pendingTaskCompletions = new Map();
 const taskTutorialState = { items: [], search: '', loaded: false, loadPromise: null };
 const taskTutorialDetailState = { tutorialId: '', slideIndex: 0 };
 
@@ -183,38 +185,23 @@ function normalizeSeason(value) {
   return ['winter', 'summer', 'both'].includes(value) ? value : 'both';
 }
 
-function getAutomaticSeason(date = new Date()) {
-  const month = date.getMonth();
-  const isWinterOrFirstHalfOfSpring = month >= 9
-    || month <= 2
-    || (month === 3 && date.getDate() <= 15);
-  return isWinterOrFirstHalfOfSpring ? 'winter' : 'summer';
-}
-
-function getSavedSeason(date = new Date()) {
-  const automaticSeason = getAutomaticSeason(date);
+function getSavedSeason() {
   try {
     const savedSeason = localStorage.getItem(SEASON_KEY);
-    const overrideDate = localStorage.getItem(SEASON_OVERRIDE_DATE_KEY);
-    if (overrideDate === localDateKey(date) && ['winter', 'summer'].includes(savedSeason)) {
-      return savedSeason;
-    }
+    if (['winter', 'summer'].includes(savedSeason)) return savedSeason;
+    localStorage.setItem(SEASON_KEY, DEFAULT_SEASON);
     localStorage.removeItem(SEASON_OVERRIDE_DATE_KEY);
-    localStorage.setItem(SEASON_KEY, automaticSeason);
-    return automaticSeason;
+    return DEFAULT_SEASON;
   } catch (error) {
-    return automaticSeason;
+    return DEFAULT_SEASON;
   }
 }
 
-function saveSeasonSelection(season, date = new Date()) {
+function saveSeasonSelection(season) {
+  const selectedSeason = ['winter', 'summer'].includes(season) ? season : DEFAULT_SEASON;
   try {
-    if (season === getAutomaticSeason(date)) {
-      localStorage.removeItem(SEASON_OVERRIDE_DATE_KEY);
-    } else {
-      localStorage.setItem(SEASON_OVERRIDE_DATE_KEY, localDateKey(date));
-    }
-    localStorage.setItem(SEASON_KEY, season);
+    localStorage.setItem(SEASON_KEY, selectedSeason);
+    localStorage.removeItem(SEASON_OVERRIDE_DATE_KEY);
   } catch (error) {
     // Keep the selection in memory when local storage is unavailable.
   }
@@ -2220,6 +2207,21 @@ function renderAdminList() {
   });
 }
 
+function preservePendingTaskCompletions(tasks) {
+  return tasks.map((task) => {
+    const pendingCompletedAt = pendingTaskCompletions.get(task.id);
+    if (!pendingCompletedAt) return task;
+
+    const savedCompletedAt = task.lastCompletedAt;
+    if (savedCompletedAt && new Date(savedCompletedAt) >= new Date(pendingCompletedAt)) return task;
+    return {
+      ...task,
+      lastCompletedAt: pendingCompletedAt,
+      completionHistory: normalizeCompletionHistory(task.completionHistory, pendingCompletedAt)
+    };
+  });
+}
+
 async function loadTaskData({ showCached = true } = {}) {
   if (usesSupabase && showCached) {
     const cachedTasks = getLocalTasks([]);
@@ -2246,6 +2248,7 @@ async function loadTaskData({ showCached = true } = {}) {
       data = await api('/api/tasks');
       tasks = data.tasks;
     }
+    tasks = preservePendingTaskCompletions(tasks);
     const now = new Date();
     const checklistResetIds = tasks.filter((task) => checklistNeedsCycleReset(task, now)).map((task) => task.id);
     const payload = buildTaskPayload(tasks, now, true);
@@ -2320,10 +2323,12 @@ function startSharedTaskRefresh() {
 }
 
 async function completeTask(taskId) {
+  if (pendingTaskCompletions.has(taskId)) return;
   const task = state.tasks.find((item) => item.id === taskId);
   const previousCompletedAt = task?.lastCompletedAt || null;
   const previousCompletionHistory = normalizeCompletionHistory(task?.completionHistory, previousCompletedAt);
   const completedAt = new Date().toISOString();
+  pendingTaskCompletions.set(taskId, completedAt);
   const countsTowardMilestone = ['home', 'today'].includes(state.page)
     && task
     && !shiftOnlyCategories.includes(task.category);
@@ -2348,7 +2353,19 @@ async function completeTask(taskId) {
       && belongsOnClosingList(task)
       && !state.available.some(belongsOnClosingList);
     const needsDoorLockReminder = state.page === 'closing' && isDoorLockReminderTask(task);
-    await api(`/api/tasks/${taskId}/complete`, { method: 'POST', body: JSON.stringify({ completedAt }) });
+    const result = await api(`/api/tasks/${taskId}/complete`, { method: 'POST', body: JSON.stringify({ completedAt }) });
+    const savedTask = result?.task;
+    if (savedTask) {
+      const reconciledTask = preservePendingTaskCompletions([savedTask])[0];
+      state.tasks = state.tasks.map((item) => item.id === taskId ? reconciledTask : item);
+      const payload = buildTaskPayload(state.tasks, new Date());
+      state.tasks = payload.tasks;
+      state.available = payload.available;
+      state.completed = payload.completed;
+      saveLocalTasks(state.tasks);
+      renderAll();
+    }
+    pendingTaskCompletions.delete(taskId);
     if (needsDoorLockReminder) {
       openDoorLockReminderModal(finishedClosingList);
     } else if (finishedClosingList) {
@@ -2358,6 +2375,7 @@ async function completeTask(taskId) {
     }
   } catch (error) {
     console.error('Failed to complete task', error);
+    pendingTaskCompletions.delete(taskId);
     if (task) {
       state.tasks = state.tasks.map((item) => item.id === taskId
         ? { ...item, lastCompletedAt: previousCompletedAt, completionHistory: previousCompletionHistory }

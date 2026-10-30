@@ -1662,18 +1662,18 @@ h1 {
 }
 
 .period-pill.weekly {
-  background: #f4d8c4;
-  color: #8f4f2d;
+  background: #f0bf75;
+  color: #6d3f13;
 }
 
 .period-pill.monthly {
-  background: #d8e3f2;
-  color: #294d7c;
+  background: #86b7e8;
+  color: #1f4f82;
 }
 
 .period-pill.yearly {
-  background: #efe0f4;
-  color: #5c3a73;
+  background: #c69bd7;
+  color: #57326b;
 }
 
 .meta-pill.urgent {
@@ -2594,6 +2594,7 @@ textarea {
 }
 
 /* Winter mode */
+body[data-season="winter"],
 body[data-page="tutorials"] {
   --cafe: #7899b9;
   --warm: #e3edf6;
@@ -2613,6 +2614,7 @@ body[data-page="tutorials"] {
     linear-gradient(180deg, #f6faff 0%, var(--sand) 100%);
 }
 
+body[data-season="winter"]::before,
 body[data-page="tutorials"]::before {
   content: '';
   position: fixed;
@@ -2625,12 +2627,13 @@ body[data-page="tutorials"]::before {
   mask-image: linear-gradient(180deg, black, transparent 80%);
 }
 
+body[data-season="winter"] .topbar,
 body[data-page="tutorials"] .topbar {
   background: rgba(249, 252, 255, 0.82);
   border-bottom-color: rgba(59, 100, 130, 0.14);
 }
 
-body[data-page="tutorials"] .season-switcher,
+body[data-season="winter"] .season-switcher,
 body[data-page="tutorials"] .nav {
   background: rgba(218, 231, 242, 0.74);
   border-color: rgba(59, 100, 130, 0.2);
@@ -3130,68 +3133,68 @@ body[data-page="tutorials"] .tutorial-empty h2 {
 }
 
 /* Carry the winter treatment through the entire task board, not only the shell. */
-body[data-page="tutorials"] .period-progress-card.weekly,
-body[data-page="tutorials"] .period-progress-card.monthly,
-body[data-page="tutorials"] .period-progress-card.yearly {
+body[data-season="winter"] .period-progress-card.weekly,
+body[data-season="winter"] .period-progress-card.monthly,
+body[data-season="winter"] .period-progress-card.yearly {
   --period-progress-color: #5d88a7;
 }
 
-body[data-page="tutorials"] .period-progress-card,
-body[data-page="tutorials"] .completed-cycle-button,
-body[data-page="tutorials"] .group-card,
-body[data-page="tutorials"] .panel-card,
-body[data-page="tutorials"] .opening-group,
-body[data-page="tutorials"] .closing-group,
-body[data-page="tutorials"] .task-swipe-content {
+body[data-season="winter"] .period-progress-card,
+body[data-season="winter"] .completed-cycle-button,
+body[data-season="winter"] .group-card,
+body[data-season="winter"] .panel-card,
+body[data-season="winter"] .opening-group,
+body[data-season="winter"] .closing-group,
+body[data-season="winter"] .task-swipe-content {
   background: rgba(249, 252, 255, 0.78);
   border-color: rgba(59, 100, 130, 0.19);
   box-shadow: 0 12px 32px rgba(49, 76, 99, 0.07);
 }
 
-body[data-page="tutorials"] .group-header,
-body[data-page="tutorials"] .opening-group-heading {
+body[data-season="winter"] .group-header,
+body[data-season="winter"] .opening-group-heading {
   border-bottom-color: rgba(111, 154, 184, 0.34);
 }
 
-body[data-page="tutorials"] .task-item {
+body[data-season="winter"] .task-item {
   background: linear-gradient(180deg, rgba(225, 237, 247, 0.88), rgba(237, 245, 250, 0.94));
   border-color: rgba(111, 154, 184, 0.38);
 }
 
-body[data-page="tutorials"] .task-item:hover {
+body[data-season="winter"] .task-item:hover {
   border-color: rgba(59, 100, 130, 0.5);
   box-shadow: 0 7px 18px rgba(49, 76, 99, 0.09);
 }
 
-body[data-page="tutorials"] .task-item.urgent {
+body[data-season="winter"] .task-item.urgent {
   border-color: rgba(59, 100, 130, 0.52);
   background: linear-gradient(180deg, #e5f0f8, #f0f6fa);
 }
 
-body[data-page="tutorials"] .task-item.scheduled-tomorrow {
+body[data-season="winter"] .task-item.scheduled-tomorrow {
   border-color: rgba(196, 154, 38, 0.46);
   background: linear-gradient(180deg, #f7f4dd, #eef0d8);
 }
 
-body[data-page="tutorials"] .group-badge,
-body[data-page="tutorials"] .completed-cycle-button strong,
-body[data-page="tutorials"] .category-pill,
-body[data-page="tutorials"] .area-pill {
+body[data-season="winter"] .group-badge,
+body[data-season="winter"] .completed-cycle-button strong,
+body[data-season="winter"] .category-pill,
+body[data-season="winter"] .area-pill {
   background: #e2eef6;
   color: var(--forest-deep);
 }
 
-body[data-page="tutorials"] .period-pill.weekly {
+body[data-season="winter"] .period-pill.weekly {
   background: #dcebf4;
   color: #3b6482;
 }
 
-body[data-page="tutorials"] .period-pill.monthly {
+body[data-season="winter"] .period-pill.monthly {
   background: #d8e9f5;
   color: #315b79;
 }
 
-body[data-page="tutorials"] .period-pill.yearly {
+body[data-season="winter"] .period-pill.yearly {
   background: #e2e8f4;
   color: #4f5f80;
 }
@@ -3210,98 +3213,101 @@ body[data-page="tutorials"] .period-pill.yearly {
 }
 
 /* Winter contrast pass: keep the navigation and compact labels readable across every page. */
-body[data-page="tutorials"] .topbar {
+body[data-season="winter"] .topbar {
   background: rgba(242, 248, 252, 0.94);
   border-bottom-color: rgba(36, 71, 97, 0.18);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92), 0 8px 22px rgba(49, 76, 99, 0.06);
 }
 
-body[data-page="tutorials"] .nav {
+body[data-season="winter"] .nav {
   background: rgba(207, 225, 238, 0.94);
   border-color: rgba(36, 71, 97, 0.22);
   box-shadow: inset 0 1px 2px rgba(36, 71, 97, 0.1), 0 2px 0 rgba(255, 255, 255, 0.58);
 }
 
-body[data-page="tutorials"] .nav-indicator,
-body[data-page="tutorials"] .nav:not(.nav-ready) .nav-link.active {
+body[data-season="winter"] .nav-indicator,
+body[data-season="winter"] .nav:not(.nav-ready) .nav-link.active {
   background: #f8fcff;
   box-shadow: 0 4px 14px rgba(36, 71, 97, 0.16), 0 0 0 1px rgba(36, 71, 97, 0.12);
 }
 
-body[data-page="tutorials"] .nav-link {
+body[data-season="winter"] .nav-link {
   color: #355970;
   font-weight: 750;
 }
 
-body[data-page="tutorials"] .nav-link:hover {
+body[data-season="winter"] .nav-link:hover {
   color: #173b55;
 }
 
-body[data-page="tutorials"] .nav-link.active {
+body[data-season="winter"] .nav-link.active {
   color: #173b55;
 }
 
-body[data-page="tutorials"] label,
-body[data-page="tutorials"] .form-field,
-body[data-page="tutorials"] .tutorial-tag-field legend {
+body[data-season="winter"] label,
+body[data-season="winter"] .form-field,
+body[data-season="winter"] .tutorial-tag-field legend {
   color: #1f4b67;
 }
 
-body[data-page="tutorials"] .meta-pill,
-body[data-page="tutorials"] .time-pill,
-body[data-page="tutorials"] .status-pill,
-body[data-page="tutorials"] .group-badge,
-body[data-page="tutorials"] .category-pill,
-body[data-page="tutorials"] .area-pill,
-body[data-page="tutorials"] .period-pill {
+body[data-season="winter"] .meta-pill,
+body[data-season="winter"] .time-pill,
+body[data-season="winter"] .status-pill,
+body[data-season="winter"] .group-badge,
+body[data-season="winter"] .category-pill,
+body[data-season="winter"] .area-pill,
+body[data-season="winter"] .period-pill {
   border: 1px solid rgba(36, 71, 97, 0.18);
   font-weight: 800;
 }
 
-body[data-page="tutorials"] .group-badge,
-body[data-page="tutorials"] .category-pill,
-body[data-page="tutorials"] .area-pill {
+body[data-season="winter"] .group-badge,
+body[data-season="winter"] .category-pill,
+body[data-season="winter"] .area-pill {
   background: #d1e5f1;
   color: #1d4b67;
 }
 
-body[data-page="tutorials"] .period-pill.daily {
+body[data-season="winter"] .period-pill.daily {
   background: #d9ebe1;
   color: #275b4c;
 }
 
-body[data-page="tutorials"] .period-pill.weekly {
-  background: #c9e1ef;
-  color: #1d5575;
+body[data-season="winter"] .period-pill.weekly {
+  background: #f4cf72;
+  border-color: #c69220;
+  color: #5b3a08;
 }
 
-body[data-page="tutorials"] .period-pill.monthly {
-  background: #d7e1f2;
-  color: #364e79;
+body[data-season="winter"] .period-pill.monthly {
+  background: #8bc5ee;
+  border-color: #3e8fc4;
+  color: #123f66;
 }
 
-body[data-page="tutorials"] .period-pill.yearly {
-  background: #e2dcf0;
-  color: #594474;
+body[data-season="winter"] .period-pill.yearly {
+  background: #cda7ec;
+  border-color: #8c5ab2;
+  color: #4b2868;
 }
 
-body[data-page="tutorials"] .time-pill {
+body[data-season="winter"] .time-pill {
   background: #f2e3c8;
   color: #694b1f;
 }
 
-body[data-page="tutorials"] .meta-pill.urgent,
-body[data-page="tutorials"] .status-pill.open {
+body[data-season="winter"] .meta-pill.urgent,
+body[data-season="winter"] .status-pill.open {
   background: #f1d9d7;
   color: #7a3f46;
 }
 
-body[data-page="tutorials"] .status-pill.done {
+body[data-season="winter"] .status-pill.done {
   background: #d6ebdf;
   color: #275c4d;
 }
 
-body[data-page="tutorials"] .tutorial-tag {
+body[data-season="winter"] .tutorial-tag {
   border-color: rgba(36, 71, 97, 0.28);
   background: #d9eaf4;
   color: #1d4b67;

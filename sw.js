@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cafe-palmier-shell-v20';
+const CACHE_NAME = 'cafe-palmier-shell-v21';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,8 +7,8 @@ const APP_SHELL = [
   './today.html',
   './tutorials.html',
   './admin.html',
-  './styles.css?v=18',
-  './app.js?v=9',
+  './styles.css?v=19',
+  './app.js?v=10',
   './door-lock-guide.png',
   './tutorials.js?v=19',
   './supabase-config.js',
