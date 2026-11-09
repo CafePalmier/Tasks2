@@ -6,6 +6,7 @@ const DEFAULT_TUTORIAL_TAGS = ['Technology', 'Closing', 'Opening', 'Cleaning & P
 const supabaseConfig = window.SUPABASE_CONFIG;
 const tutorialState = { items: [], search: '', selectedTag: '', slideIndices: new Map() };
 const tutorialDetailState = { tutorialId: '', slideIndex: 0 };
+const tutorialEditorState = { slideIndex: 0 };
 let tutorialRefreshPromise = null;
 
 function openLocalTutorialDatabase() {
@@ -237,6 +238,13 @@ function renderSlideMedia(slide, tutorial) {
   return `<img src="${url}" alt="${escapeTutorialText(slide.title || tutorial.title)}" loading="lazy" />`;
 }
 
+function renderTutorialEditorPreview(slide = {}) {
+  if (!slide.storage_path) return '<div class="tutorial-slide-preview-empty"><span aria-hidden="true">＋</span><span>Choose a photo or video</span></div>';
+  const url = `${publicMediaUrl(slide.storage_path)}${slide.media_type === 'video' ? '#t=0.1' : ''}`;
+  if (slide.media_type === 'video') return `<video src="${escapeTutorialText(url)}" controls preload="metadata" muted playsinline aria-label="Tutorial slide preview"></video>`;
+  return `<img src="${escapeTutorialText(url)}" alt="Tutorial slide preview" />`;
+}
+
 function renderTutorialCardSlide(card, tutorial, index) {
   const slides = tutorial.slides || [];
   const safeIndex = Math.min(Math.max(index, 0), Math.max(slides.length - 1, 0));
@@ -443,7 +451,8 @@ function slideEditorMarkup(slide = {}, index = 0, isNew = false) {
   const normalized = normalizeSlide(slide, index);
   return `<div class="tutorial-slide-editor" data-slide-editor data-existing-path="${escapeTutorialText(normalized.storage_path)}" data-existing-type="${escapeTutorialText(normalized.media_type)}">
     <div class="tutorial-slide-editor-header"><strong>Slide ${index + 1}</strong><button type="button" class="icon-btn" data-remove-tutorial-slide>Remove</button></div>
-    <label class="tutorial-file-field"><span>${isNew || !normalized.storage_path ? 'Photo or video' : 'Replace photo or video'}</span><input type="file" accept="image/*,video/*" data-slide-file ${isNew || !normalized.storage_path ? 'required' : ''} /><small>${normalized.storage_path ? 'Leave blank to keep the current media.' : 'Choose a photo or video for this step.'}</small></label>
+    <div class="tutorial-slide-preview" data-slide-preview>${renderTutorialEditorPreview(normalized)}</div>
+    <label class="tutorial-file-field"><span>${isNew || !normalized.storage_path ? 'Add photo or video' : 'Replace photo or video'}</span><input type="file" accept="image/*,video/*" data-slide-file ${isNew || !normalized.storage_path ? 'required' : ''} /><small>${normalized.storage_path ? 'Choose a new file only if you want to replace this slide.' : 'Your preview will appear here immediately.'}</small></label>
     <label><span>Slide title <small>(optional)</small></span><input type="text" data-slide-title value="${escapeTutorialText(normalized.title)}" placeholder="e.g. Lock the patio door" /></label>
     <label><span>Written description <small>(optional)</small></span><textarea rows="3" data-slide-description placeholder="Add the detail someone needs to complete this step.">${escapeTutorialText(normalized.description)}</textarea></label>
   </div>`;
@@ -453,6 +462,24 @@ function renderSlideEditors(slides = [{ id: 'slide-1' }]) {
   const list = document.querySelector('[data-tutorial-slide-editor-list]');
   list.innerHTML = slides.map((slide, index) => slideEditorMarkup(slide, index, !slide.storage_path)).join('');
   updateSlideEditorLabels();
+}
+
+function renderTutorialEditorNavigation() {
+  const editors = [...document.querySelectorAll('[data-slide-editor]')];
+  const dots = document.querySelector('[data-tutorial-editor-dots]');
+  if (!editors.length) return;
+  tutorialEditorState.slideIndex = Math.min(Math.max(tutorialEditorState.slideIndex, 0), editors.length - 1);
+  editors.forEach((editor, index) => {
+    const active = index === tutorialEditorState.slideIndex;
+    editor.hidden = !active;
+    editor.setAttribute('aria-hidden', String(!active));
+  });
+  if (!dots) return;
+  dots.innerHTML = editors.map((editor, index) => `<button class="tutorial-editor-dot${index === tutorialEditorState.slideIndex ? ' is-active' : ''}" type="button" role="tab" aria-label="Edit slide ${index + 1}" aria-selected="${index === tutorialEditorState.slideIndex}" data-tutorial-editor-slide="${index}">${index + 1}</button>`).join('');
+  dots.querySelectorAll('[data-tutorial-editor-slide]').forEach((button) => button.addEventListener('click', () => {
+    tutorialEditorState.slideIndex = Number(button.dataset.tutorialEditorSlide);
+    renderTutorialEditorNavigation();
+  }));
 }
 
 function updateSlideEditorLabels() {
@@ -471,7 +498,9 @@ function resetTutorialEditor() {
   document.getElementById('tutorialModalTitle').textContent = 'Add a tutorial';
   form.querySelector('[type="submit"]').textContent = 'Save tutorial';
   form.querySelector('[data-delete-tutorial]').hidden = true;
+  tutorialEditorState.slideIndex = 0;
   renderSlideEditors([{ id: 'slide-1' }]);
+  renderTutorialEditorNavigation();
   form.querySelector('[data-tutorial-status]').textContent = '';
 }
 
@@ -484,7 +513,9 @@ function openTutorialEditor(tutorial) {
   document.getElementById('tutorialModalTitle').textContent = 'Edit tutorial';
   form.querySelector('[type="submit"]').textContent = 'Save changes';
   form.querySelector('[data-delete-tutorial]').hidden = false;
+  tutorialEditorState.slideIndex = 0;
   renderSlideEditors(tutorial.slides.length ? tutorial.slides : [{ id: 'slide-1' }]);
+  renderTutorialEditorNavigation();
   setTutorialModal(true);
 }
 
@@ -574,6 +605,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (list) {
         list.insertAdjacentHTML('beforeend', slideEditorMarkup({ id: `slide-${list.children.length + 1}` }, list.children.length, true));
         updateSlideEditorLabels();
+        tutorialEditorState.slideIndex = list.children.length - 1;
+        renderTutorialEditorNavigation();
       }
       return;
     }
@@ -581,8 +614,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!remove) return;
     const list = document.querySelector('[data-tutorial-slide-editor-list]');
     if (list.children.length <= 1) return;
+    const removedIndex = [...list.children].indexOf(remove.closest('[data-slide-editor]'));
     remove.closest('[data-slide-editor]').remove();
+    if (removedIndex <= tutorialEditorState.slideIndex) tutorialEditorState.slideIndex = Math.max(0, tutorialEditorState.slideIndex - 1);
     updateSlideEditorLabels();
+    renderTutorialEditorNavigation();
+  });
+  document.addEventListener('change', (event) => {
+    const fileInput = event.target.closest('[data-slide-file]');
+    if (!fileInput?.files?.[0]) return;
+    const editor = fileInput.closest('[data-slide-editor]');
+    const preview = editor?.querySelector('[data-slide-preview]');
+    if (!editor || !preview) return;
+    if (editor.dataset.previewUrl) URL.revokeObjectURL(editor.dataset.previewUrl);
+    const file = fileInput.files[0];
+    const previewUrl = URL.createObjectURL(file);
+    editor.dataset.previewUrl = previewUrl;
+    const label = escapeTutorialText(file.name);
+    preview.innerHTML = file.type.startsWith('video/')
+      ? `<video src="${previewUrl}" controls preload="metadata" muted playsinline aria-label="Preview of ${label}"></video>`
+      : `<img src="${previewUrl}" alt="Preview of ${label}" />`;
+    const hint = fileInput.closest('.tutorial-file-field')?.querySelector('small');
+    if (hint) hint.textContent = `${file.name} selected and ready to upload.`;
   });
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;

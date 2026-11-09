@@ -11,7 +11,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="./Assets/app-icon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="./Assets/app-icon-180.png" />
-    <link rel="stylesheet" href="./styles.css?v=20" />
+    <link rel="stylesheet" href="./styles.css?v=22" />
     <script src="./pwa.js?v=8" defer></script>
   </head>
   <body data-page="tutorials">
@@ -64,8 +64,12 @@
             </div>
           </fieldset>
           <div class="tutorial-slides-editor">
-            <div class="tutorial-editor-heading"><div><span class="eyebrow">Step-by-step media</span><h3>Slides</h3></div><button class="secondary-btn" type="button" data-add-tutorial-slide>＋ Add slide</button></div>
+            <div class="tutorial-editor-heading"><div><span class="eyebrow">Step-by-step media</span><h3>Slides</h3></div></div>
             <div class="tutorial-slide-editor-list" data-tutorial-slide-editor-list></div>
+            <div class="tutorial-editor-footer">
+              <div class="tutorial-editor-dots" data-tutorial-editor-dots role="tablist" aria-label="Tutorial slides"></div>
+              <button class="secondary-btn" type="button" data-add-tutorial-slide>＋ Add slide</button>
+            </div>
           </div>
           <div class="form-actions"><button class="primary-btn" type="submit">Save tutorial</button><button class="secondary-btn" type="button" data-close-tutorial-modal>Cancel</button><button class="danger-btn tutorial-delete-button" type="button" data-delete-tutorial hidden>Delete tutorial</button></div>
           <p class="tutorial-form-status" data-tutorial-status role="status"></p>
@@ -85,6 +89,6 @@
       </div>
     </div>
     <script src="./supabase-config.js"></script>
-    <script src="./tutorials.js?v=20"></script>
+    <script src="./tutorials.js?v=22"></script>
   </body>
 </html>
