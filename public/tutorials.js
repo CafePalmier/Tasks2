@@ -425,10 +425,18 @@ function renderTutorialSuggestions() {
 function bindTutorialSearch() {
   const input = document.getElementById('tutorialSearch');
   const suggestions = document.getElementById('tutorialSearchSuggestions');
-  input.addEventListener('input', () => { tutorialState.search = input.value; renderTutorialGrid(); renderTutorialSuggestions(); });
+  const clearButton = input.closest('.quick-day-combobox')?.querySelector('[data-clear-search]');
+  const syncClearButton = () => { if (clearButton) clearButton.hidden = !input.value; };
+  input.addEventListener('input', () => { tutorialState.search = input.value; syncClearButton(); renderTutorialGrid(); renderTutorialSuggestions(); });
   input.addEventListener('focus', renderTutorialSuggestions);
   input.addEventListener('keydown', (event) => { if (event.key === 'Escape') suggestions.hidden = true; });
   input.closest('.tutorial-search-combobox').addEventListener('focusout', () => window.setTimeout(() => { if (!input.closest('.tutorial-search-combobox').contains(document.activeElement)) suggestions.hidden = true; }, 0));
+  clearButton?.addEventListener('click', () => {
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+  });
+  syncClearButton();
 }
 
 function slideEditorMarkup(slide = {}, index = 0, isNew = false) {

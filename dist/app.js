@@ -731,12 +731,14 @@ function setTaskTutorialSelection(form, tutorialId) {
   const input = form.querySelector('[data-task-tutorial-search]');
   const selection = form.querySelector('[data-task-tutorial-selection]');
   const clearButton = form.querySelector('[data-clear-task-tutorial]');
+  const clearSearchButton = input?.closest('.quick-day-combobox')?.querySelector('[data-clear-search]');
   const tutorial = taskTutorialState.items.find((item) => item.id === String(tutorialId || ''));
   if (hiddenInput) hiddenInput.value = tutorial?.id || (tutorialId || '');
   if (input) {
     input.value = tutorial?.title || '';
     taskTutorialState.search = input.value;
   }
+  if (clearSearchButton) clearSearchButton.hidden = !input?.value;
   if (selection) selection.textContent = tutorial ? `Linked tutorial: ${tutorial.title}` : (tutorialId ? 'Linked tutorial is unavailable.' : 'No tutorial linked.');
   if (clearButton) clearButton.hidden = !tutorialId;
   renderTaskTutorialSuggestions(form);
@@ -748,10 +750,12 @@ function bindTaskTutorialPicker(form) {
   const input = form.querySelector('[data-task-tutorial-search]');
   const suggestions = form.querySelector('[data-task-tutorial-suggestions]');
   const combobox = input?.closest('.quick-day-combobox');
+  const clearSearchButton = combobox?.querySelector('[data-clear-search]');
   if (!input || !suggestions) return;
 
   input.addEventListener('input', () => {
     taskTutorialState.search = input.value;
+    if (clearSearchButton) clearSearchButton.hidden = !input.value;
     const selectedTutorial = taskTutorialState.items.find((item) => item.id === form.elements.tutorialId?.value);
     if (!input.value.trim() || input.value !== selectedTutorial?.title) {
       form.elements.tutorialId.value = '';
@@ -770,6 +774,12 @@ function bindTaskTutorialPicker(form) {
   combobox?.addEventListener('focusout', () => window.setTimeout(() => {
     if (!combobox.contains(document.activeElement)) suggestions.hidden = true;
   }, 0));
+  clearSearchButton?.addEventListener('click', () => {
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+  });
+  if (clearSearchButton) clearSearchButton.hidden = !input.value;
   form.querySelector('[data-clear-task-tutorial]')?.addEventListener('click', () => setTaskTutorialSelection(form, ''));
 }
 
@@ -1319,9 +1329,14 @@ function bindTaskSearch(root, { inputSelector, suggestionsSelector, tasks, value
   const input = root.querySelector(inputSelector);
   const suggestions = root.querySelector(suggestionsSelector);
   if (!input || !suggestions) return;
+  const clearButton = input.closest('.quick-day-combobox')?.querySelector('[data-clear-search]');
   input.taskSearchConfig = { tasks, valueKey, onSelect };
   if (input.dataset.taskSearchBound === 'true') return;
   input.dataset.taskSearchBound = 'true';
+
+  const syncClearButton = () => {
+    if (clearButton) clearButton.hidden = !input.value;
+  };
 
   const renderSuggestions = () => {
     const config = input.taskSearchConfig;
@@ -1345,6 +1360,7 @@ function bindTaskSearch(root, { inputSelector, suggestionsSelector, tasks, value
   input.addEventListener('input', () => {
     const config = input.taskSearchConfig;
     state[config.valueKey] = input.value;
+    syncClearButton();
     if (!input.value.trim()) config.onSelect(null);
     else renderSuggestions();
   });
@@ -1363,6 +1379,12 @@ function bindTaskSearch(root, { inputSelector, suggestionsSelector, tasks, value
       }
     }, 0);
   });
+  clearButton?.addEventListener('click', () => {
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+  });
+  syncClearButton();
 }
 
 function renderGroups() {
@@ -1455,6 +1477,7 @@ function renderGroups() {
         <div class="available-controls">
           <div class="quick-day-combobox task-search-combobox">
             <input type="search" data-available-search value="${escapeHtml(state.availableSearch)}" placeholder="Search tasks…" aria-label="Search available tasks" aria-autocomplete="list" autocomplete="off" />
+            <button class="search-clear-button" type="button" data-clear-search aria-label="Clear available-task search" title="Clear search" hidden><span aria-hidden="true">×</span></button>
             <div class="quick-day-suggestions" data-available-suggestions role="listbox" hidden></div>
           </div>
           <button class="sort-toggle ${homeSortMode === 'time' ? 'is-time' : ''}" type="button" data-home-sort aria-label="Switch available-task sorting. Currently sorted by ${homeSortMode}.">
@@ -2788,6 +2811,7 @@ function taskFormMarkup() {
             <input type="hidden" name="tutorialId" />
             <div class="quick-day-combobox task-tutorial-combobox">
               <input type="search" data-task-tutorial-search placeholder="Search tutorials…" aria-label="Search tutorials to link to this task" aria-autocomplete="list" autocomplete="off" />
+              <button class="search-clear-button" type="button" data-clear-search aria-label="Clear tutorial search" title="Clear search" hidden><span aria-hidden="true">×</span></button>
               <div class="quick-day-suggestions" data-task-tutorial-suggestions role="listbox" hidden></div>
             </div>
             <div class="task-tutorial-selection" data-task-tutorial-selection>No tutorial linked.</div>
@@ -3096,6 +3120,7 @@ function ensureAppChrome() {
       <div class="completed-modal-controls">
         <div class="quick-day-combobox task-search-combobox completed-search">
           <input type="search" data-completed-search placeholder="Search completed tasks…" aria-label="Search completed tasks" aria-autocomplete="list" autocomplete="off" />
+          <button class="search-clear-button" type="button" data-clear-search aria-label="Clear completed-task search" title="Clear search" hidden><span aria-hidden="true">×</span></button>
           <div class="quick-day-suggestions" data-completed-suggestions role="listbox" hidden></div>
         </div>
         <button class="sort-toggle completed-sort-toggle ${state.completedSortMode === 'date' ? 'is-time' : ''}" type="button" data-completed-sort>
