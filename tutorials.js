@@ -235,7 +235,7 @@ function renderTutorialTags(tutorial) {
 function renderSlideMedia(slide, tutorial) {
   const url = `${publicMediaUrl(slide.storage_path)}${slide.media_type === 'video' ? '#t=0.1' : ''}`;
   if (slide.media_type === 'video') return `<video src="${url}" controls preload="metadata" muted playsinline aria-label="${escapeTutorialText(slide.title || tutorial.title)}"></video>`;
-  return `<img src="${url}" alt="${escapeTutorialText(slide.title || tutorial.title)}" loading="lazy" />`;
+  return `<img src="${url}" alt="${escapeTutorialText(slide.title || tutorial.title)}" loading="lazy" draggable="false" />`;
 }
 
 function renderTutorialEditorPreview(slide = {}) {
@@ -265,6 +265,8 @@ function renderTutorialCardSlide(card, tutorial, index) {
   if (counter) counter.textContent = `${safeIndex + 1} / ${slides.length}`;
   const slideTitle = card.querySelector('[data-tutorial-slide-title]');
   const slideDescription = card.querySelector('[data-tutorial-slide-description]');
+  const slideLabel = card.querySelector('[data-tutorial-card-step]');
+  if (slideLabel) slideLabel.textContent = `Slide ${safeIndex + 1} of ${slides.length}`;
   if (slideTitle) { slideTitle.textContent = slide.title || `Step ${safeIndex + 1}`; slideTitle.hidden = !slide.title; }
   if (slideDescription) { slideDescription.textContent = slide.description; slideDescription.hidden = !slide.description; }
   const previousButton = card.querySelector('[data-tutorial-prev]');
@@ -309,6 +311,21 @@ function bindTutorialDetailScroll(track) {
     tutorialDetailState.slideIndex = nearestIndex;
     updateTutorialDetailControls(tutorial, nearestIndex);
   }, { passive: true });
+  let swipeStartX = 0;
+  let swipeStartY = 0;
+  track.addEventListener('touchstart', (event) => {
+    const touch = event.changedTouches[0];
+    swipeStartX = touch?.clientX || 0;
+    swipeStartY = touch?.clientY || 0;
+  }, { passive: true });
+  track.addEventListener('touchend', (event) => {
+    const touch = event.changedTouches[0];
+    const deltaX = (touch?.clientX || 0) - swipeStartX;
+    const deltaY = (touch?.clientY || 0) - swipeStartY;
+    if (Math.abs(deltaX) < 45 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+    const direction = deltaX < 0 ? 1 : -1;
+    scrollTutorialDetailTo(tutorialDetailState.slideIndex + direction);
+  }, { passive: true });
   track.dataset.scrollBound = 'true';
 }
 
@@ -333,7 +350,7 @@ function renderTutorialDetail() {
   tutorialDetailState.slideIndex = index;
   document.querySelector('[data-tutorial-detail-title]').textContent = tutorial.title;
   document.querySelector('[data-tutorial-detail-tags]').innerHTML = renderTutorialTags(tutorial);
-  track.innerHTML = slides.map((slide, slideIndex) => `<article class="tutorial-detail-slide${slideIndex === index ? ' active' : ''}" data-tutorial-detail-slide="${slideIndex}"><div class="tutorial-detail-media">${renderTutorialDetailMedia(slide, tutorial)}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${slideIndex + 1}</span><h3>${escapeTutorialText(slide.title || `Step ${slideIndex + 1}`)}</h3><p${slide.description ? '' : ' hidden'}>${escapeTutorialText(slide.description)}</p></div></article>`).join('');
+  track.innerHTML = slides.map((slide, slideIndex) => `<article class="tutorial-detail-slide${slideIndex === index ? ' active' : ''}" data-tutorial-detail-slide="${slideIndex}"><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${slideIndex + 1} of ${slides.length}</span><h3>${escapeTutorialText(slide.title || `Step ${slideIndex + 1}`)}</h3><p${slide.description ? '' : ' hidden'}>${escapeTutorialText(slide.description)}</p></div><div class="tutorial-detail-media">${renderTutorialDetailMedia(slide, tutorial)}</div></article>`).join('');
   const dots = document.querySelector('[data-tutorial-detail-dots]');
   if (dots) {
     dots.innerHTML = slides.map((slide, slideIndex) => `<button class="tutorial-detail-dot${slideIndex === index ? ' is-active' : ''}" type="button" role="tab" data-tutorial-detail-dot="${slideIndex}" aria-label="Go to slide ${slideIndex + 1}" aria-selected="${slideIndex === index}"></button>`).join('');
@@ -378,19 +395,49 @@ function renderTutorialGrid() {
   grid.innerHTML = tutorials.map((tutorial) => {
     const slides = tutorial.slides || [];
     return `<article class="tutorial-card" data-tutorial-id="${escapeTutorialText(tutorial.id)}" tabindex="0" role="button" aria-label="Open ${escapeTutorialText(tutorial.title)} details">
+      <div class="tutorial-card-heading"><h2>${escapeTutorialText(tutorial.title)}</h2></div>
       <div class="tutorial-media-shell">
         <div class="tutorial-media-stage" data-tutorial-stage aria-hidden="true"></div>
         ${slides.length > 1 ? `<button class="tutorial-slide-arrow previous" type="button" data-tutorial-prev aria-label="Previous slide">‹</button><button class="tutorial-slide-arrow next" type="button" data-tutorial-next aria-label="Next slide">›</button>` : ''}
         <div class="tutorial-slide-numbers" role="tablist" aria-label="Tutorial slides">${slides.map((slide, index) => `<button type="button" role="tab" class="tutorial-slide-number" data-tutorial-slide="${index}" aria-label="Slide ${index + 1}">${index + 1}</button>`).join('')}</div>
       </div>
-      <div class="tutorial-card-copy"><div class="tutorial-card-content">${renderTutorialTags(tutorial)}<h2>${escapeTutorialText(tutorial.title)}</h2><h3 data-tutorial-slide-title hidden></h3><p data-tutorial-slide-description hidden></p></div><button class="icon-btn tutorial-edit" type="button" data-edit-tutorial="${escapeTutorialText(tutorial.id)}" aria-label="Edit ${escapeTutorialText(tutorial.title)}">Edit</button></div>
+      <div class="tutorial-card-copy"><div class="tutorial-card-content" aria-live="polite">${renderTutorialTags(tutorial)}<span class="tutorial-card-step" data-tutorial-card-step></span><h3 data-tutorial-slide-title hidden></h3><p data-tutorial-slide-description hidden></p></div><button class="icon-btn tutorial-edit" type="button" data-edit-tutorial="${escapeTutorialText(tutorial.id)}" aria-label="Edit ${escapeTutorialText(tutorial.title)}">Edit</button></div>
     </article>`;
   }).join('');
   grid.querySelectorAll('.tutorial-card').forEach((card) => {
     const tutorial = tutorialState.items.find((item) => item.id === card.dataset.tutorialId);
     if (!tutorial) return;
     renderTutorialCardSlide(card, tutorial, tutorialState.slideIndices.get(tutorial.id) || 0);
+    let swipeStart = null;
+    let suppressCardClickUntil = 0;
+    const stage = card.querySelector('[data-tutorial-stage]');
+    if (tutorial.slides.length > 1) {
+      stage.addEventListener('pointerdown', (event) => {
+        if (!event.isPrimary) return;
+        const video = event.target.closest('video');
+        if (video && event.clientY > video.getBoundingClientRect().bottom - 56) return;
+        swipeStart = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+      stage.addEventListener('pointermove', (event) => {
+        if (!swipeStart || swipeStart.pointerId !== event.pointerId || stage.hasPointerCapture(event.pointerId)) return;
+        const deltaX = event.clientX - swipeStart.x;
+        const deltaY = event.clientY - swipeStart.y;
+        if (Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY)) stage.setPointerCapture(event.pointerId);
+      });
+      stage.addEventListener('pointerup', (event) => {
+        if (!swipeStart || swipeStart.pointerId !== event.pointerId) return;
+        const deltaX = event.clientX - swipeStart.x;
+        const deltaY = event.clientY - swipeStart.y;
+        swipeStart = null;
+        if (Math.abs(deltaX) < 45 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+        suppressCardClickUntil = performance.now() + 500;
+        renderTutorialCardSlide(card, tutorial, (tutorialState.slideIndices.get(tutorial.id) || 0) + (deltaX < 0 ? 1 : -1));
+        event.preventDefault();
+      });
+      stage.addEventListener('pointercancel', () => { swipeStart = null; });
+    }
     card.addEventListener('click', (event) => {
+      if (performance.now() < suppressCardClickUntil) { event.preventDefault(); return; }
       if (event.target.closest('button, video, input, textarea, a')) return;
       openTutorialDetail(tutorial, tutorialState.slideIndices.get(tutorial.id) || 0);
     });

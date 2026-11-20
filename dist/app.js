@@ -858,7 +858,7 @@ function renderTaskTutorialDetail() {
   taskTutorialDetailState.slideIndex = index;
   modal.querySelector('[data-tutorial-detail-title]').textContent = tutorial.title;
   modal.querySelector('[data-tutorial-detail-tags]').innerHTML = renderTaskTutorialTags(tutorial);
-  track.innerHTML = slides.map((slide, slideIndex) => `<article class="tutorial-detail-slide${slideIndex === index ? ' active' : ''}" data-tutorial-detail-slide="${slideIndex}"><div class="tutorial-detail-media">${renderTaskTutorialDetailMedia(slide, tutorial)}</div><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${slideIndex + 1}</span><h3>${escapeHtml(slide.title || `Step ${slideIndex + 1}`)}</h3><p${slide.description ? '' : ' hidden'}>${escapeHtml(slide.description)}</p></div></article>`).join('');
+  track.innerHTML = slides.map((slide, slideIndex) => `<article class="tutorial-detail-slide${slideIndex === index ? ' active' : ''}" data-tutorial-detail-slide="${slideIndex}"><div class="tutorial-detail-copy"><span class="tutorial-detail-step">Step ${slideIndex + 1} of ${slides.length}</span><h3>${escapeHtml(slide.title || `Step ${slideIndex + 1}`)}</h3><p${slide.description ? '' : ' hidden'}>${escapeHtml(slide.description)}</p></div><div class="tutorial-detail-media">${renderTaskTutorialDetailMedia(slide, tutorial)}</div></article>`).join('');
   const dots = modal.querySelector('[data-tutorial-detail-dots]');
   dots.innerHTML = slides.map((slide, slideIndex) => `<button class="tutorial-detail-dot${slideIndex === index ? ' is-active' : ''}" type="button" role="tab" data-tutorial-detail-dot="${slideIndex}" aria-label="Go to slide ${slideIndex + 1}" aria-selected="${slideIndex === index}"></button>`).join('');
   dots.querySelectorAll('[data-tutorial-detail-dot]').forEach((dot) => dot.addEventListener('click', () => scrollTaskTutorialDetailTo(Number(dot.dataset.tutorialDetailDot))));
@@ -870,6 +870,21 @@ function renderTaskTutorialDetail() {
       if (nearestIndex === taskTutorialDetailState.slideIndex) return;
       taskTutorialDetailState.slideIndex = nearestIndex;
       updateTaskTutorialDetailControls(currentTutorial, nearestIndex);
+    }, { passive: true });
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    track.addEventListener('touchstart', (event) => {
+      const touch = event.changedTouches[0];
+      swipeStartX = touch?.clientX || 0;
+      swipeStartY = touch?.clientY || 0;
+    }, { passive: true });
+    track.addEventListener('touchend', (event) => {
+      const touch = event.changedTouches[0];
+      const deltaX = (touch?.clientX || 0) - swipeStartX;
+      const deltaY = (touch?.clientY || 0) - swipeStartY;
+      if (Math.abs(deltaX) < 45 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+      const direction = deltaX < 0 ? 1 : -1;
+      scrollTaskTutorialDetailTo(taskTutorialDetailState.slideIndex + direction);
     }, { passive: true });
     track.dataset.taskTutorialScrollBound = 'true';
   }

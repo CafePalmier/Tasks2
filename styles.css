@@ -2678,7 +2678,7 @@ body[data-page="tutorials"] .nav {
 }
 
 body[data-page="tutorials"] .tutorials-heading h1,
-body[data-page="tutorials"] .tutorial-card-copy h2,
+body[data-page="tutorials"] .tutorial-card-heading h2,
 body[data-page="tutorials"] .tutorial-card-copy h3,
 body[data-page="tutorials"] .tutorial-empty h2 {
   color: var(--forest-deep);
@@ -2699,6 +2699,16 @@ body[data-page="tutorials"] .tutorial-empty h2 {
   box-shadow: 0 22px 48px rgba(49, 76, 99, 0.17);
 }
 
+.tutorial-card-heading {
+  padding: 1rem 1rem 0.9rem;
+}
+
+.tutorial-card-heading h2 {
+  color: var(--forest-deep);
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
 .tutorial-media-shell {
   position: relative;
   overflow: hidden;
@@ -2711,6 +2721,7 @@ body[data-page="tutorials"] .tutorial-empty h2 {
   overflow: hidden;
   background: linear-gradient(145deg, #33546b, #152c3c);
   cursor: zoom-in;
+  touch-action: pan-y pinch-zoom;
 }
 
 .tutorial-media-stage video,
@@ -2720,6 +2731,7 @@ body[data-page="tutorials"] .tutorial-empty h2 {
   height: 100%;
   object-fit: cover;
   background: #142a39;
+  -webkit-user-drag: none;
 }
 
 .tutorial-media-stage video {
@@ -2826,13 +2838,21 @@ body[data-page="tutorials"] .tutorial-empty h2 {
   min-width: 0;
 }
 
+.tutorial-card-step {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .tutorial-card-copy h2 {
   margin-top: 0.45rem;
   font-size: 1.05rem;
 }
 
 .tutorial-card-copy h3 {
-  margin-top: 0.6rem;
+  margin-top: 0.25rem;
   font-size: 0.93rem;
 }
 
@@ -3433,8 +3453,16 @@ body[data-season="winter"] .tutorial-tag {
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   overscroll-behavior-x: contain;
-  touch-action: pan-x pan-y;
+  touch-action: pan-y pinch-zoom;
   scrollbar-width: none;
+}
+
+.tutorial-detail-copy {
+  order: 1;
+}
+
+.tutorial-detail-media {
+  order: 2;
 }
 
 .tutorial-detail-track::-webkit-scrollbar {
@@ -3443,6 +3471,8 @@ body[data-season="winter"] .tutorial-tag {
 
 .tutorial-detail-slide,
 .tutorial-detail-slide.active {
+  display: flex;
+  flex-direction: column;
   min-width: 100%;
   flex: 0 0 100%;
 }
