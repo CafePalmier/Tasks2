@@ -5,6 +5,7 @@ const path = require('path');
 const PORT = process.env.PORT || 8000;
 const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
+const TAG_DIR = path.join(ROOT_DIR, 'tag-generator');
 const ROOT_ASSETS_DIR = path.join(ROOT_DIR, 'Assets');
 const DATA_DIR = path.join(ROOT_DIR, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'tasks.json');
@@ -292,6 +293,9 @@ function buildTaskPayload(tasks, now = new Date()) {
 function getFileFromPath(requestPath) {
   const safePath = requestPath === '/' ? '/index.html' : requestPath;
 
+  if (safePath === '/tag-generator/' || safePath === '/tag-generator') return path.join(TAG_DIR, 'index.html');
+  if (safePath.startsWith('/tag-generator/')) return path.resolve(TAG_DIR, '.' + safePath.slice('/tag-generator'.length));
+
   if (safePath.startsWith('/Assets/')) {
     return path.join(ROOT_ASSETS_DIR, safePath.slice('/Assets/'.length));
   }
@@ -312,6 +316,8 @@ function serveFile(res, filePath) {
       '.html': 'text/html; charset=utf-8',
       '.css': 'text/css; charset=utf-8',
       '.js': 'application/javascript; charset=utf-8',
+      '.mjs': 'application/javascript; charset=utf-8',
+      '.pdf': 'application/pdf',
       '.json': 'application/json; charset=utf-8',
       '.webmanifest': 'application/manifest+json; charset=utf-8',
       '.png': 'image/png',
@@ -427,7 +433,7 @@ const server = http.createServer(async (req, res) => {
   const requestPath = pathname === '/' ? '/index.html' : pathname;
   const filePath = getFileFromPath(requestPath);
 
-  if (filePath.startsWith(PUBLIC_DIR) || filePath.startsWith(ROOT_ASSETS_DIR)) {
+  if (filePath.startsWith(PUBLIC_DIR) || filePath.startsWith(ROOT_ASSETS_DIR) || filePath.startsWith(TAG_DIR + path.sep)) {
     serveFile(res, filePath);
     return;
   }

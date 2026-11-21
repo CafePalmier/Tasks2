@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test tag-generator/tests/*.test.mjs",
+    "samples": "node tag-generator/scripts/samples.mjs"
+  },
+  "devDependencies": {
+    "pdf-lib": "1.17.1"
   }
 }

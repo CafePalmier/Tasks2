@@ -1,0 +1,219 @@
+{
+  "requiredPriceCharacters": "0123456789$.",
+  "sourcePriceWhitespace": " ",
+  "sources": [
+    {
+      "file": "reference/Provisions-original.ai",
+      "fonts": [
+        {
+          "name": "GJMANG+Metropolis-MediumItalic",
+          "format": "cff",
+          "usableCharacters": " $.058",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "GJMANG+Ruddy-BoldItalic",
+          "format": "cff",
+          "usableCharacters": " 2BMTaceiklmors",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "GJMANG+Lucidity-Condensed",
+          "format": "ttf",
+          "usableCharacters": " ABCEFLNabceflnÀÉàé",
+          "mappedWithoutInk": "!\"#$&'()*,-./0123456789:;?@DGHIJKMOPQRSTUVWXYZ[\\]^_dghijkmopqrstuvwxyz{}¡¢£¥·¿ÁÂÃÄÅÆÇÈÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞáâãäåæçèêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĊċČčĎďĐđĒēĖėĘęĚěĞğĠġĢģĦħĪīĮįİĶķĹĺĻļĽľŁłŃńŅņŇňŊŋŌōŐŒœŔŕŖŗŘřŚśŞşŠšŢţŤťŦŧŪūŮůŰűŲųŴŵŶŷŸŹźŻżŽžȘȚţ̨̦̦̀́̂̃̄̆̇̈̊̋̌̒ẀẁẂẃẄẅỲỳ–—‘’‚“”„•…€™"
+        }
+      ]
+    },
+    {
+      "file": "reference/Provisions-original.pdf",
+      "fonts": [
+        {
+          "name": "UMWGBE+Metropolis-MediumItalic",
+          "format": "cff",
+          "usableCharacters": " $.058",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "UMWGBE+Ruddy-BoldItalic",
+          "format": "cff",
+          "usableCharacters": " 2BMTaceiklmors",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "UMWGBE+Lucidity-Condensed",
+          "format": "ttf",
+          "usableCharacters": " ABCEFLNabceflnÀÉàé",
+          "mappedWithoutInk": "!\"#$&'()*,-./0123456789:;?@DGHIJKMOPQRSTUVWXYZ[\\]^_dghijkmopqrstuvwxyz{}¡¢£¥·¿ÁÂÃÄÅÆÇÈÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞáâãäåæçèêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĊċČčĎďĐđĒēĖėĘęĚěĞğĠġĢģĦħĪīĮįİĶķĹĺĻļĽľŁłŃńŅņŇňŊŋŌōŐŒœŔŕŖŗŘřŚśŞşŠšŢţŤťŦŧŪūŮůŰűŲųŴŵŶŷŸŹźŻżŽžȘȚţ̨̦̦̀́̂̃̄̆̇̈̊̋̌̒ẀẁẂẃẄẅỲỳ–—‘’‚“”„•…€™"
+        }
+      ]
+    },
+    {
+      "file": "reference/freezer-original copy.pdf",
+      "fonts": [
+        {
+          "name": "WXQSDA+Metropolis-MediumItalic",
+          "format": "cff",
+          "usableCharacters": " $.1256",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "WXQSDA+Lucidity-Condensed",
+          "format": "ttf",
+          "usableCharacters": " BEINORWbeinorw",
+          "mappedWithoutInk": "!\"#$&'()*,-./0123456789:;?@ACDFGHJKLMPQSTUVXYZ[\\]^_acdfghjklmpqstuvxyz{}¡¢£¥·¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĊċČčĎďĐđĒēĖėĘęĚěĞğĠġĢģĦħĪīĮįİĶķĹĺĻļĽľŁłŃńŅņŇňŊŋŌōŐŒœŔŕŖŗŘřŚśŞşŠšŢţŤťŦŧŪūŮůŰűŲųŴŵŶŷŸŹźŻżŽžȘȚţ̨̦̦̀́̂̃̄̆̇̈̊̋̌̒ẀẁẂẃẄẅỲỳ–—‘’‚“”„•…€™"
+        }
+      ]
+    },
+    {
+      "file": "reference/freezer-original.ai",
+      "fonts": [
+        {
+          "name": "IPGMPC+Metropolis-MediumItalic",
+          "format": "cff",
+          "usableCharacters": " $.1256",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "IPGMPC+Lucidity-Condensed",
+          "format": "ttf",
+          "usableCharacters": " BEINORWbeinorw",
+          "mappedWithoutInk": "!\"#$&'()*,-./0123456789:;?@ACDFGHJKLMPQSTUVXYZ[\\]^_acdfghjklmpqstuvxyz{}¡¢£¥·¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĊċČčĎďĐđĒēĖėĘęĚěĞğĠġĢģĦħĪīĮįİĶķĹĺĻļĽľŁłŃńŅņŇňŊŋŌōŐŒœŔŕŖŗŘřŚśŞşŠšŢţŤťŦŧŪūŮůŰűŲųŴŵŶŷŸŹźŻżŽžȘȚţ̨̦̦̀́̂̃̄̆̇̈̊̋̌̒ẀẁẂẃẄẅỲỳ–—‘’‚“”„•…€™"
+        }
+      ]
+    },
+    {
+      "file": "reference/lucidity-reference.pdf",
+      "fonts": []
+    },
+    {
+      "file": "reference/pastry-original.ai",
+      "fonts": [
+        {
+          "name": "TYGANG+Ruddy-BoldItalic",
+          "format": "cff",
+          "usableCharacters": " &BCDEFMPSabcdehilmnoprstué",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "TYGANG+Metropolis-MediumItalic",
+          "format": "cff",
+          "usableCharacters": " $.0345679",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "TYGANG+Metropolis-MediumItalic",
+          "format": "cff",
+          "usableCharacters": " $.0345679",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "TYGANG+Metropolis-Bold",
+          "format": "cff",
+          "usableCharacters": " (),.:ABCDEFGHIKLMNOPRSTUVWXYZ",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "TYGANG+Lucidity-Condensed",
+          "format": "ttf",
+          "usableCharacters": " ABCDEFGHILMNOPRSTUWabcdefghilmnoprstuw",
+          "mappedWithoutInk": "!\"#$&'()*,-./0123456789:;?@JKQVXYZ[\\]^_jkqvxyz{}¡¢£¥·¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĊċČčĎďĐđĒēĖėĘęĚěĞğĠġĢģĦħĪīĮįİĶķĹĺĻļĽľŁłŃńŅņŇňŊŋŌōŐŒœŔŕŖŗŘřŚśŞşŠšŢţŤťŦŧŪūŮůŰűŲųŴŵŶŷŸŹźŻżŽžȘȚţ̨̦̦̀́̂̃̄̆̇̈̊̋̌̒ẀẁẂẃẄẅỲỳ–—‘’‚“”„•…€™"
+        },
+        {
+          "name": "TYGANG+Metropolis-Regular",
+          "format": "cff",
+          "usableCharacters": " %()+,-.23:ABCDEFGHIKLMNOPSTUVWabcdefghijklmnoprstuvwxyz",
+          "mappedWithoutInk": ""
+        }
+      ]
+    },
+    {
+      "file": "reference/pastry-original.pdf",
+      "fonts": [
+        {
+          "name": "PSSCJO+Ruddy-BoldItalic",
+          "format": "cff",
+          "usableCharacters": " &BCDEFMPSabcdehilmnoprstué",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "PSSCJO+Metropolis-MediumItalic",
+          "format": "cff",
+          "usableCharacters": " $.0345679",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "PSSCJO+Metropolis-Bold",
+          "format": "cff",
+          "usableCharacters": " (),.:ABCDEFGHIKLMNOPRSTUVWXYZ",
+          "mappedWithoutInk": ""
+        },
+        {
+          "name": "PSSCJO+Lucidity-Condensed",
+          "format": "ttf",
+          "usableCharacters": " ABCDEFGHILMNOPRSTUWabcdefghilmnoprstuw",
+          "mappedWithoutInk": "!\"#$&'()*,-./0123456789:;?@JKQVXYZ[\\]^_jkqvxyz{}¡¢£¥·¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿĀāĂăĄąĆćĊċČčĎďĐđĒēĖėĘęĚěĞğĠġĢģĦħĪīĮįİĶķĹĺĻļĽľŁłŃńŅņŇňŊŋŌōŐŒœŔŕŖŗŘřŚśŞşŠšŢţŤťŦŧŪūŮůŰűŲųŴŵŶŷŸŹźŻżŽžȘȚţ̨̦̦̀́̂̃̄̆̇̈̊̋̌̒ẀẁẂẃẄẅỲỳ–—‘’‚“”„•…€™"
+        },
+        {
+          "name": "PSSCJO+Metropolis-Regular",
+          "format": "cff",
+          "usableCharacters": " %()+,-.23:ABCDEFGHIKLMNOPSTUVWabcdefghijklmnoprstuvwxyz",
+          "mappedWithoutInk": ""
+        }
+      ]
+    },
+    {
+      "file": "reference/ruddy-reference.pdf",
+      "fonts": []
+    },
+    {
+      "file": "templates/Provisions-blank.pdf",
+      "fonts": []
+    },
+    {
+      "file": "templates/freezer-blank.pdf",
+      "fonts": []
+    },
+    {
+      "file": "templates/pastry-blank.pdf",
+      "fonts": []
+    },
+    {
+      "file": "fonts/Cafe_Palmier_Lucidity_Source.pdf",
+      "fonts": []
+    },
+    {
+      "file": "fonts/Cafe_Palmier_Ruddy_Source.pdf",
+      "fonts": []
+    }
+  ],
+  "generated": {
+    "lucidity": {
+      "characters": " !$%&'(),-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÂÄÆÇÈÉÊËÎÏÔÖÙÛÜàâäæçèéêëîïôöùûüÿŒœŸ",
+      "missingPrintableASCII": "\"#*+<=>@[\\]^_`{|}~",
+      "estimatedMetrics": ""
+    },
+    "ruddy": {
+      "characters": " !$%&'(),-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÂÄÆÇÈÉÊËÎÏÔÖÙÛÜàâäæçèéêëîïôöùûüÿŒœŸ",
+      "missingPrintableASCII": "\"#*+<=>@[\\]^_`{|}~",
+      "estimatedMetrics": "AGHIJKLNOQRUVWXYZfgjqvwxyzÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸàâäçèêëîïôöùûüÿ013456789'-,./():;%$!?œŒæÆ"
+    },
+    "price": {
+      "characters": " $.0123456789",
+      "missingPrintableASCII": "!\"#%&'()*+,-/:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~",
+      "estimatedMetrics": ""
+    },
+    "bold": {
+      "characters": " (),.:ABCDEFGHIKLMNOPRSTUVWXYZ",
+      "missingPrintableASCII": "!\"#$%&'*+-/0123456789;<=>?@JQ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~",
+      "estimatedMetrics": ""
+    },
+    "ingredients": {
+      "characters": " %()+,-.23:ABCDEFGHIKLMNOPSTUVWabcdefghijklmnoprstuvwxyz",
+      "missingPrintableASCII": "!\"#$&'*/01456789;<=>?@JQRXYZ[\\]^_`q{|}~",
+      "estimatedMetrics": ""
+    }
+  },
+  "priceUnion": " $.0123456789",
+  "missingPriceCharacters": ""
+}

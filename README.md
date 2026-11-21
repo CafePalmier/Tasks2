@@ -19,3 +19,7 @@ Run `npm start`, then open `http://localhost:8000/index.html` for the local task
 ## Home-screen app and favourite icon
 
 The site includes a web app manifest, Apple touch icon, favicon, and service worker. Once deployed over HTTPS, use **Add to Home Screen** or **Install app** in the browser menu. The supplied Cafe Palmier icon will be used for the installed app and browser favourite.
+
+## Tag Generator
+
+A browser-only tag editor is available at `tag-generator/index.html` (also served by `npm start`). See [its implementation and print notes](tag-generator/README.md) for setup, local sample PDFs, typography licensing gates and remaining print validation. Production PDF export is intentionally gated until authorized complete typography assets are supplied.

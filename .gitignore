@@ -1,2 +1,7 @@
 node_modules/
 data/tasks.json
+
+# Local PDF inspection and unapproved reusable lettering
+tmp/
+tag-generator/typography/provisional.json
+tag-generator/samples/

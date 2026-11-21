@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#dce8f2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Cafe Palmier" />
+    <title>Tag Generator · Cafe Palmier Tasks</title>
+    <link rel="manifest" href="../manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="../Assets/app-icon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../Assets/app-icon-180.png" />
+    <link rel="stylesheet" href="../styles.css?v=24" />
+    <link rel="stylesheet" href="./editor.css" />
+    <link rel="stylesheet" href="./print.css" />
+    <script src="./editor.mjs" type="module"></script>
+  </head>
+  <body data-page="tag-generator">
+    <header class="topbar">
+      <a class="brand-wrap brand-home" href="../index.html" aria-label="Cafe Palmier Tasks home">
+        <img class="brand-logo" src="../Assets/logo-eng.png" alt="Cafe Palmier logo" />
+      </a>
+      <nav class="nav" aria-label="Main navigation">
+        <a class="nav-link" href="../index.html">Available Tasks</a>
+        <a class="nav-link" href="../opening.html">Opening</a>
+        <a class="nav-link" href="../closing.html">Closing</a>
+        <a class="nav-link" href="../today.html">Today &amp; Tomorrow</a>
+        <a class="nav-link" href="../tutorials.html">Tutorials</a>
+        <a class="nav-link active" href="./index.html" aria-current="page">Tag Generator</a>
+      </nav>
+    </header>
+
+    <main class="page-shell tg-shell">
+      <header class="tg-heading">
+        <div><h1>Tag Generator</h1><p>Make your tags. Preview your sheets. Print at actual size.</p></div>
+        <div class="tg-output-actions"><button class="tg-button tg-primary" id="download-pdf" type="button" disabled>Download PDF</button>
+        <button class="tg-button tg-primary" id="print-tags" type="button" disabled>Print Tags</button></div>
+      </header>
+      <p class="tg-help">US Letter · Landscape · Actual size / 100%. Pastry ingredients: double-sided, flip on short edge. Other tags: single-sided. Select these settings in the print dialog; the browser cannot enforce them.</p>
+      <p id="app-status" class="tg-status" role="alert" hidden></p>
+      <div id="storage-notice" class="tg-notice" role="alert" hidden></div>
+
+      <div class="tg-workspace">
+        <div class="tg-edit-column">
+          <section class="tg-card" aria-labelledby="editor-heading">
+            <div class="tg-section-heading"><h2 id="editor-heading">New tag</h2><span class="tg-small">Prices required for product tags</span></div>
+            <form id="tag-form" novalidate>
+              <label class="tg-field" for="tag-type"><span>Tag type</span>
+                <select id="tag-type" name="type"><option value="pastry">Pastry</option><option value="freezer">Freezer</option><option value="provisions">Provisions</option><option value="napkin">Napkin Holders</option></select>
+              </label>
+              <label class="tg-field" id="napkin-field" for="tag-design" hidden><span>Design</span><select id="tag-design"><option value="side">Napkin Holder — Side</option><option value="qr">Napkin Holder — QR</option></select></label>
+              <label class="tg-field" id="title-field" for="tag-title"><span>Title <span class="tg-required">required</span></span>
+                <input id="tag-title" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="title-suggestions" name="title" type="text" lang="fr" autocomplete="off" required aria-describedby="front-guidance title-error" />
+                <button type="button" id="title-options" aria-label="Show title suggestions">⌄</button>
+                <div id="title-suggestions" role="listbox" hidden></div>
+                <span class="tg-field-error" id="title-error"></span>
+              </label>
+              <label class="tg-field" id="subtitle-field" for="tag-subtitle"><span>Subtitle <span class="tg-small">optional</span></span>
+                <input id="tag-subtitle" name="subtitle" type="text" lang="fr" autocomplete="off" aria-describedby="front-guidance subtitle-error" />
+                <span class="tg-field-error" id="subtitle-error"></span>
+              </label>
+              <p class="tg-help" id="front-guidance">Enter titles and subtitles in French. Standalone “et” becomes “&amp;” on the tag.</p>
+              <label class="tg-field" id="price-field" for="tag-price"><span>Price <span class="tg-required">required</span></span>
+                <input id="tag-price" name="price" type="text" inputmode="decimal" placeholder="e.g. 4.50" autocomplete="off" required aria-describedby="price-help price-error" />
+                <span class="tg-help" id="price-help">Printed as $4.50. Enter your actual selling price.</span>
+                <span class="tg-field-error" id="price-error"></span>
+              </label>
+              <div id="pastry-fields">
+                <label class="tg-field" for="tag-ingredients"><span>Ingredients, in English <span class="tg-required">required</span></span>
+                  <textarea id="tag-ingredients" name="ingredients" rows="5" lang="en" aria-describedby="ingredients-help ingredients-error" required></textarea>
+                  <span class="tg-help" id="ingredients-help">Preset recipes are editable defaults. Verify ingredients and allergens before printing. This text prints on the back.</span>
+                  <span class="tg-field-error" id="ingredients-error"></span>
+                </label>
+                <button class="tg-button" id="reset-ingredients" type="button" hidden>Reset to preset</button>
+                <fieldset class="tg-dietary"><legend>Dietary indicators</legend>
+                  <label><input id="tag-vegan" name="vegan" type="checkbox" /> Vegan (V)</label>
+                  <label><input id="tag-gluten-free" name="glutenFree" type="checkbox" /> Gluten-free (SG)</label>
+                </fieldset>
+              </div>
+              <p id="form-error" class="tg-form-error" role="alert" hidden></p>
+              <div class="tg-form-actions">
+                <button class="tg-button tg-primary" id="save-tag" type="submit">Add Tag</button>
+                <button class="tg-button" id="cancel-edit" type="button" hidden>Discard draft</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="tg-card" aria-labelledby="collection-heading">
+            <div class="tg-section-heading"><h2 id="collection-heading">Your tags <span id="collection-count" class="tg-count">0</span></h2><button class="tg-button tg-quiet" type="button" id="clear-all" disabled>Clear All</button></div>
+            <p class="tg-help tg-collection-help">Saved on this device. Use Earlier and Later to change the order.</p>
+            <p id="collection-empty" class="tg-empty">Add your first tag above. You can mix formats and make as many sheets as you need.</p>
+            <ol id="tag-collection" class="tg-collection"></ol>
+          </section>
+        </div>
+
+        <section class="tg-card tg-preview-panel" aria-labelledby="preview-heading">
+          <div class="tg-section-heading"><div><h2 id="preview-heading">Sheet preview</h2><p class="tg-help" id="sheet-count">0 tags · 0 sheets</p></div>
+            <div class="tg-view-switch" role="group" aria-label="Preview side">
+              <button class="tg-button" type="button" id="view-front" aria-pressed="true">Front</button>
+              <button class="tg-button" type="button" id="view-back" aria-pressed="false">Back</button>
+            </div>
+          </div>
+          <p class="tg-help">US Letter landscape · exact tag proportions · no rotation</p>
+          <p id="draft-notice" class="tg-notice" hidden></p>
+          <div id="project-errors" class="tg-notice tg-error-notice" role="alert" hidden></div>
+          <div id="project-warnings" class="tg-notice" hidden></div>
+          <div id="sheet-previews" class="tg-sheets"><div class="tg-empty-sheet"><p>Your printable sheets will appear here.</p><span>11 × 8.5 inches</span></div></div>
+          <div class="tg-print-note"><h3>Print settings</h3><p id="print-settings">US Letter · Landscape · Actual size / 100%</p><p id="duplex-settings">Pastry tags need double-sided printing with flip on short edge. Print a test sheet to check alignment before a full batch.</p></div>
+          <details class="tg-print-check"><summary>Check your printer’s alignment</summary>
+            <p>Download a registration test using your current tags. Print at 100%, double-sided, flip on short edge. Hold it to a light: each asymmetric back marker should align with the matching front marker. Confirm that the text reads normally and the 1-inch ruler measures exactly 1 inch. Adjust printer settings and repeat before cutting.</p>
+            <button class="tg-button" id="download-test" type="button" disabled>Download registration test</button>
+          </details>
+        </section>
+      </div>
+      <noscript><p class="tg-notice">Enable JavaScript to use the tag editor. All tag generation happens in your browser.</p></noscript>
+    </main>
+    <div id="tag-print-root" aria-hidden="true"></div>
+  </body>
+</html>

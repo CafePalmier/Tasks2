@@ -1,0 +1,10 @@
+#tag-print-root { display: none; }
+@page { size: 792pt 612pt; margin: 0; }
+@media print {
+  html, body { margin: 0 !important; padding: 0 !important; width: 792pt !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; overflow: visible !important; background: white !important; }
+  body > :not(#tag-print-root) { display: none !important; }
+  #tag-print-root { display: block !important; margin: 0 !important; padding: 0 !important; }
+  #tag-print-root .tag-print-sheet { display: block; width: 792pt; height: 612pt; margin: 0; padding: 0; border: 0; box-shadow: none; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; break-after: page; page-break-after: always; }
+  #tag-print-root .tag-print-sheet:last-child { break-after: auto; page-break-after: auto; }
+  #tag-print-root .tag-print-sheet > svg { display: block; width: 792pt; height: 612pt; margin: 0; border: 0; max-width: none; transform: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
