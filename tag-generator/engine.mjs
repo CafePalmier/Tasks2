@@ -7,6 +7,10 @@ import {createTextLayout, FitError} from './text-layout.mjs';
 export const SIZES={pastry:[199.9674,154.5202],freezer:[212.234,101.503],provisions:[141.732,116.220]};
 export const normalizePrice=v=>{const s=String(v??'').trim().replace(/^\$\s*/,'');return /^\d{1,7}(?:[.,]\d{1,2})?$/.test(s)?'$'+Number(s.replace(',','.')).toFixed(2):null;};
 export const normalizeFrontText=v=>String(v??'').normalize('NFC').replace(/(?<![\p{L}\p{N}])et(?![\p{L}\p{N}])/gu,'&').trim();
+export function normalizeTitleText(value){
+ let opening=true;
+ return normalizeFrontText(value).replace(/["“”]/g,char=>{const left=char==='“'||(char==='"'&&opening);opening=!left;return left?'«':'»';}).replace(/«\s*/g,'«\u00a0').replace(/\s*»/g,'\u00a0»');
+}
 export function validateTag(t){const e=[];if(isStatic(t))return staticDesigns[t.design]?[]:[{field:'design',message:'Choose a Napkin Holder design.'}];if(!SIZES[t.type])e.push({field:'type',message:'Choose a tag format.'});if(!String(t.title??'').trim())e.push({field:'title',message:'Enter a French title.'});if(!normalizePrice(t.price))e.push({field:'price',code:'invalid-price',message:'Enter a valid non-negative price.'});if(t.type==='pastry'&&!String(t.ingredients??'').trim())e.push({field:'ingredients',message:'Enter the English ingredients.'});return e;}
 export const CUT_GAP=1;
 export function pack(tags){if(!tags.length)return [];if(tags.every(t=>t.type==='pastry'))return Array.from({length:Math.ceil(tags.length/9)},(_,s)=>({items:tags.slice(s*9,s*9+9).map((tag,i)=>({tag,x:(792-3*SIZES.pastry[0]-2*CUT_GAP)/2+(i%3)*(SIZES.pastry[0]+CUT_GAP),y:(612-3*SIZES.pastry[1]-2*CUT_GAP)/2+Math.floor(i/3)*(SIZES.pastry[1]+CUT_GAP),w:SIZES[tag.type][0],h:SIZES[tag.type][1]}))}));
@@ -56,7 +60,7 @@ export function createEngine(artwork,fonts,PDFLib){
      try {const fit=fn();result.fits[name]=fit;result[side].push(...fit.ops);}
      catch(e){if(!(e instanceof FitError))throw e;result.errors.push({field:name,message:e.message,code:e.code,measured:e.measured,available:e.available,minSize:e.minSize,missingGlyphs:e.missingGlyphs});}
    }
-   field('title',()=>text.fit('lucidity',normalizeFrontText(t.title),{x:titleInset,y:top,w:w-titleInset*2,h:bottom-top-(sub?24:0)},t.type==='pastry'?36:24,14,2,'Title'));
+   field('title',()=>text.fit('lucidity',normalizeTitleText(t.title),{x:titleInset,y:top,w:w-titleInset*2,h:bottom-top-(sub?24:0)},t.type==='pastry'?36:24,14,2,'Title'));
    if(sub)field('subtitle',()=>text.fit('ruddy',sub,{x:20,y:bottom-20,w:w-40,h:20},t.type==='pastry'?14.5:10,8,t.type==='provisions'?2:1,'Subtitle'));
    // Reposition the measured ink blocks as a single composition inside the cream.
    const title=result.fits.title, subtitle=result.fits.subtitle;

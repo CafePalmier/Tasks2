@@ -16,7 +16,7 @@ export function createLibrary(storage){
   // Ingredient-only source improvements sit below every saved staff correction.
   for(const update of staffRecipeUpdates){const id=identity(update),old=map.get(id);if(old)map.set(id,{...old,ingredients:update.ingredients,ingredientEvidence:update.ingredientEvidence});}
   for(const p of state.records)map.set(identity(p),{...map.get(identity(p)),...p,priceConflict:false});
-  return [...map.values()].filter(p=>!(state.deleted||[]).includes(identity(p))).map(p=>({...p,price:p.type==='pastry'&&!p.individualPrice?state.prices[canonical(p.title)]||p.price:p.price}));
+  return [...map.values()].filter(p=>canonical(p.title)!=='scone scone'&&!(state.deleted||[]).includes(identity(p))).map(p=>({...p,price:p.type==='pastry'&&!p.individualPrice?state.prices[canonical(p.title)]||p.price:p.price}));
  };
  function remember(tag,confirm){
   const old=all().find(p=>identity(p)===identity(tag));

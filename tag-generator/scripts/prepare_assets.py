@@ -65,6 +65,8 @@ for g in fonts['ruddy'].values():
   g['advance']=(g['bounds'][2]-g['bounds'][0])*ratio;g['metricSource']='estimated from CFF width ratio'
 (ROOT/'typography/provisional.json').write_text(json.dumps(fonts))
 print('Prepared vector shapes and provisional lettering. Missing glyphs will be blocked, never substituted.')
+import runpy
+runpy.run_path(str(ROOT/'scripts/prepare_lucidity_quotes.py'))
 # Preserve original badges, including original text positions and glyphs.
 p=fitz.open(ROOT/'reference/pastry-original.pdf')[0];badges={'vegan':[],'glutenFree':[]}
 for d in p.get_drawings():

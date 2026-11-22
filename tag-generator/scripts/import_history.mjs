@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import {presets} from '../presets.mjs';
 const rows=JSON.parse(fs.readFileSync(new URL('../review/historical-source-audit.json',import.meta.url))).records;
 const normalize=s=>s.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
-const records=rows.map(a=>{
+const records=rows.filter(a=>a.original_record.title!=='SCONE SCONE').map(a=>{
  const r=a.original_record;let title=r.title,subtitle=r.subtitle;
  if(title==='SONE')title='SCONE';
  if(subtitle==='SCONE Herbes & Fromage Herbes & Fromage')subtitle='Herbes & Fromage';

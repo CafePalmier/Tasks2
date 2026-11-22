@@ -1765,24 +1765,6 @@ export const historical = [
   },
   {
     "type": "pastry",
-    "title": "SCONE SCONE",
-    "subtitle": "Herbes & Fromage Herbes & Fromage",
-    "price": "$4.50",
-    "ingredients": "Flour, baking soda, baking powder, salt, sugar, butter, milk, vinegar, mix in bits.",
-    "vegan": false,
-    "glutenFree": false,
-    "titleColor": "#376438",
-    "origin": "historical",
-    "provenance": "previous_extraction",
-    "sourceLine": 100,
-    "reviewFlags": "nonstandard_sheet_geometry",
-    "sourcePages": [
-      "9",
-      "10"
-    ]
-  },
-  {
-    "type": "pastry",
     "title": "Scone",
     "subtitle": "Aneth & Fromage",
     "price": "$4.50",

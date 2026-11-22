@@ -3,6 +3,13 @@ export class FitError extends Error {
   constructor(message, details={}) { super(message); Object.assign(this, details); }
 }
 export function createTextLayout(fonts) {
+  if(fonts){
+    fonts={...fonts};
+    for(const name of ['lucidity','ruddy'])if(fonts[name])fonts[name]={...fonts[name],...(!fonts[name]['’']&&fonts[name]["'"]?{'’':fonts[name]["'"]}:{}),'\u00a0':fonts[name][' ']};
+    // These outline-only advances were estimated narrower than their ink.
+    // Correct only g/q; keep their original paths and vertical positioning.
+    if(fonts.ruddy)for(const char of ['g','q']){const glyph=fonts.ruddy[char];if(glyph?.bounds&&glyph.metricSource?.startsWith('estimated'))fonts.ruddy[char]={...glyph,advance:Math.max(glyph.advance,glyph.bounds[2]+(glyph.offsetX||0)+.045)};}
+  }
   function measure(font, text, size) {
     let cursor=0, left=Infinity, right=-Infinity, top=Infinity, bottom=-Infinity;
     const glyphs=[];
@@ -27,7 +34,7 @@ export function createTextLayout(fonts) {
     throw new FitError(`${field} needs ${measured.width.toFixed(1)} × ${measured.height.toFixed(1)} pt at ${min} pt (${lines} line${lines===1?'':'s'}); available space is ${box.w.toFixed(1)} × ${box.h.toFixed(1)} pt. Please shorten this field.`, {code:'overflow',measured,available:box,minSize:min});
   }
   function fit(font,text,box,max,min,maxLines=2,field='Text') {
-    const candidates=[[text]], words=text.split(/\s+/);
+    const candidates=[[text]], words=text.split(/[ \t\r\n]+/);
     if(maxLines===2)for(let i=1;i<words.length;i++)candidates.push([words.slice(0,i).join(' '),words.slice(i).join(' ')]);
     let best;
     const sizes=[];for(let s=max;s>min;s-=.5)sizes.push(s);sizes.push(min);
