@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../styles.css?v=24" />
     <link rel="stylesheet" href="./editor.css" />
     <link rel="stylesheet" href="./print.css" />
+    <script src="../supabase-config.js"></script>
     <script src="./editor.mjs" type="module"></script>
   </head>
   <body data-page="tag-generator">
@@ -87,7 +88,7 @@
 
           <section class="tg-card" aria-labelledby="collection-heading">
             <div class="tg-section-heading"><h2 id="collection-heading">Your tags <span id="collection-count" class="tg-count">0</span></h2><button class="tg-button tg-quiet" type="button" id="clear-all" disabled>Clear All</button></div>
-            <p class="tg-help tg-collection-help">Saved on this device. Use Earlier and Later to change the order.</p>
+            <p class="tg-help tg-collection-help">Saved on this device.</p>
             <p id="collection-empty" class="tg-empty">Add your first tag above. You can mix formats and make as many sheets as you need.</p>
             <ol id="tag-collection" class="tg-collection"></ol>
           </section>

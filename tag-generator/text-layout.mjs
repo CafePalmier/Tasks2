@@ -48,6 +48,12 @@ export function createTextLayout(fonts) {
     overflow(field,box,{width:best.width,height:best.height},min,best.lines.length);
   }
   function ingredients(text,box) {
+    const original=fonts.ingredients;
+    const needsFallback=[...text].some(c=>!['\n','\r'].includes(c)&&!original?.[c]);
+    if(needsFallback&&fonts.ingredientFallback)fonts={...fonts,ingredients:fonts.ingredientFallback};
+    try{return fitIngredients(text,box);}finally{fonts={...fonts,ingredients:original};}
+  }
+  function fitIngredients(text,box) {
     let best;
     for(let size=11;size>=8;size-=.5) {
       const lines=[];let widestWord=0;

@@ -1,0 +1,110 @@
+{
+  "source": "/Users/calemanderson-barwin/Desktop/palmier_pastry_presets_ENRICHED_STAFF_RECIPES.json",
+  "enrichmentDate": "2026-11-22",
+  "unmatchedRecipes": [
+    {
+      "key": "salted_thumbprint",
+      "name": "SALTED CARAMEL THUMBPRINT COOKIE",
+      "ingredients_english": "Flour, butter, salt, icing sugar, vanilla extract, salted caramel (sugar, butter, vanilla, heavy cream, salt), dark chocolate.",
+      "allergens_english": "Gluten, Dairy",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": ""
+    },
+    {
+      "key": "hot_choc_thumbprint",
+      "name": "HOT CHOCOLATE THUMBPRINT",
+      "ingredients_english": "Butter, brown sugar, white sugar, eggs, vanilla, cocoa powder, flour, baking soda, salt, heavy cream, dark chocolate, gelatine, corn syrup.",
+      "allergens_english": "Gluten, Dairy, Eggs, Gelatine",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": ""
+    },
+    {
+      "key": "ginger_whoopie",
+      "name": "GINGER MOLASSES WHOOPIE W/EGGNOG ICING",
+      "ingredients_english": "Butter, brown sugar, eggs, molasses, ginger, cinnamon, cloves, salt, baking soda, flour, eggnog, icing sugar, nutmeg, rum.",
+      "allergens_english": "Gluten, Dairy, Eggs, Rum",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": "Contains rum; do not assume alcohol-free."
+    },
+    {
+      "key": "maple_walnut",
+      "name": "MAPLE WALNUT TARTS",
+      "ingredients_english": "Butter, flour, apple cider vinegar, salt, sugar, maple syrup, eggs, vanilla, walnuts.",
+      "allergens_english": "Gluten, Dairy, Eggs, Walnuts",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": ""
+    },
+    {
+      "key": "biscoff",
+      "name": "SPICED BISCOFF CUPCAKES",
+      "ingredients_english": "Milk, vanilla extract, flour, sugar, baking powder, baking soda, salt, butter, eggs, cinnamon, nutmeg, heavy cream, biscoff.",
+      "allergens_english": "Gluten, Dairy, Eggs",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": ""
+    },
+    {
+      "key": "cranberry_white_choc",
+      "name": "CRANBERRY WHITE CHOCOLATE CRANBERRY MINI LOAF",
+      "ingredients_english": "Pecan, brown sugar, butter, flour, salt, baking powder, white chocolate, canola oil, yogurt, vanilla, eggs, cranberries.",
+      "allergens_english": "Gluten, Dairy, Pecans, Eggs",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": "Original recipe title repeats cranberry."
+    },
+    {
+      "key": "gingerbread_cake",
+      "name": "GINGERBREAD CAKE W/SPICED FROSTING",
+      "ingredients_english": "Brown sugar, butter, eggs, molasses, flour, baking soda, cinnamon, ginger, cloves, salt, orange juice, icing sugar, cream cheese, vanilla extract, milk.",
+      "allergens_english": "Gluten, Dairy, Eggs",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": ""
+    },
+    {
+      "key": "peppermint_brownie",
+      "name": "PEPPERMINT PATTY BROWNIE",
+      "ingredients_english": "Butter, sugar, cocoa powder, flour, salt, eggs, vanilla, heavy cream, dark chocolate, peppermint patties.",
+      "allergens_english": "Gluten, Dairy, Eggs",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": ""
+    },
+    {
+      "key": "lemon_crumble_bar",
+      "name": "LEMON CRUMBLE BAR",
+      "ingredients_english": "Flour, brown sugar, salt, baking powder, coconut, oats, butter, sweetened condensed milk, lemon juice.",
+      "allergens_english": "Gluten, Dairy",
+      "source": "staff-provided English recipe list, 2026-11-22",
+      "notes": ""
+    }
+  ],
+  "partialEvidence": [
+    {
+      "title": "GALETTE",
+      "subtitle": "Fruits",
+      "historical_prices": [
+        "6.50"
+      ],
+      "historical_badges": "",
+      "ingredients_english_draft": "",
+      "occurrences": 1,
+      "source_front_pages": "31",
+      "source_back_page_example": 32,
+      "review_flags": [
+        "dietary_badges_verify_before_use",
+        "english_ingredients_needs_review",
+        "english_not_isolated",
+        "historical_price_verify_before_use"
+      ],
+      "supplemental_filling_ingredients_english": "Raspberry, rhubarb, sugar, brown sugar, cornstarch.",
+      "supplemental_filling_status": "partial_only_missing_pastry_dough_and_allergens",
+      "completeRecipe": false
+    }
+  ],
+  "cautions": [
+    "The user-provided recipes are ingredient source evidence, not confirmation that ingredients/allergens are unchanged today.",
+    "Historical V/SG badge states have NOT been changed based on supplied recipe text.",
+    "The historical source contains corrupted or ambiguous items, including Muffin vs & Amandes and Barre Dattes; those were not silently repaired.",
+    "The generic raspberry pie bar recipe was left unassigned because it does not uniquely identify any existing historical Barre flavour.",
+    "Fruit galette recipe includes filling only; do not treat this as a complete galette ingredient list.",
+    "Coconut/almond/oat bar lists contain allergen considerations; gluten-free classification should not be inferred from ingredients alone.",
+    "No Provisions or Freezer products were altered; this is an enrichment of pastry historical presets only."
+  ]
+}

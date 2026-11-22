@@ -89,7 +89,13 @@
 
 [for="tag-title"] { position:relative; }
 #tag-title { padding-right:3rem; }
-#title-options { position:absolute; right:4px; top:28px; width:44px; height:44px; border:0; background:transparent; cursor:pointer; }
+#title-options { display:none !important; }
+.tg-input-wrap { position:relative; }
+.tg-input-wrap input, .tg-input-wrap textarea { padding-right:2.5rem; }
+.tg-input-wrap .tg-field-clear { right:.4rem; top:23px; }
+.tg-input-wrap input::-webkit-calendar-picker-indicator { display:none !important; }
+.tg-subtitle-options { display:grid; max-height:260px; overflow:auto; border:1px solid #cad6c8; border-radius:10px; background:white; }
+.tg-subtitle-options button { text-align:left; border:0; background:transparent; color:inherit; font:inherit; }
 #title-suggestions { border:1px solid #cad6c8; border-radius:10px; background:white; max-height:260px; overflow:auto; }
 .tg-option { padding:12px; min-height:44px; cursor:pointer; }
 .tg-option:hover,.tg-option[aria-selected="true"] { background:#eae0d3; }
