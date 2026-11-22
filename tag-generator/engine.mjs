@@ -7,51 +7,115 @@ import {createTextLayout, FitError} from './text-layout.mjs';
 export const SIZES={pastry:[199.9674,154.5202],freezer:[212.234,101.503],provisions:[141.732,116.220]};
 export const normalizePrice=v=>{const s=String(v??'').trim().replace(/^\$\s*/,'');return /^\d{1,7}(?:[.,]\d{1,2})?$/.test(s)?'$'+Number(s.replace(',','.')).toFixed(2):null;};
 export const normalizeFrontText=v=>String(v??'').normalize('NFC').replace(/(?<![\p{L}\p{N}])et(?![\p{L}\p{N}])/gu,'&').trim();
-export function normalizeTitleText(value){
+function normalizeQuotedText(value){
  let opening=true;
  return normalizeFrontText(value).replace(/["“”]/g,char=>{const left=char==='“'||(char==='"'&&opening);opening=!left;return left?'«':'»';}).replace(/«\s*/g,'«\u00a0').replace(/\s*»/g,'\u00a0»');
 }
+export const normalizeTitleText=normalizeQuotedText;
 export function validateTag(t){const e=[];if(isStatic(t))return staticDesigns[t.design]?[]:[{field:'design',message:'Choose a Napkin Holder design.'}];if(!SIZES[t.type])e.push({field:'type',message:'Choose a tag format.'});if(!String(t.title??'').trim())e.push({field:'title',message:'Enter a French title.'});if(!normalizePrice(t.price))e.push({field:'price',code:'invalid-price',message:'Enter a valid non-negative price.'});if(t.type==='pastry'&&!String(t.ingredients??'').trim())e.push({field:'ingredients',message:'Enter the English ingredients.'});return e;}
 export const CUT_GAP=1;
-export function pack(tags){if(!tags.length)return [];if(tags.every(t=>t.type==='pastry'))return Array.from({length:Math.ceil(tags.length/9)},(_,s)=>({items:tags.slice(s*9,s*9+9).map((tag,i)=>({tag,x:(792-3*SIZES.pastry[0]-2*CUT_GAP)/2+(i%3)*(SIZES.pastry[0]+CUT_GAP),y:(612-3*SIZES.pastry[1]-2*CUT_GAP)/2+Math.floor(i/3)*(SIZES.pastry[1]+CUT_GAP),w:SIZES[tag.type][0],h:SIZES[tag.type][1]}))}));
-// Maximal free rectangles retain space spanning the old guillotine strip boundaries.
-const sheets=[];
-for(const tag of tags){
- const [w,h]=tagSize(tag);let sheet,slot;
- for(const candidate of sheets){slot=candidate.free.filter(r=>r.w>=w&&r.h>=h).sort((a,b)=>a.y-b.y||a.x-b.x||a.w*a.h-b.w*b.h)[0];if(slot){sheet=candidate;break;}}
- if(!sheet){sheet={items:[],free:[{x:36,y:36,w:720,h:540}]};sheets.push(sheet);slot=sheet.free[0];}
- const placed={tag,x:slot.x,y:slot.y,w,h};sheet.items.push(placed);
- // Reserve a one-point halo; overlapping free rectangles are alternatives, not slots.
- const left=placed.x-CUT_GAP,top=placed.y-CUT_GAP,right=placed.x+w+CUT_GAP,bottom=placed.y+h+CUT_GAP;
- const free=[];
- for(const r of sheet.free){const rx=r.x+r.w,ry=r.y+r.h;
-  if(right<=r.x||left>=rx||bottom<=r.y||top>=ry){free.push(r);continue;}
-  if(left>r.x)free.push({...r,w:left-r.x});
+export const SHEET_MARGIN=10*72/25.4;
+const EPSILON=1e-7;
+
+function removeOccupiedSpace(rectangles, {x, y, w, h}) {
+ const right=x+w, bottom=y+h, free=[];
+ for(const r of rectangles){
+  const rx=r.x+r.w, ry=r.y+r.h;
+  if(right<=r.x||x>=rx||bottom<=r.y||y>=ry){free.push(r);continue;}
+  if(x>r.x)free.push({...r,w:x-r.x});
   if(right<rx)free.push({...r,x:right,w:rx-right});
-  if(top>r.y)free.push({...r,h:top-r.y});
+  if(y>r.y)free.push({...r,h:y-r.y});
   if(bottom<ry)free.push({...r,y:bottom,h:ry-bottom});
  }
- sheet.free=free.filter((r,i)=>!free.some((q,j)=>i!==j&&q.x<=r.x&&q.y<=r.y&&q.x+q.w>=r.x+r.w&&q.y+q.h>=r.y+r.h&&(j<i||q.x!==r.x||q.y!==r.y||q.w!==r.w||q.h!==r.h)));
+ // Free rectangles may overlap. Drop duplicates and rectangles enclosed by another.
+ return free.filter((r,i)=>!free.some((q,j)=>i!==j&&q.x<=r.x&&q.y<=r.y&&
+  q.x+q.w>=r.x+r.w&&q.y+q.h>=r.y+r.h&&
+  (j<i||q.x!==r.x||q.y!==r.y||q.w!==r.w||q.h!==r.h)));
 }
-return sheets;
+
+function packOrder(items, area, gap, bestFit) {
+ const sheets=[];
+ for(const item of items){
+  const w=item.w+gap, h=item.h+gap;
+  const topLeft=(a,b)=>a.y-b.y||a.x-b.x;
+  const shortSide=r=>Math.min(r.w-w,r.h-h);
+  const compare=bestFit
+   ? (a,b)=>shortSide(a)-shortSide(b)||a.w*a.h-b.w*b.h||topLeft(a,b)
+   : topLeft;
+  let sheet, slot;
+  for(const candidate of sheets){
+   for(const r of candidate.free){
+    if(r.w+EPSILON<w||r.h+EPSILON<h)continue;
+    if(!slot||compare(r,slot)<0){sheet=candidate;slot=r;}
+   }
+   if(slot&&!bestFit)break;
+  }
+  if(!sheet){sheet={items:[],free:[area]};sheets.push(sheet);slot=area;}
+  const {x,y}=slot;
+  sheet.items.push({...item,x,y});
+  sheet.free=removeOccupiedSpace(sheet.free,{x,y,w,h});
+ }
+ return sheets.map(({items})=>({items}));
+}
+
+export function pack(tags, {margin=SHEET_MARGIN, gap=CUT_GAP}={}) {
+ if(!Number.isFinite(margin)||margin<0||margin>=306||!Number.isFinite(gap)||gap<0)
+  throw new RangeError('Sheet margin and cutting gap must fit within Letter paper.');
+ if(!tags.length)return [];
+ const width=792-2*margin, height=612-2*margin;
+ const [pw,ph]=SIZES.pastry;
+ // Preserve the centered pastry-only grid when it fits. Its nine slots are
+ // already the maximum for upright pastries on Letter with the default margins.
+ if(tags.every(t=>t.type==='pastry')&&3*pw+2*gap<=width&&3*ph+2*gap<=height){
+  const x=(792-3*pw-2*gap)/2, y=(612-3*ph-2*gap)/2;
+  return Array.from({length:Math.ceil(tags.length/9)},(_,s)=>({
+   items:tags.slice(s*9,s*9+9).map((tag,i)=>({
+    tag,x:x+(i%3)*(pw+gap),y:y+Math.floor(i/3)*(ph+gap),w:pw,h:ph
+   }))
+  }));
+ }
+ const items=tags.map(tag=>{
+  const [w,h]=tagSize(tag)||[];
+  if(!Number.isFinite(w)||!Number.isFinite(h)||w>width+EPSILON||h>height+EPSILON)
+   throw new RangeError('A tag exceeds the printable area at these margins.');
+  return {tag,w,h};
+ });
+ // Pad each rectangle, and extend the packing area by the same gap. This
+ // reserves space between cuts without adding a gap to the paper margins.
+ const area={x:margin,y:margin,w:width+gap,h:height+gap};
+ const total=items.reduce((sum,p)=>sum+(p.w+gap)*(p.h+gap),0);
+ const minimum=Math.ceil(total/(area.w*area.h)-EPSILON);
+ let best=packOrder(items,area,gap,false);
+ for(const compare of [(a,b)=>b.w*b.h-a.w*a.h,(a,b)=>b.h-a.h||b.w-a.w,(a,b)=>b.w-a.w||b.h-a.h]){
+  if(best.length===minimum)break;
+  const sorted=[...items].sort(compare);
+  for(const bestFit of [true,false]){
+   const candidate=packOrder(sorted,area,gap,bestFit);
+   if(candidate.length<best.length)best=candidate;
+   if(best.length===minimum)break;
+  }
+ }
+ return best;
 }
 export const mirrored=p=>({...p,x:792-p.x-p.w});
 export function validateGeometry(project) {
+ const {margin=0,gap=CUT_GAP}=project.layout||{};
  const errors=[];
  for(const sheet of project.sheets)for(const [i,p] of sheet.items.entries()) {
   const size=tagSize(p.tag),back=mirrored(p);
-  if(!size||![p.x,p.y,p.w,p.h].every(Number.isFinite)||p.w!==size[0]||p.h!==size[1]||p.x<0||p.y<0||p.x+p.w>792||p.y+p.h>612||Math.abs(back.x+p.x+p.w-792)>1e-6)
-   errors.push({id:p.tag.id,field:'geometry',code:'geometry',message:'Tag or reverse placement is outside the exact Letter sheet geometry. Reload the generator before exporting.'});
-  for(const q of sheet.items.slice(i+1))if(p.x<q.x+q.w+CUT_GAP-1e-7&&q.x<p.x+p.w+CUT_GAP-1e-7&&p.y<q.y+q.h+CUT_GAP-1e-7&&q.y<p.y+p.h+CUT_GAP-1e-7)errors.push({id:p.tag.id,field:'geometry',code:'geometry',message:'Tags overlap or have less than the 1 pt cutting gap. Reload the generator before exporting.'});
+  if(!size||![p.x,p.y,p.w,p.h].every(Number.isFinite)||p.w!==size[0]||p.h!==size[1]||p.x<margin-EPSILON||p.y<margin-EPSILON||p.x+p.w>792-margin+EPSILON||p.y+p.h>612-margin+EPSILON||Math.abs(back.x+p.x+p.w-792)>1e-6)
+   errors.push({id:p.tag.id,field:'geometry',code:'geometry',message:'Tag or reverse placement exceeds the printable area. Reload the generator before exporting.'});
+  for(const q of sheet.items.slice(i+1))if(p.x<q.x+q.w+gap-EPSILON&&q.x<p.x+p.w+gap-EPSILON&&p.y<q.y+q.h+gap-EPSILON&&q.y<p.y+p.h+gap-EPSILON)errors.push({id:p.tag.id,field:'geometry',code:'geometry',message:`Tags overlap or have less than the ${gap} pt cutting gap. Reload the generator before exporting.`});
  }
  return errors;
 }
-export function createEngine(artwork,fonts,PDFLib){
+export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_GAP}={}){
+ const layout=Object.freeze({margin,gap});
  const ready=!!fonts;
  const text=createTextLayout(fonts);
  function content(t) {
    if(isStatic(t))return {front:[],back:[],fits:{},errors:[]};
-   const [w,h]=SIZES[t.type], sub=normalizeFrontText(t.subtitle);
+   const [w,h]=SIZES[t.type], sub=normalizeQuotedText(t.subtitle);
    const top=t.type==='pastry'?24:t.type==='freezer'?22:18, bottom=t.type==='pastry'?102:t.type==='freezer'?60:82;
    const titleInset=t.type==='freezer'?26:20;
    const result={front:[],back:[],fits:{},errors:[]};
@@ -99,14 +163,14 @@ export function createEngine(artwork,fonts,PDFLib){
  function createProject(tags) {
    const errors=[],clean=tags.filter(t=>isStatic(t)?!!staticDesigns[t.design]:SIZES[t.type]).map(t=>({...t}));
    for(const t of tags)errors.push(...validateTag(t).map(e=>({...e,id:t.id})));
-   const sheets=pack(clean);
+   const sheets=pack(clean,layout);
    for(const s of sheets)for(const p of s.items) {
      p.front=[];p.back=[];p.fits={};
      if(ready){const c=content(p.tag);p.front=c.front;p.back=c.back;p.fits=c.fits;errors.push(...c.errors.map(e=>({...e,id:p.tag.id})));}
    }
-   errors.push(...validateGeometry({sheets}));
+   errors.push(...validateGeometry({sheets,layout}));
    const unique=[...new Map(errors.map(e=>[`${e.id}:${e.field}`,e])).values()];
-   return {tags:clean,sheets,errors:unique,warnings:clean.some(t=>t.recipeVerification)?['Recipe verification required for Chocolat salée: supplied note mentions apple filling while the supplied recipe lists cocoa. Confirm before printing.']:clean.some(t=>t.type!=='pastry')?['Mixed sheets use a minimum 1 pt unprinted gap; later tags may fill earlier spaces.']:[],duplex:clean.some(t=>t.type==='pastry')};
+   return {tags:clean,sheets,layout,errors:unique,warnings:clean.some(t=>t.recipeVerification)?['Recipe verification required for Chocolat salée: supplied note mentions apple filling while the supplied recipe lists cocoa. Confirm before printing.']:clean.some(t=>t.type!=='pastry')?[`Tags may be rearranged to save paper. The cutting gap is at least ${gap} pt.`]:[],duplex:clean.some(t=>t.type==='pastry')};
  }
  function shapes(p,side){if(isStatic(p.tag))return [];return side==='front'?[...artwork[p.tag.type].shapes.map(s=>({...s,x:0,y:0,scale:1})),...p.front]:p.back;}
  function renderSheetSvg(project,index,side='front'){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612" role="img" aria-label="Sheet ${index+1} ${side}"><rect width="792" height="612" fill="white"/>`+project.sheets[index].items.map(item=>{const p=side==='back'?mirrored(item):item;return `<g transform="translate(${p.x} ${p.y})">`+(isStatic(item.tag)&&side==='front'?staticDesigns[item.tag.design].svg.replace(/\bid="([^"]+)"/g,`id="n${index}_${project.sheets[index].items.indexOf(item)}_$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#n${index}_${project.sheets[index].items.indexOf(item)}_$1`):'')+shapes(item,side).map(s=>`<path d="${s.path}" fill="${s.color}" transform="translate(${s.x} ${s.y}) scale(${s.scale})"/>`).join('')+(!ready&&side==='front'?`<text x="20" y="50" font-size="10">Typography unavailable</text>`:'')+`</g>`;}).join('')+'</svg>';}
