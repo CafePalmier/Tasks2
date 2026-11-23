@@ -6,11 +6,13 @@ Open `http://localhost:8000/tag-generator/index.html` after `npm start`, or use 
 
 Choose a format, enter French front text and a real price, and add the tag. Pastries require English ingredients and offer independent V/SG checkboxes. Edit, duplicate, move or delete collection items. Clear All asks for confirmation. The collection and unfinished form are saved in this browser. Download the collection as vector PDF sheets. Front/back previews use the same measured path operations and placements as export.
 
-Print US Letter at **Actual size / 100%** and use the orientation shown in the editor. For a pastry job, match **Double-sided flip** in the editor to the printer's duplex setting. **Long edge** is the editor default for Safari's standard double-sided setting. Select **Short edge** in the editor if your printer is set to flip on the short edge. Print a registration test before the batch. Every front is followed by a back, including blank backs when a sheet has no pastry. Jobs without pastries print single-sided.
+Print US Letter at **Actual size / 100%** and use the orientation listed under **Print settings**. For a pastry job, match **Double-sided flip** in the editor to the printer's duplex setting. **Long edge** is the editor default for Safari's standard double-sided setting. Select **Short edge** in the editor if your printer is set to flip on the short edge. Print a registration test before the batch. Every front is followed by a back, including blank backs when a sheet has no pastry. Jobs without pastries print single-sided.
 
 To print outside Safari on a Mac, download the PDF and open it in Preview. Select the printer, paper size, scale, and duplex setting in Preview's print dialog. If both apps use the same printer queue, the duplex options may be the same.
 
-On iPad and iPhone, **Print Tags** opens AirPrint directly. Leave AirPrint on **Portrait**. The artwork is already rotated at full size, with one page per printed side. **Download PDF** also uses portrait Letter and can be printed from Files.
+The on-screen sheet preview shows both sides upright in landscape. On iPad and iPhone, **Print Tags** opens AirPrint directly. Leave AirPrint on **Portrait**. The print artwork is rotated at full size, with one page per printed side. **Download PDF** also uses portrait Letter and can be printed from Files.
+
+Leave the subtitle blank on a Muffin, Scone, or Sablé pastry tag to leave room for a handwritten flavour below the title.
 
 ## Files and maintenance
 
@@ -44,7 +46,7 @@ Background paths come directly from PDF drawing commands, including original cre
 
 Lucidity and Ruddy references each contain 112 mapped outline objects, not embedded fonts. Mapping is based on inspected specimen rows: A–Z, a–z, French accented forms, digits and punctuation. Lucidity intentionally renders lower-case input as uppercase letterforms. Font paths remain vectors. Lucidity retains specimen-derived advances; Ruddy now uses embedded CFF advances where available and documented estimates elsewhere. Original pair kerning is unavailable, so **exact typography fidelity is not claimed**. Source examples also apply nonuniform text transformations; the engine deliberately keeps letterforms uniformly scaled.
 
-Prices use original Metropolis Medium Italic outlines (pastry 16.9392 pt; freezer 12.4887; provisions 11.9155). English backs use original Metropolis Regular at 8–11 pt and preserve wording and line breaks. Source embedded Metropolis subsets are incomplete: price digit 9 has now been recovered from the updated pastry source; several ingredient letters/numerals/punctuation remain unavailable. Missing glyphs block export with an explicit error. Supply licensed complete fonts to finish production coverage; no unrelated substitute is used. Empty subtitles consume no space.
+Prices use original Metropolis Medium Italic outlines (pastry 16.9392 pt; freezer 12.4887; provisions 11.9155). English backs use original Metropolis Regular at 8–11 pt and preserve wording and line breaks. Source embedded Metropolis subsets are incomplete: price digit 9 has now been recovered from the updated pastry source; several ingredient letters/numerals/punctuation remain unavailable. Missing glyphs block export with an explicit error. Supply licensed complete fonts to finish production coverage; no unrelated substitute is used.
 
 ## Verification and remaining release work
 

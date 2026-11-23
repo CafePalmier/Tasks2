@@ -1,10 +1,10 @@
-import {requestDirectPrint,usesPortraitPrint,PORTRAIT_PRINT_MARGIN} from './print-view.mjs?v=3';
+import {requestDirectPrint,usesPortraitPrint,PORTRAIT_PRINT_MARGIN} from './print-view.mjs?v=4';
 import {createLibrary,canonical,identity} from './library.mjs';
 import {createSync} from './sync.mjs';
 import {sharedPresetsEnabled} from './sync-config.mjs';
 import {createOutput} from './output.mjs';
 import {presets,suggestions,findPreset,applyPreset,syncIngredients} from './presets.mjs';
-import {initializeEngine,staticDesigns} from './engine.mjs?v=3';
+import {initializeEngine,staticDesigns} from './engine.mjs?v=4';
 import {diagnosticRows} from './diagnostics.mjs';
 import {titleCaseIngredients} from './ingredient-case.mjs';
 const $=id=>document.getElementById(id),key='palmier-tags-v1',fields=['type','title','subtitle','price','ingredients','design'];let metadata={},tags=[],editing=null,side='front',engine,project,output,library,presetSync;
@@ -40,9 +40,23 @@ function updatePrintButton() {
     !!project.errors.length||!engine.typographyStatus.ready;
 }
 window.addEventListener('load',updatePrintButton,{once:true});
-function render(){$('draft-notice').hidden=true;project=engine.createProject(tags,printOptions());$('tag-collection').replaceChildren();tags.forEach((t,i)=>{const li=el('li','','tg-collection-item');li.append(el('div',t.type,'tg-tag-type'),el('strong',t.type==='napkin'?staticDesigns[t.design]?.label:t.title+' · '+t.price),el('div',t.type!=='napkin'?t.subtitle:''));const actions=el('div','','tg-item-actions');for(const [name,fn] of [['Edit',()=>{editing=t.id;fill(t);$(t.type==='napkin'?'tag-design':'tag-title').focus();}],['Duplicate',()=>tags.splice(i+1,0,{...t,id:newTagId()})],['Delete',()=>{tags.splice(i,1);if(editing===t.id){editing=null;fill();}}]]){const b=el('button',name,'tg-button');b.type='button';b.onclick=()=>{fn();save();render();};actions.append(b);}li.append(actions);$('tag-collection').append(li);});$('collection-count').textContent=tags.length;$('collection-empty').hidden=!!tags.length;$('clear-all').disabled=!tags.length;$('sheet-count').textContent=`${tags.length} tags · ${project.sheets.length} sheets`;$('sheet-previews').replaceChildren();project.sheets.forEach((_,i)=>{const f=el('figure','','tg-sheet');f.append(el('figcaption',`Sheet ${i+1} · ${side}`));const surface=el('div','','tg-sheet-surface');surface.innerHTML=engine.renderSheetSvg(project,i,side);f.append(surface);$('sheet-previews').append(f);});showErrors(project);$('project-warnings').textContent=project.warnings.join(' ');$('project-warnings').hidden=!project.warnings.length;for(const id of ['download-pdf','download-test'])$(id).disabled=!tags.length||!!project.errors.length||!engine.typographyStatus.ready;updatePrintButton();$('duplex-options').hidden=!project.duplex;$('duplex-settings').textContent=project.duplex?`Print double-sided and flip on the ${project.flipEdge} edge. Every sheet has a paired back. Test registration first.`:'Print single-sided.';}
+function renderSheetPreviews(p,draft=false) {
+  // Show both sides upright. Keep the print project's orientation and binding settings for output.
+  const preview={...p,orientation:'landscape',flipEdge:'short'};
+  const container=$('sheet-previews');
+  container.replaceChildren();
+  preview.sheets.forEach((_,i)=>{
+    const figure=el('figure','','tg-sheet');
+    figure.append(el('figcaption',`Sheet ${i+1} · ${side}${draft?' · draft preview':''}`));
+    const surface=el('div','','tg-sheet-surface');
+    surface.innerHTML=engine.renderSheetSvg(preview,i,side);
+    figure.append(surface);
+    container.append(figure);
+  });
+}
+function render(){$('draft-notice').hidden=true;project=engine.createProject(tags,printOptions());$('tag-collection').replaceChildren();tags.forEach((t,i)=>{const li=el('li','','tg-collection-item');li.append(el('div',t.type,'tg-tag-type'),el('strong',t.type==='napkin'?staticDesigns[t.design]?.label:t.title+' · '+t.price),el('div',t.type!=='napkin'?t.subtitle:''));const actions=el('div','','tg-item-actions');for(const [name,fn] of [['Edit',()=>{editing=t.id;fill(t);$(t.type==='napkin'?'tag-design':'tag-title').focus();}],['Duplicate',()=>tags.splice(i+1,0,{...t,id:newTagId()})],['Delete',()=>{tags.splice(i,1);if(editing===t.id){editing=null;fill();}}]]){const b=el('button',name,'tg-button');b.type='button';b.onclick=()=>{fn();save();render();};actions.append(b);}li.append(actions);$('tag-collection').append(li);});$('collection-count').textContent=tags.length;$('collection-empty').hidden=!!tags.length;$('clear-all').disabled=!tags.length;$('sheet-count').textContent=`${tags.length} tags · ${project.sheets.length} sheets`;renderSheetPreviews(project);showErrors(project);$('project-warnings').textContent=project.warnings.join(' ');$('project-warnings').hidden=!project.warnings.length;for(const id of ['download-pdf','download-test'])$(id).disabled=!tags.length||!!project.errors.length||!engine.typographyStatus.ready;updatePrintButton();$('duplex-options').hidden=!project.duplex;$('duplex-settings').textContent=project.duplex?`Print double-sided and flip on the ${project.flipEdge} edge. Every sheet has a paired back. Test registration first.`:'Print single-sided.';}
 $('tag-type').onchange=()=>{const type=$('tag-type').value;editing=null;fill({type});if($('historical-price-options'))$('historical-price-options').hidden=true;save();render();};let draftTimer; $('tag-form').oninput=event=>{if(event.target===$('tag-ingredients'))metadata.ingredientSync=false;if(event.target===$('tag-subtitle')){const t=syncIngredients(read(),findPreset(metadata.presetTitle||''));$('tag-ingredients').value=t.ingredients;}save();clearTimeout(draftTimer);draftTimer=setTimeout(()=>{if(engine)renderDraft();},180);};
-function renderDraft(force=false){const draft=read();if(!force&&draft.type!=='napkin'&&!draft.title&&!draft.price&&!draft.ingredients&&!draft.subtitle){render();return;}const list=tags.filter(t=>t.id!==editing);list.push(draft);const p=engine.createProject(list,printOptions());$('draft-notice').hidden=false;$('draft-notice').textContent='Preview includes your unsaved draft. Add or Save Tag to include it in the PDF.';$('sheet-previews').replaceChildren();p.sheets.forEach((_,i)=>{const f=el('figure','','tg-sheet');f.append(el('figcaption',`Sheet ${i+1} · ${side} · draft preview`));const surface=el('div','','tg-sheet-surface');surface.innerHTML=engine.renderSheetSvg(p,i,side);f.append(surface);$('sheet-previews').append(f);});showErrors(p,true);}
+function renderDraft(force=false){const draft=read();if(!force&&draft.type!=='napkin'&&!draft.title&&!draft.price&&!draft.ingredients&&!draft.subtitle){render();return;}const list=tags.filter(t=>t.id!==editing);list.push(draft);const p=engine.createProject(list,printOptions());$('draft-notice').hidden=false;$('draft-notice').textContent='Preview includes your unsaved draft. Add or Save Tag to include it in the PDF.';renderSheetPreviews(p,true);showErrors(p,true);}
 
 $('tag-form').onsubmit=e=>{e.preventDefault();const match=$('tag-type').value==='pastry'?findPreset($('tag-title').value):null;if(match&&match.title!==metadata.presetTitle)selectPreset(match);const t=read(),errors=engine.validateTag(t);if(errors.length){renderDraft(true);return;}if(t.type==='napkin'){for(const field of ['title','subtitle','price','ingredients'])delete t[field];delete t.presetTitle;delete t.ingredientSync;delete t.titleColor;delete t.recipeVerification;}else{t.subtitle=t.subtitle;t.price=engine.normalizePrice(t.price);}if(t.type!=='pastry'){t.ingredients='';t.vegan=t.glutenFree=false;}const i=tags.findIndex(x=>x.id===editing);if(i>=0)tags[i]=t;else tags.push(t);editing=null;fill({type:t.type});save();render();};
 $('cancel-edit').onclick=()=>{editing=null;fill();save();render();};$('clear-all').onclick=()=>{if(confirm('Clear all tags and the current draft on this device?')){tags=[];editing=null;fill();save();render();}};
@@ -73,11 +87,9 @@ $('download-pdf').onclick=()=>download(false);
 $('download-test').onclick=()=>download(true);
 
 $('portrait-print-help').hidden=!portraitPrint;
-$('sheet-previews').dataset.orientation=orientation;
 if(portraitPrint){
   document.documentElement.dataset.tagPrintOrientation=orientation;
   $('tag-print-page').textContent=`@page { size: 612pt 792pt; margin: ${PORTRAIT_PRINT_MARGIN}pt; }`;
-  $('preview-format').textContent='US Letter portrait · artwork rotated for printing';
   $('print-settings').textContent='US Letter · Portrait · Actual size / 100%';
 }
 function selectPreset(p){if(p.origin){selectLibraryPreset(p);return;}const current=read();if(current.type==='freezer'){fill({...current,title:p.title,presetTitle:undefined,titleColor:undefined,recipeVerification:undefined,ingredientSync:false});save();if(engine)renderDraft();return;}const previous=presets.find(x=>x.title===metadata.presetTitle),proposal=applyPreset(current,p,previous);let tag=proposal.tag;if(proposal.conflicts.length){if(!confirm('Replace your edited '+proposal.conflicts.join(', ')+' with this preset’s defaults? Cancel keeps your edits.'))tag=proposal.tag;else tag=applyPreset(current,p,previous,true).tag;}fill(tag);save();if(engine)renderDraft();}

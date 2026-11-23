@@ -17,6 +17,7 @@ export function validateTag(t){const e=[];if(isStatic(t))return staticDesigns[t.
 export const CUT_GAP=1;
 export const SHEET_MARGIN=10*72/25.4;
 const EPSILON=1e-7;
+const HANDWRITTEN_SUBTITLE_TITLES=new Set(['Muffin','Scone','Sablé']);
 
 function removeOccupiedSpace(rectangles, {x, y, w, h}) {
  const right=x+w, bottom=y+h, free=[];
@@ -117,6 +118,10 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
  function content(t) {
    if(isStatic(t))return {front:[],back:[],fits:{},errors:[]};
    const [w,h]=SIZES[t.type], sub=normalizeQuotedText(t.subtitle);
+   const subtitleSize=t.type==='pastry'?14.5:10;
+   const reserveSubtitle=t.type==='pastry'&&!sub&&
+     HANDWRITTEN_SUBTITLE_TITLES.has(findPreset(String(t.title??''))?.title);
+   const handwritingSpace=reserveSubtitle?subtitleSize:0;
    const top=t.type==='pastry'?24:t.type==='freezer'?22:18, bottom=t.type==='pastry'?102:t.type==='freezer'?60:82;
    const titleInset=t.type==='freezer'?26:20;
    const result={front:[],back:[],fits:{},errors:[]};
@@ -125,17 +130,18 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
      try {const fit=fn();result.fits[name]=fit;result[side].push(...fit.ops);}
      catch(e){if(!(e instanceof FitError))throw e;result.errors.push({field:name,message:e.message,code:e.code,measured:e.measured,available:e.available,minSize:e.minSize,missingGlyphs:e.missingGlyphs});}
    }
-   field('title',()=>text.fit('lucidity',normalizeTitleText(t.title),{x:titleInset,y:top,w:w-titleInset*2,h:bottom-top-(sub?24:0)},t.type==='pastry'?36:24,14,2,'Title'));
+   field('title',()=>text.fit('lucidity',normalizeTitleText(t.title),{x:titleInset,y:top,w:w-titleInset*2,h:bottom-top-(sub||reserveSubtitle?24:0)},t.type==='pastry'?36:24,14,2,'Title'));
    if(sub)field('subtitle',()=>{
      // Allow two lines near the reference size while leaving room for the title and its gap.
      const height=t.type==='pastry'?34:27;
-     return text.fit('ruddy',sub,{x:20,y:bottom-height,w:w-40,h:height},t.type==='pastry'?14.5:10,8,2,'Subtitle');
+     return text.fit('ruddy',sub,{x:20,y:bottom-height,w:w-40,h:height},subtitleSize,8,2,'Subtitle');
    });
    // Reposition the measured ink blocks as a single composition inside the cream.
    const title=result.fits.title, subtitle=result.fits.subtitle;
    if(title&&(!sub||subtitle)) {
      const cream=t.type==='pastry'?[10.434,110.653]:t.type==='freezer'?[12.197,68.500]:[10.065,89.572];
-     const gap=subtitle?4:0, total=title.height+(subtitle?.height||0)+gap;
+     const subtitleHeight=subtitle?.height??handwritingSpace;
+     const gap=subtitleHeight?4:0, total=title.height+subtitleHeight+gap;
      let y=(cream[0]+cream[1]-total)/2;
      for(const f of [title,subtitle].filter(Boolean)) {
        const oldTop=f.box.y+(f.box.h-f.height)/2, shift=y-oldTop;

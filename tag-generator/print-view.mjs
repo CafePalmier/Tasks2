@@ -1,4 +1,4 @@
-import {validateGeometry} from './engine.mjs?v=3';
+import {validateGeometry} from './engine.mjs?v=4';
 
 export const PORTRAIT_PRINT_MARGIN=24;
 

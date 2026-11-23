@@ -1,6 +1,26 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import PDFLib from 'pdf-lib';import {createEngine} from '../engine.mjs';import {createTextLayout} from '../text-layout.mjs';import {diagnosticRows} from '../diagnostics.mjs';
 const root=new URL('../',import.meta.url),read=async p=>JSON.parse(await readFile(new URL(p,root)));const art=await read('assets/artwork.json');let fonts;try{fonts=await read('typography/provisional.json');}catch{}
 const check=(name,fn)=>test(name,{skip:!fonts},fn),base={id:'a',type:'pastry',title:'Pain',subtitle:'',price:'4.50',ingredients:'Flour, butter, sugar.'};
+test('muffin, scone and sablé leave an empty line below the title for handwriting',async()=>{
+ const engine=createEngine(art,await read('typography/approved.json'),PDFLib);
+ const tags=[['Muffin',''],['Scone',undefined],['Sablé','  '],['Scones',''],['sable','']]
+   .map(([title,subtitle],i)=>({...base,id:String(i),title,subtitle}));
+ const print=engine.createProject(tags,{orientation:'portrait',flipEdge:'long'});
+ assert.deepEqual(print.errors,[]);
+ assert.equal(print.sheets.length,1);
+ const creamCenter=(10.434+110.653)/2;
+ for(const item of print.sheets[0].items){
+  const {title,subtitle}=item.fits;
+  const written=engine.createProject([{...item.tag,subtitle:'Bleuets'}]).sheets[0].items[0].fits;
+  assert.equal(subtitle,undefined);
+  assert.equal(item.front.length,title.ops.length+item.fits.price.ops.length);
+  assert.ok(title.visualTop+title.height/2<creamCenter-8);
+  assert.ok(Math.abs(title.visualTop-written.title.visualTop)<2);
+ }
+ const plain=engine.createProject([base]).sheets[0].items[0].fits.title;
+ assert.ok(Math.abs(plain.visualTop+plain.height/2-creamCenter)<1e-6);
+ assert.equal((await PDFLib.PDFDocument.load(await engine.exportPdf(print))).getPageCount(),2);
+});
 test('subtitles wrap at full size when two lines fit in the cream panel',async()=>{
  const approved=await read('typography/approved.json');
  const engine=createEngine(art,approved,PDFLib),layout=createTextLayout(approved);
