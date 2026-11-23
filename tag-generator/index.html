@@ -51,16 +51,24 @@
                 <select id="tag-type" name="type"><option value="pastry">Pastry</option><option value="freezer">Freezer</option><option value="provisions">Provisions</option><option value="napkin">Napkin Holders</option></select>
               </label>
               <label class="tg-field" id="napkin-field" for="tag-design" hidden><span>Design</span><select id="tag-design"><option value="side">Napkin Holder — Side</option><option value="qr">Napkin Holder — QR</option></select></label>
-              <label class="tg-field" id="title-field" for="tag-title"><span>Title <span class="tg-required">required</span></span>
-                <input id="tag-title" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="title-suggestions" name="title" type="text" lang="fr" autocomplete="off" required aria-describedby="front-guidance title-error" />
-                <button type="button" id="title-options" aria-label="Show title suggestions">⌄</button>
-                <div id="title-suggestions" role="listbox" hidden></div>
+              <div class="tg-field" id="title-field">
+                <label id="title-label" for="tag-title">Title <span class="tg-required">required</span></label>
+                <div class="tg-input-wrap">
+                  <input id="tag-title" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="title-suggestions" name="title" type="text" lang="fr" autocomplete="off" required aria-describedby="front-guidance title-error" />
+                  <button type="button" id="control-title" class="search-clear-button tg-field-clear" aria-label="Show title suggestions">⌄</button>
+                  <div class="tg-suggestions" id="title-suggestions" role="listbox" aria-labelledby="title-label" hidden></div>
+                </div>
                 <span class="tg-field-error" id="title-error"></span>
-              </label>
-              <label class="tg-field" id="subtitle-field" for="tag-subtitle"><span>Subtitle <span class="tg-small">optional</span></span>
-                <input id="tag-subtitle" name="subtitle" type="text" lang="fr" autocomplete="off" aria-describedby="front-guidance subtitle-error" />
+              </div>
+              <div class="tg-field" id="subtitle-field">
+                <label id="subtitle-label" for="tag-subtitle">Subtitle <span class="tg-small">optional</span></label>
+                <div class="tg-input-wrap">
+                  <input id="tag-subtitle" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="subtitle-suggestions" name="subtitle" type="text" lang="fr" autocomplete="off" aria-describedby="front-guidance subtitle-error" />
+                  <button type="button" id="control-subtitle" class="search-clear-button tg-field-clear" aria-label="Show subtitle suggestions">⌄</button>
+                  <div class="tg-suggestions" id="subtitle-suggestions" role="listbox" aria-labelledby="subtitle-label" hidden></div>
+                </div>
                 <span class="tg-field-error" id="subtitle-error"></span>
-              </label>
+              </div>
               <p class="tg-help" id="front-guidance">Enter titles and subtitles in French. Standalone “et” becomes “&amp;” on the tag.</p>
               <label class="tg-field" id="price-field" for="tag-price"><span>Price <span class="tg-required">required</span></span>
                 <input id="tag-price" name="price" type="text" inputmode="decimal" placeholder="e.g. 4.50" autocomplete="off" required aria-describedby="price-error" />

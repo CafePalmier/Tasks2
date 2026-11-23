@@ -15,7 +15,7 @@ Power:'Gluten free flour blend, oats, sunflower seeds, pumpkin seeds, coconut, f
 Gingembre:'Butter, brown sugar, eggs, molasses, ginger, cinnamon, cloves, salt, baking soda, flour.'};
 const special=['Pépites de chocolat','Chocolat salée','Power','Froot Loop','Gingembre'];
 export const presets=[...new Set(['Carré','Petit pain','Pain','Sablé','Poptart','Scone','Barre','Brownie','Muffin','Galette','Blondie','Cupcake',...Object.keys(recipes)])].map(title=>({title,subtitle:'',ingredients:titleCaseIngredients(recipes[title]||''),vegan:['Muffin','Poptart','Power'].includes(title),glutenFree:['Muffin','Power'].includes(title),titleColor:special.includes(title)?'#c68b70':'#376438',aliases:title==='Amandine'?['Amanding']:title==='Scone'?['Scones']:[],recipeVerification:title==='Chocolat salée'}));
-export const freezerPresets=['Tarte','Lasagna','Buscuits'].map(title=>({title,aliases:[]}));
+export const freezerPresets=['Tarte','Lasagna','Biscuits'].map(title=>({title,aliases:[]}));
 const key=s=>s.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();
 const optionsFor=type=>type==='freezer'?freezerPresets:presets;
 export const suggestions=(query='',type='pastry')=>optionsFor(type).filter(p=>[p.title,...p.aliases].some(s=>key(s).includes(key(query))));

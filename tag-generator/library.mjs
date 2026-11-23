@@ -4,12 +4,15 @@ import {historical} from './historical.mjs';
 import {staffRecipeUpdates} from './staff-recipes.mjs';
 import {titleCaseIngredients} from './ingredient-case.mjs';
 export const canonical=s=>String(s||'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/[’']/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-export const identity=p=>[p.type||'pastry',canonical(p.title),canonical(p.subtitle)].join('|');
+function productTitle(p){
+ return p.type==='freezer'&&['biscuit','biscuits','buscuits'].includes(canonical(p.title))?'Biscuits':p.title;
+}
+export const identity=p=>[p.type||'pastry',canonical(productTitle(p)),canonical(p.subtitle)].join('|');
 const categories=new Set(['muffin','scone','poptart','sable','barre']);
 export function createLibrary(storage){
  const key='palmier-preset-library-v1';
  let state={records:[],prices:{},deleted:[]};
- const saved=storage.getItem(key);if(saved){const parsed=JSON.parse(saved);if(!Array.isArray(parsed.records)||!parsed.prices)throw Error('Preset storage is invalid.');state=parsed;}
+ const saved=storage.getItem(key);if(saved){const parsed=JSON.parse(saved);if(!Array.isArray(parsed.records)||!parsed.prices)throw Error('Preset storage is invalid.');state={...parsed,deleted:(parsed.deleted||[]).map(id=>id.replace(/^freezer\|(?:biscuit|buscuits)\|/,'freezer|biscuits|'))};}
  const all=()=>{
   const map=new Map();
   for(const p of [...presets.map(p=>({...p,type:'pastry'})),...freezerPresets.map(p=>({...p,type:'freezer'})),...historical])map.set(identity(p),p);
@@ -17,8 +20,9 @@ export function createLibrary(storage){
   // Ingredient-only source improvements sit below every saved staff correction.
   for(const update of staffRecipeUpdates){const id=identity(update),old=map.get(id);if(old)map.set(id,{...old,ingredients:update.ingredients,ingredientEvidence:update.ingredientEvidence});}
   for(const p of state.records)map.set(identity(p),{...map.get(identity(p)),...p,priceConflict:false});
-  return [...map.values()].filter(p=>canonical(p.title)!=='scone scone'&&!(state.deleted||[]).includes(identity(p))).map(p=>({
+  return [...map.values()].filter(p=>canonical(p.title)!=='scone scone'&&!state.deleted.includes(identity(p))).map(p=>({
    ...p,
+   title:productTitle(p),
    ...(typeof p.ingredients==='string'?{ingredients:titleCaseIngredients(p.ingredients)}:{}),
    price:p.type==='pastry'&&!p.individualPrice?state.prices[canonical(p.title)]||p.price:p.price
   }));
@@ -31,7 +35,7 @@ export function createLibrary(storage){
    const prior=next.prices[category]||old?.price;
    if(prior!==tag.price){if(confirm('Update all '+tag.title+' prices to '+tag.price+'?')){next.prices[category]=tag.price;individualPrice=false;}else individualPrice=true;}
   }
-  const record={...tag,origin:'staff',individualPrice,previous:old?{...old,previous:undefined}:undefined};
+  const record={...tag,title:productTitle(tag),origin:'staff',individualPrice,previous:old?{...old,previous:undefined}:undefined};
   next.records=next.records.filter(p=>identity(p)!==identity(tag));next.records.push(record);
   next.deleted=(next.deleted||[]).filter(id=>id!==identity(tag));
   storage.setItem(key,JSON.stringify(next));state=next;return true;
