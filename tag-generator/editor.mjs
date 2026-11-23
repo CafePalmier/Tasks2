@@ -13,7 +13,12 @@ function formatIngredients(tag){
     ? {...tag,ingredients:titleCaseIngredients(tag.ingredients)}
     : tag;
 }
-function read(){return formatIngredients({...metadata,id:editing||crypto.randomUUID(),...Object.fromEntries(fields.map(k=>[k,$('tag-'+k).value])),vegan:$('tag-vegan').checked,glutenFree:$('tag-gluten-free').checked});}
+function newTagId() {
+  // Phones opening the local server over HTTP still have getRandomValues.
+  return crypto.randomUUID?.() ||
+    Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+function read(){return formatIngredients({...metadata,id:editing||newTagId(),...Object.fromEntries(fields.map(k=>[k,$('tag-'+k).value])),vegan:$('tag-vegan').checked,glutenFree:$('tag-gluten-free').checked});}
 function fill(t={type:'pastry'}){titleSuggestions.close();subtitleSuggestions.close();t=formatIngredients(t);metadata={titleColor:t.titleColor,presetTitle:t.presetTitle,recipeVerification:t.recipeVerification,ingredientSync:t.ingredientSync===true};for(const k of fields)$('tag-'+k).value=t[k]||(k==='design'?'side':'');$('tag-vegan').checked=!!t.vegan;$('tag-gluten-free').checked=!!t.glutenFree;visibility();updateFieldControls();}
 function visibility(){const type=$('tag-type').value,napkin=type==='napkin';for(const id of ['title-field','price-field','front-guidance'])$(id).hidden=napkin;$('napkin-field').hidden=!napkin;$('reset-ingredients').hidden=type!=='pastry'||!findPreset(metadata.presetTitle||'')?.ingredients;$('pastry-fields').hidden=type!=='pastry';$('subtitle-field').hidden=napkin;$('save-tag').textContent=editing?'Save Tag':'Add Tag';$('cancel-edit').hidden=!editing;}
 function save(){try{localStorage.setItem(key,JSON.stringify({version:1,tags,draft:read(),editing}));}catch{$('storage-notice').hidden=false;$('storage-notice').textContent='Device storage is unavailable or full. Keep this tab open until you download.';}}
@@ -25,7 +30,7 @@ function showErrors(p,draft=false){
   if(rows.length){panel.append(el('strong',draft?'Draft fields need attention before printing:':'Resolve these fields to download the PDF:'));const list=el('ul','');for(const row of rows)list.append(el('li',row));panel.append(list);}
 }
 
-function render(){$('draft-notice').hidden=true;project=engine.createProject(tags);$('tag-collection').replaceChildren();tags.forEach((t,i)=>{const li=el('li','','tg-collection-item');li.append(el('div',t.type,'tg-tag-type'),el('strong',t.type==='napkin'?staticDesigns[t.design]?.label:t.title+' · '+t.price),el('div',t.type!=='napkin'?t.subtitle:''));const actions=el('div','','tg-item-actions');for(const [name,fn] of [['Edit',()=>{editing=t.id;fill(t);$(t.type==='napkin'?'tag-design':'tag-title').focus();}],['Duplicate',()=>tags.splice(i+1,0,{...t,id:crypto.randomUUID()})],['Delete',()=>{tags.splice(i,1);if(editing===t.id){editing=null;fill();}}]]){const b=el('button',name,'tg-button');b.type='button';b.onclick=()=>{fn();save();render();};actions.append(b);}li.append(actions);$('tag-collection').append(li);});$('collection-count').textContent=tags.length;$('collection-empty').hidden=!!tags.length;$('clear-all').disabled=!tags.length;$('sheet-count').textContent=`${tags.length} tags · ${project.sheets.length} sheets`;$('sheet-previews').replaceChildren();project.sheets.forEach((_,i)=>{const f=el('figure','','tg-sheet');f.append(el('figcaption',`Sheet ${i+1} · ${side}`));const surface=el('div','','tg-sheet-surface');surface.innerHTML=engine.renderSheetSvg(project,i,side);f.append(surface);$('sheet-previews').append(f);});showErrors(project);$('project-warnings').textContent=project.warnings.join(' ');$('project-warnings').hidden=!project.warnings.length;for(const id of ['download-pdf','download-test','print-tags'])$(id).disabled=!tags.length||!!project.errors.length||!engine.typographyStatus.ready;$('duplex-settings').textContent=project.duplex?'Print double-sided, flip on short edge. Every sheet has a paired back, including blank backs. Test registration first.':'Print single-sided. No reverse pages are included.';}
+function render(){$('draft-notice').hidden=true;project=engine.createProject(tags);$('tag-collection').replaceChildren();tags.forEach((t,i)=>{const li=el('li','','tg-collection-item');li.append(el('div',t.type,'tg-tag-type'),el('strong',t.type==='napkin'?staticDesigns[t.design]?.label:t.title+' · '+t.price),el('div',t.type!=='napkin'?t.subtitle:''));const actions=el('div','','tg-item-actions');for(const [name,fn] of [['Edit',()=>{editing=t.id;fill(t);$(t.type==='napkin'?'tag-design':'tag-title').focus();}],['Duplicate',()=>tags.splice(i+1,0,{...t,id:newTagId()})],['Delete',()=>{tags.splice(i,1);if(editing===t.id){editing=null;fill();}}]]){const b=el('button',name,'tg-button');b.type='button';b.onclick=()=>{fn();save();render();};actions.append(b);}li.append(actions);$('tag-collection').append(li);});$('collection-count').textContent=tags.length;$('collection-empty').hidden=!!tags.length;$('clear-all').disabled=!tags.length;$('sheet-count').textContent=`${tags.length} tags · ${project.sheets.length} sheets`;$('sheet-previews').replaceChildren();project.sheets.forEach((_,i)=>{const f=el('figure','','tg-sheet');f.append(el('figcaption',`Sheet ${i+1} · ${side}`));const surface=el('div','','tg-sheet-surface');surface.innerHTML=engine.renderSheetSvg(project,i,side);f.append(surface);$('sheet-previews').append(f);});showErrors(project);$('project-warnings').textContent=project.warnings.join(' ');$('project-warnings').hidden=!project.warnings.length;for(const id of ['download-pdf','download-test','print-tags'])$(id).disabled=!tags.length||!!project.errors.length||!engine.typographyStatus.ready;$('duplex-settings').textContent=project.duplex?'Print double-sided, flip on short edge. Every sheet has a paired back, including blank backs. Test registration first.':'Print single-sided. No reverse pages are included.';}
 $('tag-type').onchange=()=>{const type=$('tag-type').value;editing=null;fill({type});if($('historical-price-options'))$('historical-price-options').hidden=true;save();render();};let draftTimer; $('tag-form').oninput=event=>{if(event.target===$('tag-ingredients'))metadata.ingredientSync=false;if(event.target===$('tag-subtitle')){const t=syncIngredients(read(),findPreset(metadata.presetTitle||''));$('tag-ingredients').value=t.ingredients;}save();clearTimeout(draftTimer);draftTimer=setTimeout(()=>{if(engine)renderDraft();},180);};
 function renderDraft(force=false){const draft=read();if(!force&&draft.type!=='napkin'&&!draft.title&&!draft.price&&!draft.ingredients&&!draft.subtitle){render();return;}const list=tags.filter(t=>t.id!==editing);list.push(draft);const p=engine.createProject(list);$('draft-notice').hidden=false;$('draft-notice').textContent='Preview includes your unsaved draft. Add or Save Tag to include it in the PDF.';$('sheet-previews').replaceChildren();p.sheets.forEach((_,i)=>{const f=el('figure','','tg-sheet');f.append(el('figcaption',`Sheet ${i+1} · ${side} · draft preview`));const surface=el('div','','tg-sheet-surface');surface.innerHTML=engine.renderSheetSvg(p,i,side);f.append(surface);$('sheet-previews').append(f);});showErrors(p,true);}
 
@@ -83,6 +88,7 @@ function selectLibraryPreset(p){
  showHistoricalPrices(p);save();if(engine)renderDraft();
 }
 $('tag-title').onchange = () => {
+  if (titleSuggestions.isOpen()) return;
   const type = $('tag-type').value;
   const title = $('tag-title').value;
   if (type === 'napkin' || canonical(title) === canonical(metadata.presetTitle)) return;
@@ -91,6 +97,7 @@ $('tag-title').onchange = () => {
   if (preset) selectPreset(preset);
 };
 $('tag-subtitle').onchange = () => {
+  if (subtitleSuggestions.isOpen()) return;
   const tag = read();
   const preset = library?.all().find(p => identity(p) === identity(tag));
   if (preset) selectLibraryPreset(preset);
@@ -143,7 +150,9 @@ function setupSuggestions(field, findOptions, select) {
     if (!options.length && !all) return;
     list.replaceChildren();
     options.forEach((preset, index) => {
-      const option = el('div', preset[field], 'tg-option');
+      const option = el('button', preset[field], 'tg-option');
+      option.type = 'button';
+      option.tabIndex = -1;
       option.id = list.id + '-' + index;
       option.setAttribute('role', 'option');
       option.setAttribute('aria-selected', 'false');
@@ -169,16 +178,19 @@ function setupSuggestions(field, findOptions, select) {
     if (list.hidden) open();
     else close();
   });
-  input.addEventListener('blur', close);
-  // Keep focus on the input when tapping or scrolling the options.
-  list.addEventListener('pointerdown', event => event.preventDefault());
-  button.addEventListener('pointerdown', event => event.preventDefault());
-  document.addEventListener('pointerdown', event => {
+  // A tap can blur the input before click. Keep the option visible through that click.
+  list.addEventListener('mousedown', event => event.preventDefault());
+  button.addEventListener('mousedown', event => event.preventDefault());
+  function dismissOutside(event) {
+    if (event.type === 'focusin' && event.target === document.body) return;
     if (!container.contains(event.target)) close();
-  });
+  }
+  document.addEventListener('pointerdown', dismissOutside);
+  document.addEventListener('focusin', dismissOutside);
 
   input.addEventListener('keydown', event => {
     if (event.isComposing) return;
+    if (event.key === 'Tab') close();
     if (event.key === 'Escape' && !list.hidden) {
       event.preventDefault();
       close();
@@ -213,7 +225,7 @@ function setupSuggestions(field, findOptions, select) {
     if (field === 'title') metadata.presetTitle = undefined;
     input.dispatchEvent(new Event('input', {bubbles:true}));
   };
-  return {close, refresh: () => { if (!list.hidden) open(showAll); }};
+  return {close, isOpen: () => !list.hidden, refresh: () => { if (!list.hidden) open(showAll); }};
 }
 
 for (const field of ['price', 'ingredients']) {
