@@ -168,7 +168,7 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
    },'back');
    return result;
  }
- function createProject(tags,{flipEdge='short'}={}) {
+ function createProject(tags,{flipEdge='short',orientation='landscape'}={}) {
    const errors=[],clean=tags.filter(t=>isStatic(t)?!!staticDesigns[t.design]:SIZES[t.type]).map(t=>({...t}));
    for(const t of tags)errors.push(...validateTag(t).map(e=>({...e,id:t.id})));
    const sheets=pack(clean,layout);
@@ -178,12 +178,31 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
    }
    errors.push(...validateGeometry({sheets,layout}));
    const unique=[...new Map(errors.map(e=>[`${e.id}:${e.field}`,e])).values()];
-   return {tags:clean,sheets,layout,errors:unique,warnings:clean.some(t=>t.recipeVerification)?['Recipe verification required for Chocolat salée: supplied note mentions apple filling while the supplied recipe lists cocoa. Confirm before printing.']:clean.some(t=>t.type!=='pastry')?[`Tags may be rearranged to save paper. The cutting gap is at least ${gap} pt.`]:[],duplex:clean.some(t=>t.type==='pastry'),flipEdge};
+   return {tags:clean,sheets,layout,errors:unique,warnings:clean.some(t=>t.recipeVerification)?['Recipe verification required for Chocolat salée: supplied note mentions apple filling while the supplied recipe lists cocoa. Confirm before printing.']:clean.some(t=>t.type!=='pastry')?[`Tags may be rearranged to save paper. The cutting gap is at least ${gap} pt.`]:[],duplex:clean.some(t=>t.type==='pastry'),flipEdge,orientation};
  }
  function shapes(p,side){if(isStatic(p.tag))return [];return side==='front'?[...artwork[p.tag.type].shapes.map(s=>({...s,x:0,y:0,scale:1})),...p.front]:p.back;}
- // Turning the short-edge back 180° makes it line up through a long-edge flip.
- const rotateBack=(project,side)=>project.duplex&&side==='back'&&project.flipEdge==='long';
- function renderSheetSvg(project,index,side='front'){const rotate=rotateBack(project,side);return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612" role="img" aria-label="Sheet ${index+1} ${side}"><rect width="792" height="612" fill="white"/>`+(rotate?'<g transform="translate(792 612) rotate(180)">':'')+project.sheets[index].items.map(item=>{const p=side==='back'?mirrored(item):item;return `<g transform="translate(${p.x} ${p.y})">`+(isStatic(item.tag)&&side==='front'?staticDesigns[item.tag.design].svg.replace(/\bid="([^"]+)"/g,`id="n${index}_${project.sheets[index].items.indexOf(item)}_$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#n${index}_${project.sheets[index].items.indexOf(item)}_$1`):'')+shapes(item,side).map(s=>`<path d="${s.path}" fill="${s.color}" transform="translate(${s.x} ${s.y}) scale(${s.scale})"/>`).join('')+(!ready&&side==='front'?`<text x="20" y="50" font-size="10">Typography unavailable</text>`:'')+`</g>`;}).join('')+(rotate?'</g>':'')+'</svg>';}
+ // A quarter-turn swaps the long and short binding edges of the layout.
+ const rotateBack=(project,side)=>project.duplex&&side==='back'&&
+   project.flipEdge===(project.orientation==='portrait'?'short':'long');
+ function renderSheetSvg(project,index,side='front') {
+   const portrait=project.orientation==='portrait',rotate=rotateBack(project,side);
+   const [width,height]=portrait?[612,792]:[792,612];
+   const transforms=[
+     ...(portrait?['matrix(0 -1 1 0 0 792)']:[]),
+     ...(rotate?['translate(792 612) rotate(180)']:[])
+   ];
+   const sheetArtwork=project.sheets[index].items.map((item,i)=>{
+     const p=side==='back'?mirrored(item):item;
+     const staticFront=isStatic(item.tag)&&side==='front'
+       ? staticDesigns[item.tag.design].svg.replace(/\bid="([^"]+)"/g,`id="n${index}_${i}_$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#n${index}_${i}_$1`)
+       : '';
+     const vectors=shapes(item,side).map(s=>`<path d="${s.path}" fill="${s.color}" transform="translate(${s.x} ${s.y}) scale(${s.scale})"/>`).join('');
+     const notice=!ready&&side==='front'?'<text x="20" y="50" font-size="10">Typography unavailable</text>':'';
+     return `<g transform="translate(${p.x} ${p.y})">${staticFront}${vectors}${notice}</g>`;
+   }).join('');
+   const content=transforms.length?`<g transform="${transforms.join(' ')}">${sheetArtwork}</g>`:sheetArtwork;
+   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Sheet ${index+1} ${side}"><rect width="${width}" height="${height}" fill="white"/>${content}</svg>`;
+ }
  async function exportPdf(project,{registration=false}={}) {
    if(!ready||project.errors.length||validateGeometry(project).length||!project.tags.length)
      throw Error('Resolve the tag errors before exporting.');
@@ -198,9 +217,12 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
    prefs.setPrintScaling(PrintScaling.None);
    if(project.duplex) prefs.setDuplex(project.flipEdge==='long'?Duplex.DuplexFlipLongEdge:Duplex.DuplexFlipShortEdge);
    for(const sheet of project.sheets)for(const side of project.duplex?['front','back']:['front']) {
-     const page=pdf.addPage([792,612]),rotate=rotateBack(project,side);
-     // Transform the artwork itself so print apps see ordinary landscape pages.
-     if(rotate) page.pushOperators(pushGraphicsState(),concatTransformationMatrix(-1,0,0,-1,792,612));
+     const portrait=project.orientation==='portrait',rotate=rotateBack(project,side);
+     const page=pdf.addPage(portrait?[612,792]:[792,612]);
+     // Rotate the vectors inside the page so AirPrint sees a plain portrait Letter page.
+     if(portrait||rotate)page.pushOperators(pushGraphicsState());
+     if(portrait)page.pushOperators(concatTransformationMatrix(0,1,-1,0,612,0));
+     if(rotate)page.pushOperators(concatTransformationMatrix(-1,0,0,-1,792,612));
      for(const item of sheet.items) {
        const p=side==='back'?mirrored(item):item;
        if(isStatic(item.tag)&&side==='front')page.drawPage(embedded[item.tag.design],{x:p.x,y:612-p.y-p.h,width:p.w,height:p.h});
@@ -219,7 +241,7 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
        page.drawLine({start:{x:36,y:20},end:{x:108,y:20},thickness:1});
        page.drawText(`${side} - 1 inch - ${mode} - 100%`,{x:120,y:16,size:9});
      }
-     if(rotate) page.pushOperators(popGraphicsState());
+     if(portrait||rotate)page.pushOperators(popGraphicsState());
    }
    return pdf.save();
  }

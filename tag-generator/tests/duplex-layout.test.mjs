@@ -120,3 +120,31 @@ test('long-edge duplex rotates only the back artwork in print, PDF and registrat
   assert.equal(simplex.getPageCount(), 1);
   assert.equal(simplex.catalog.getOrCreateViewerPreferences().getDuplex(), undefined);
 });
+
+test('portrait output rotates the artwork at full size and matches the selected physical binding edge', async () => {
+  const engine = createEngine(artwork, read('../typography/approved.json'), PDFLib);
+  const output = createOutput(engine);
+  const tags = [...pastries, {type:'freezer', id:'f', title:'Tarte', price:'12'}];
+  const landscape = await PDFDocument.load(await output.bytes(tags));
+  const quarterTurn = 'q\n0 1 -1 0 612 0 cm\n';
+  for (const [flipEdge, duplex] of [['long',Duplex.DuplexFlipLongEdge],['short',Duplex.DuplexFlipShortEdge]]) {
+    const bytes = await output.bytes(tags, false, flipEdge, 'portrait');
+    const portrait = await PDFDocument.load(bytes);
+    assert.equal(portrait.catalog.getOrCreateViewerPreferences().getDuplex(), duplex);
+    assert.equal(portrait.getPageCount(), 2);
+    for (const page of portrait.getPages()) {
+      assert.deepEqual(page.getSize(), {width:612,height:792});
+      assert.equal(page.getRotation().angle, 0);
+    }
+    const backTurn = flipEdge==='short'?'-1 0 0 -1 792 612 cm\n':'';
+    assert.equal(pageCommands(portrait, 0), quarterTurn + pageCommands(landscape, 0) + 'Q\n');
+    assert.equal(pageCommands(portrait, 1), quarterTurn + backTurn + pageCommands(landscape, 1) + 'Q\n');
+    const project = engine.createProject(tags, {flipEdge, orientation:'portrait'});
+    const back = engine.renderSheetSvg(project, 0, 'back');
+    assert.match(back, /viewBox="0 0 612 792"/);
+    assert.ok(back.includes(`transform="matrix(0 -1 1 0 0 792)${backTurn?' translate(792 612) rotate(180)':''}"`));
+    const registration = await PDFDocument.load(await output.bytes(tags, true, flipEdge, 'portrait'));
+    assert.ok(pageCommands(registration, 1).startsWith(quarterTurn + backTurn));
+    assert.strictEqual(await output.bytes(tags, false, flipEdge, 'portrait'), bytes);
+  }
+});

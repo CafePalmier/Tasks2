@@ -37,8 +37,8 @@
         <div class="tg-output-actions"><button class="tg-button tg-primary" id="download-pdf" type="button" disabled>Download PDF</button>
         <button class="tg-button tg-primary" id="print-tags" type="button" disabled>Print Tags</button></div>
       </header>
-      <p class="tg-help">Print on US Letter in landscape at actual size (100%). To print from another app, download the PDF and open it there.</p>
-      <p class="tg-help" id="pdf-print-help" hidden>On iPad and iPhone, Print Tags opens a PDF. In the PDF, tap Share → Print. If it downloads, open it in Files first.</p>
+      <p class="tg-help">Print on US Letter at actual size (100%). To print from another app, download the PDF and open it there.</p>
+      <p class="tg-help" id="pdf-print-help" hidden>In the PDF, tap Share → Print and leave AirPrint on Portrait. If the PDF downloads, open it in Files first.</p>
       <div id="duplex-options" hidden>
         <label class="tg-field tg-duplex-field" for="flip-edge">Double-sided flip
           <select id="flip-edge" aria-describedby="flip-edge-help">
@@ -119,11 +119,11 @@
               <button class="tg-button" type="button" id="view-back" aria-pressed="false">Back</button>
             </div>
           </div>
-          <p class="tg-help">US Letter landscape · exact tag proportions</p>
+          <p class="tg-help" id="preview-format">US Letter landscape · exact tag proportions</p>
           <p id="draft-notice" class="tg-notice" hidden></p>
           <div id="project-errors" class="tg-notice tg-error-notice" role="alert" hidden></div>
           <div id="project-warnings" class="tg-notice" hidden></div>
-          <div id="sheet-previews" class="tg-sheets"><div class="tg-empty-sheet"><p>Your printable sheets will appear here.</p><span>11 × 8.5 inches</span></div></div>
+          <div id="sheet-previews" class="tg-sheets"><div class="tg-empty-sheet"><p>Your printable sheets will appear here.</p><span>US Letter</span></div></div>
           <div class="tg-print-note"><h3>Print settings</h3><p id="print-settings">US Letter · Landscape · Actual size / 100%</p><p id="duplex-settings">Print single-sided.</p></div>
           <details class="tg-print-check"><summary>Check your printer’s alignment</summary>
             <p>Print the registration test at 100% using the same duplex setting as your batch. Hold the sheet up to a light to check that the back markers align with the front markers. Check that the back reads upright when you turn the sheet on the selected edge and that the ruler measures exactly 1 inch.</p>
