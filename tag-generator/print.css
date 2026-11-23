@@ -7,4 +7,18 @@
   #tag-print-root .tag-print-sheet { display: block; width: 792pt; height: 612pt; margin: 0; padding: 0; border: 0; box-shadow: none; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; break-after: page; page-break-after: always; }
   #tag-print-root .tag-print-sheet:last-child { break-after: auto; page-break-after: auto; }
   #tag-print-root .tag-print-sheet > svg { display: block; width: 792pt; height: 612pt; margin: 0; border: 0; max-width: none; transform: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+  html[data-tag-print-orientation="portrait"],
+  html[data-tag-print-orientation="portrait"] body { width: auto !important; }
+  [data-tag-print-orientation="portrait"] #tag-print-root .tag-print-sheet {
+    /* Crop blank paper inside the 24 pt page margins. Leave 1 pt for pagination rounding. */
+    width: 564pt;
+    height: 743pt;
+    overflow: hidden;
+  }
+  [data-tag-print-orientation="portrait"] #tag-print-root .tag-print-sheet > svg {
+    width: 612pt;
+    height: 792pt;
+    margin: -24pt 0 0 -24pt;
+  }
 }

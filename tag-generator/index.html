@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../styles.css?v=24" />
     <link rel="stylesheet" href="./editor.css" />
     <link rel="stylesheet" href="./print.css" />
+    <style id="tag-print-page" media="print"></style>
     <script src="../supabase-config.js"></script>
     <script src="./editor.mjs" type="module"></script>
   </head>
@@ -38,7 +39,7 @@
         <button class="tg-button tg-primary" id="print-tags" type="button" disabled>Print Tags</button></div>
       </header>
       <p class="tg-help">Print on US Letter at actual size (100%). To print from another app, download the PDF and open it there.</p>
-      <p class="tg-help" id="pdf-print-help" hidden>In the PDF, tap Share → Print and leave AirPrint on Portrait. If the PDF downloads, open it in Files first.</p>
+      <p class="tg-help" id="portrait-print-help" hidden>Leave AirPrint on Portrait. The artwork is already rotated.</p>
       <div id="duplex-options" hidden>
         <label class="tg-field tg-duplex-field" for="flip-edge">Double-sided flip
           <select id="flip-edge" aria-describedby="flip-edge-help">

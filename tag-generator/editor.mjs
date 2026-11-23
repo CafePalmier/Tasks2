@@ -1,8 +1,8 @@
-import {requestDirectPrint} from './print-view.mjs';
+import {requestDirectPrint,usesPortraitPrint} from './print-view.mjs';
 import {createLibrary,canonical,identity} from './library.mjs';
 import {createSync} from './sync.mjs';
 import {sharedPresetsEnabled} from './sync-config.mjs';
-import {createOutput,openPrintContext,showPdf,usesPdfPrint} from './output.mjs';
+import {createOutput} from './output.mjs';
 import {presets,suggestions,findPreset,applyPreset,syncIngredients} from './presets.mjs';
 import {initializeEngine,staticDesigns} from './engine.mjs';
 import {diagnosticRows} from './diagnostics.mjs';
@@ -30,8 +30,8 @@ function showErrors(p,draft=false){
   if(rows.length){panel.append(el('strong',draft?'Draft fields need attention before printing:':'Resolve these fields to download the PDF:'));const list=el('ul','');for(const row of rows)list.append(el('li',row));panel.append(list);}
 }
 
-const pdfPrint=usesPdfPrint();
-const orientation=pdfPrint?'portrait':'landscape';
+const portraitPrint=usesPortraitPrint();
+const orientation=portraitPrint?'portrait':'landscape';
 const printOptions=()=>({flipEdge:$('flip-edge').value,orientation});
 function render(){$('draft-notice').hidden=true;project=engine.createProject(tags,printOptions());$('tag-collection').replaceChildren();tags.forEach((t,i)=>{const li=el('li','','tg-collection-item');li.append(el('div',t.type,'tg-tag-type'),el('strong',t.type==='napkin'?staticDesigns[t.design]?.label:t.title+' · '+t.price),el('div',t.type!=='napkin'?t.subtitle:''));const actions=el('div','','tg-item-actions');for(const [name,fn] of [['Edit',()=>{editing=t.id;fill(t);$(t.type==='napkin'?'tag-design':'tag-title').focus();}],['Duplicate',()=>tags.splice(i+1,0,{...t,id:newTagId()})],['Delete',()=>{tags.splice(i,1);if(editing===t.id){editing=null;fill();}}]]){const b=el('button',name,'tg-button');b.type='button';b.onclick=()=>{fn();save();render();};actions.append(b);}li.append(actions);$('tag-collection').append(li);});$('collection-count').textContent=tags.length;$('collection-empty').hidden=!!tags.length;$('clear-all').disabled=!tags.length;$('sheet-count').textContent=`${tags.length} tags · ${project.sheets.length} sheets`;$('sheet-previews').replaceChildren();project.sheets.forEach((_,i)=>{const f=el('figure','','tg-sheet');f.append(el('figcaption',`Sheet ${i+1} · ${side}`));const surface=el('div','','tg-sheet-surface');surface.innerHTML=engine.renderSheetSvg(project,i,side);f.append(surface);$('sheet-previews').append(f);});showErrors(project);$('project-warnings').textContent=project.warnings.join(' ');$('project-warnings').hidden=!project.warnings.length;for(const id of ['download-pdf','download-test','print-tags'])$(id).disabled=!tags.length||!!project.errors.length||!engine.typographyStatus.ready;$('duplex-options').hidden=!project.duplex;$('duplex-settings').textContent=project.duplex?`Print double-sided and flip on the ${project.flipEdge} edge. Every sheet has a paired back. Test registration first.`:'Print single-sided.';}
 $('tag-type').onchange=()=>{const type=$('tag-type').value;editing=null;fill({type});if($('historical-price-options'))$('historical-price-options').hidden=true;save();render();};let draftTimer; $('tag-form').oninput=event=>{if(event.target===$('tag-ingredients'))metadata.ingredientSync=false;if(event.target===$('tag-subtitle')){const t=syncIngredients(read(),findPreset(metadata.presetTitle||''));$('tag-ingredients').value=t.ingredients;}save();clearTimeout(draftTimer);draftTimer=setTimeout(()=>{if(engine)renderDraft();},180);};
@@ -42,58 +42,42 @@ $('cancel-edit').onclick=()=>{editing=null;fill();save();render();};$('clear-all
 for(const s of ['front','back'])$('view-'+s).onclick=()=>{side=s;for(const v of ['front','back'])$('view-'+v).setAttribute('aria-pressed',String(s===v));render();};
 $('flip-edge').onchange=()=>render();
 function showAppError(message){$('app-status').textContent=message;$('app-status').hidden=false;}
-async function makePdf(registration=false) {
-  const flipEdge=printOptions().flipEdge;
-  const edgeSuffix=project.duplex&&flipEdge==='long'?'_Long_Edge':'';
-  const bytes=await output.bytes(tags,registration,flipEdge,orientation);
-  const now=new Date();
-  const date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
-  return {
-    url:URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),
-    name:`Cafe_Palmier_${registration?'Registration':'Tags'}${pdfPrint?'_Portrait':''}${edgeSuffix}_${date}.pdf`
-  };
-}
-function downloadPdf({url,name}) {
-  const link=el('a','');
-  link.href=url;
-  link.download=name;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),60000);
-}
 async function download(registration) {
   $('app-status').hidden=true;
-  try{downloadPdf(await makePdf(registration));}catch(error){showAppError(error.message);}
+  try {
+    const flipEdge=printOptions().flipEdge;
+    const edgeSuffix=project.duplex&&flipEdge==='long'?'_Long_Edge':'';
+    const bytes=await output.bytes(tags,registration,flipEdge,orientation);
+    const now=new Date();
+    const date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+    const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+    const link=el('a','');
+    link.href=url;
+    link.download=`Cafe_Palmier_${registration?'Registration':'Tags'}${portraitPrint?'_Portrait':''}${edgeSuffix}_${date}.pdf`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  } catch(error) {
+    showAppError(error.message);
+  }
 }
 $('download-pdf').onclick=()=>download(false);
 $('download-test').onclick=()=>download(true);
 
-$('pdf-print-help').hidden=!pdfPrint;
+$('portrait-print-help').hidden=!portraitPrint;
 $('sheet-previews').dataset.orientation=orientation;
-if(pdfPrint){
+if(portraitPrint){
+  document.documentElement.dataset.tagPrintOrientation=orientation;
+  $('tag-print-page').textContent='@page { size: 612pt 792pt; margin: 24pt; }';
   $('preview-format').textContent='US Letter portrait · artwork rotated for printing';
   $('print-settings').textContent='US Letter · Portrait · Actual size / 100%';
-}
-async function printPdf() {
-  let viewer,pdf;
-  try {
-    viewer=openPrintContext();
-    pdf=await makePdf();
-    if(showPdf(viewer,pdf.url))return;
-    downloadPdf(pdf);
-  } catch(error) {
-    viewer?.close();
-    if(pdf)URL.revokeObjectURL(pdf.url);
-    showAppError(error.message);
-  }
 }
 function selectPreset(p){if(p.origin){selectLibraryPreset(p);return;}const current=read();if(current.type==='freezer'){fill({...current,title:p.title,presetTitle:undefined,titleColor:undefined,recipeVerification:undefined,ingredientSync:false});save();if(engine)renderDraft();return;}const previous=presets.find(x=>x.title===metadata.presetTitle),proposal=applyPreset(current,p,previous);let tag=proposal.tag;if(proposal.conflicts.length){if(!confirm('Replace your edited '+proposal.conflicts.join(', ')+' with this preset’s defaults? Cancel keeps your edits.'))tag=proposal.tag;else tag=applyPreset(current,p,previous,true).tag;}fill(tag);save();if(engine)renderDraft();}
 $('print-tags').onclick=()=>{
   const p=engine.createProject(structuredClone(tags),printOptions()),problem=output.status(p);
   if(problem){showAppError(problem);return;}
   $('app-status').hidden=true;
-  if(pdfPrint){void printPdf();return;}
   try{requestDirectPrint(engine,p,$('tag-print-root'));}catch(error){showAppError(error.message);}
 };
 

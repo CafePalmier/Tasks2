@@ -10,7 +10,7 @@ Print US Letter at **Actual size / 100%** and use the orientation shown in the e
 
 To print outside Safari on a Mac, download the PDF and open it in Preview. Select the printer, paper size, scale, and duplex setting in Preview's print dialog. If both apps use the same printer queue, the duplex options may be the same.
 
-On iPad and iPhone, PDFs use portrait Letter pages with the tag artwork already rotated at full size. **Print Tags** opens that PDF with one page per printed side. Use **Share → Print** in the PDF viewer and leave AirPrint on **Portrait**. If the browser blocks the viewer, the PDF downloads and can be opened from Files.
+On iPad and iPhone, **Print Tags** opens AirPrint directly. Leave AirPrint on **Portrait**. The artwork is already rotated at full size, with one page per printed side. **Download PDF** also uses portrait Letter and can be printed from Files.
 
 ## Files and maintenance
 

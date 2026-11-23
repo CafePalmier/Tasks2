@@ -1,14 +1,6 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import PDFLib from 'pdf-lib';import {createEngine,initializeEngine,validateGeometry,CUT_GAP,mirrored} from '../engine.mjs';import {createOutput,openPrintContext,showPdf,usesPdfPrint} from '../output.mjs';import {createTextLayout} from '../text-layout.mjs';
+import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import PDFLib from 'pdf-lib';import {createEngine,initializeEngine,validateGeometry,CUT_GAP,mirrored} from '../engine.mjs';import {createOutput} from '../output.mjs';import {createTextLayout} from '../text-layout.mjs';
 const read=p=>JSON.parse(fs.readFileSync(new URL(p,import.meta.url)));const art=read('../assets/artwork.json');let fonts;try{fonts=read('../typography/provisional.json');}catch{}
 const base={id:'1',type:'pastry',title:'Carré & café',price:'9.50',ingredients:'Flour, butter, sugar.'};
-test('print context opens synchronously; blocked/closed viewer provides fallback',()=>{assert.equal(openPrintContext({open:()=>null}),null);assert.equal(showPdf(null,'blob:x'),false);let target;const viewer={document:{body:{}},location:{replace:u=>target=u}};assert.equal(openPrintContext({open:()=>viewer}),viewer);assert.equal(showPdf(viewer,'blob:pdf'),true);assert.equal(target,'blob:pdf');viewer.closed=true;assert.equal(showPdf(viewer,'blob:pdf'),false);});
-test('iPad and iPhone use the PDF print path, including iPad desktop mode',()=>{
-  assert.equal(usesPdfPrint({userAgent:'iPhone Safari'}),true);
-  assert.equal(usesPdfPrint({userAgent:'iPad Safari'}),true);
-  assert.equal(usesPdfPrint({userAgent:'Macintosh Safari',platform:'MacIntel',maxTouchPoints:5}),true);
-  assert.equal(usesPdfPrint({userAgent:'Macintosh Safari',platform:'MacIntel',maxTouchPoints:0}),false);
-  assert.equal(usesPdfPrint({userAgent:'Android Chrome',platform:'Linux armv8l',maxTouchPoints:5}),false);
-});
 test('status distinguishes empty collection and public font gate',()=>{const e=createEngine(art,null,PDFLib),o=createOutput(e);assert.match(o.status(e.createProject([])),/save at least/);assert.match(o.status(e.createProject([base])),/approved typography/);});
 
 test('GitHub Pages uses the public bundle for tag preview and PDF export',async t=>{

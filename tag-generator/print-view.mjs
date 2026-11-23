@@ -1,4 +1,10 @@
 import {validateGeometry} from './engine.mjs';
+
+export function usesPortraitPrint(device=navigator) {
+  return /iPad|iPhone|iPod/.test(device.userAgent) ||
+    (device.platform==='MacIntel' && device.maxTouchPoints>1);
+}
+
 // Reuse the PDF engine's sheet model and SVG vectors; no additional placement logic.
 export function printSheets(engine,project) {
   if(!engine.typographyStatus.ready)throw Error(engine.typographyStatus.message);
