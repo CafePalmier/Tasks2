@@ -31,7 +31,17 @@ function showAppError(message){$('app-status').textContent=message;$('app-status
 async function download(registration){try{$('app-status').hidden=true;const bytes=await output.bytes(tags,registration);const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=url;const now=new Date(),date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');a.download=`Cafe_Palmier_${registration?'Registration':'Tags'}_${date}.pdf`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){showAppError(e.message);}}
 $('download-pdf').onclick=()=>download(false);$('download-test').onclick=()=>download(true);
 try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved?.version===1&&Array.isArray(saved.tags)){tags=saved.tags.filter(t=>t&&typeof t.id==='string'&&['pastry','freezer','provisions','napkin'].includes(t.type));editing=saved.editing;fill(saved.draft);}}catch{$('storage-notice').hidden=false;$('storage-notice').textContent='Saved work could not be read. The stored copy has not been deleted.';}
-try{engine=await initializeEngine();output=createOutput(engine);visibility();render();}catch(e){showAppError('Could not load the generator: '+e.message);$('save-tag').disabled=true;}
+try{
+  engine=await initializeEngine();
+  output=createOutput(engine);
+  if(!engine.typographyStatus.ready){
+    const notice=$('typography-notice');
+    notice.textContent=engine.typographyStatus.message;
+    notice.hidden=false;
+  }
+  visibility();
+  render();
+}catch(e){showAppError('Could not load the generator: '+e.message);$('save-tag').disabled=true;}
 
 
 function closeSuggestions(){$('title-suggestions').hidden=true;$('tag-title').setAttribute('aria-expanded','false');$('tag-title').removeAttribute('aria-activedescendant');active=-1;}

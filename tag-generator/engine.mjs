@@ -2,7 +2,7 @@ import {staticDesigns} from './assets/static-designs.mjs';
 export {staticDesigns};
 export const isStatic=t=>t.type==='napkin';
 export const tagSize=t=>isStatic(t)?[staticDesigns[t.design]?.width,staticDesigns[t.design]?.height]:SIZES[t.type];
-import {priceGlyphIssues} from './price-glyphs.mjs';
+import {PRICE_CHARACTERS,priceGlyphIssues} from './price-glyphs.mjs';
 import {createTextLayout, FitError} from './text-layout.mjs';
 export const SIZES={pastry:[199.9674,154.5202],freezer:[212.234,101.503],provisions:[141.732,116.220]};
 export const normalizePrice=v=>{const s=String(v??'').trim().replace(/^\$\s*/,'');return /^\d{1,7}(?:[.,]\d{1,2})?$/.test(s)?'$'+Number(s.replace(',','.')).toFixed(2):null;};
@@ -109,7 +109,7 @@ export function validateGeometry(project) {
  }
  return errors;
 }
-export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_GAP}={}){
+export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_GAP,publicTypography=false}={}){
  const layout=Object.freeze({margin,gap});
  const ready=!!fonts;
  const text=createTextLayout(fonts);
@@ -175,6 +175,39 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
  function shapes(p,side){if(isStatic(p.tag))return [];return side==='front'?[...artwork[p.tag.type].shapes.map(s=>({...s,x:0,y:0,scale:1})),...p.front]:p.back;}
  function renderSheetSvg(project,index,side='front'){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612" role="img" aria-label="Sheet ${index+1} ${side}"><rect width="792" height="612" fill="white"/>`+project.sheets[index].items.map(item=>{const p=side==='back'?mirrored(item):item;return `<g transform="translate(${p.x} ${p.y})">`+(isStatic(item.tag)&&side==='front'?staticDesigns[item.tag.design].svg.replace(/\bid="([^"]+)"/g,`id="n${index}_${project.sheets[index].items.indexOf(item)}_$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#n${index}_${project.sheets[index].items.indexOf(item)}_$1`):'')+shapes(item,side).map(s=>`<path d="${s.path}" fill="${s.color}" transform="translate(${s.x} ${s.y}) scale(${s.scale})"/>`).join('')+(!ready&&side==='front'?`<text x="20" y="50" font-size="10">Typography unavailable</text>`:'')+`</g>`;}).join('')+'</svg>';}
  async function exportPdf(project,{registration=false}={}){if(!ready||project.errors.length||validateGeometry(project).length||!project.tags.length)throw Error('Resolve the tag errors before exporting.');const {PDFDocument,rgb,PrintScaling,Duplex}=PDFLib;const pdf=await PDFDocument.create();const embedded={};for(const design of new Set(project.tags.filter(isStatic).map(t=>t.design))){const bytes=Uint8Array.from(atob(staticDesigns[design].pdf),c=>c.charCodeAt(0));[embedded[design]]=await pdf.embedPdf(bytes,[0]);}pdf.setTitle('Café Palmier Tags');const prefs=pdf.catalog.getOrCreateViewerPreferences();prefs.setPrintScaling(PrintScaling.None);if(project.duplex)prefs.setDuplex(Duplex.DuplexFlipShortEdge);for(const sheet of project.sheets)for(const side of project.duplex?['front','back']:['front']){const page=pdf.addPage([792,612]);for(const item of sheet.items){const p=side==='back'?mirrored(item):item;if(isStatic(item.tag)&&side==='front')page.drawPage(embedded[item.tag.design],{x:p.x,y:612-p.y-p.h,width:p.w,height:p.h});for(const s of shapes(item,side)){const color=s.color.match(/\w\w/g).map(v=>parseInt(v,16)/255);page.drawSvgPath(s.path,{x:p.x+s.x,y:612-p.y-s.y,scale:s.scale,color:rgb(...color)});}if(registration){const x=side==='back'?p.x+p.w-8:p.x+8;page.drawLine({start:{x:x-3,y:612-p.y-8},end:{x:x+3,y:612-p.y-8},thickness:.5});page.drawLine({start:{x,y:612-p.y-5},end:{x,y:612-p.y-11},thickness:.5});}}if(registration){page.drawLine({start:{x:36,y:20},end:{x:108,y:20},thickness:1});page.drawText(`${side} - 1 inch - SHORT EDGE - 100%`,{x:120,y:16,size:9});}}return pdf.save();}
- return {normalizePrice,normalizeFrontText,validateTag,createProject,renderSheetSvg,exportPdf,typographyStatus:{ready,provisional:true,message:ready?'Development typography: source outlines, provisional spacing; permission and physical print validation pending.':'Public PDF export is restricted pending typography permission. For local generation, open this project on localhost with its prepared typography assets. Editing and saving remain available.'}};
+ const message=!ready
+  ? 'This site could not load approved typography. You can still edit and save tags. Preview lettering, PDF download, and printing require the approved font assets.'
+  : publicTypography ? '' : 'Development typography uses source outlines and provisional spacing.';
+ return {normalizePrice,normalizeFrontText,validateTag,createProject,renderSheetSvg,exportPdf,typographyStatus:{ready,provisional:ready&&!publicTypography,message}};
 }
-export async function initializeEngine(){const get=async p=>{const r=await fetch(new URL(p,import.meta.url));if(!r.ok)throw Error('Missing '+p);return r.json();};const art=await get('./assets/artwork.json');let fonts=null;if(['localhost','127.0.0.1','[::1]'].includes(location.hostname))try{fonts=await get('./typography/provisional.json');try{fonts.ingredientFallback=await get('./typography/ingredient-fallback.json');}catch{};}catch(error){throw Error('Local typography assets could not be loaded. Run the asset preparation script, then reload. '+error.message);}await import('./vendor/pdf-lib.min.js');return createEngine(art,fonts,globalThis.PDFLib);}
+export async function initializeEngine(){
+ const get=async path=>{
+  const response=await fetch(new URL(path,import.meta.url));
+  if(!response.ok)throw Error('Could not load '+path);
+  return response.json();
+ };
+ const art=await get('./assets/artwork.json');
+ const local=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+ let fonts=null;
+ if(local){
+  try{
+   fonts=await get('./typography/provisional.json');
+  }catch(error){
+   throw Error('Local typography assets could not be loaded. Run the asset preparation script, then reload. '+error.message);
+  }
+  try{fonts.ingredientFallback=await get('./typography/ingredient-fallback.json');}catch{}
+ }else{
+  try{
+   const approved=await get('./typography/approved.json');
+   const hasGlyphs=['lucidity','ruddy','ingredients'].every(name=>
+    Object.values(approved[name]??{}).some(glyph=>typeof glyph?.path==='string'&&glyph.path&&Number.isFinite(glyph.advance))
+   );
+   const price=priceGlyphIssues(PRICE_CHARACTERS,approved.price);
+   if(hasGlyphs&&!price.missing.length&&!price.invalidMetrics.length)fonts=approved;
+  }catch{
+   // A missing or unreadable public bundle should leave editing and saving available.
+  }
+ }
+ await import('./vendor/pdf-lib.min.js');
+ return createEngine(art,fonts,globalThis.PDFLib,{publicTypography:!local});
+}
