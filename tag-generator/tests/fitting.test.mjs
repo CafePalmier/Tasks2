@@ -1,6 +1,32 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import PDFLib from 'pdf-lib';import {createEngine} from '../engine.mjs';import {createTextLayout} from '../text-layout.mjs';import {diagnosticRows} from '../diagnostics.mjs';
 const root=new URL('../',import.meta.url),read=async p=>JSON.parse(await readFile(new URL(p,root)));const art=await read('assets/artwork.json');let fonts;try{fonts=await read('typography/provisional.json');}catch{}
 const check=(name,fn)=>test(name,{skip:!fonts},fn),base={id:'a',type:'pastry',title:'Pain',subtitle:'',price:'4.50',ingredients:'Flour, butter, sugar.'};
+test('subtitles wrap at full size when two lines fit in the cream panel',async()=>{
+ const approved=await read('typography/approved.json');
+ const engine=createEngine(art,approved,PDFLib),layout=createTextLayout(approved);
+ for(const [type,subtitle,size,cream] of [
+  ['pastry','Canneberges & chocolat blanc',14.5,[10.434,110.653]],
+  ['freezer','Canneberges & chocolat blanc & érable',10,[12.197,68.500]],
+  ['provisions','Canneberges & chocolat blanc',10,[10.065,89.572]]
+ ]){
+  const tag={...base,type,title:'Croissant aux amandes',subtitle};
+  const project=engine.createProject([tag]);
+  assert.deepEqual(project.errors,[]);
+  const {title,subtitle:fit}=project.sheets[0].items[0].fits;
+  assert.equal(fit.size,size);
+  assert.equal(fit.lines.length,2);
+  assert.equal(fit.lines.join(' '),subtitle);
+  assert.ok(layout.measure('ruddy',subtitle,size).width>fit.box.w);
+  assert.ok(fit.width<=fit.box.w && fit.height<=fit.box.h);
+  assert.ok(title.visualTop>=cream[0]+4);
+  assert.ok(fit.visualTop+fit.height<=cream[1]-4);
+  assert.ok(Math.abs(fit.visualTop-title.visualTop-title.height-4)<1e-6);
+
+  const short=engine.createProject([{...tag,subtitle:'Banane'}]).sheets[0].items[0].fits.subtitle;
+  assert.equal(short.size,size);
+  assert.deepEqual(short.lines,['Banane']);
+ }
+});
 check('reference Ruddy advances, measured ink centring, and subtitle examples',()=>{const text=createTextLayout(fonts);assert.equal(fonts.ruddy.a.advance,.594);assert.equal(fonts.ruddy.B.advance,.638);for(const type of ['pastry','provisions'])for(const subtitle of ['Banane','Citron & Framboises','Canneberges & chocolat blanc']){const p=createEngine(art,fonts,PDFLib).createProject([{...base,type,subtitle}]);assert.deepEqual(p.errors,[]);const f=p.sheets[0].items[0].fits.subtitle;assert(f.size>=8);assert(f.width<=f.box.w);for(const line of f.lines){const run=text.measure('ruddy',line,f.size);assert(run.width<=f.box.w);}}});
 check('reference price baselines and physical clearance',()=>{const e=createEngine(art,fonts,PDFLib);for(const [type,baseline] of [['pastry',140.347],['freezer',85.771],['provisions',110.119049]]){const p=e.createProject([{...base,type}]),f=p.sheets[0].items[0].fits.price;assert(Math.abs(f.baseline-baseline)<1e-6);if(type==='provisions'){const r=createTextLayout(fonts).measure('price','$4.50',f.size);assert(f.baseline+r.top>96.154);assert(f.baseline+r.bottom<116.22-2);}}});
 check('separate field diagnostics exhaust sizes, retain valid fields, never mutate content',()=>{const e=createEngine(art,fonts,PDFLib),tag={...base,title:'Pain '.repeat(150),subtitle:'Banane '.repeat(150),ingredients:'Flour, butter, sugar. '.repeat(60)},original=JSON.stringify(tag),p=e.createProject([tag]);assert.deepEqual(p.errors.map(x=>x.field),['title','subtitle','ingredients']);assert.equal(JSON.stringify(tag),original);assert(p.sheets[0].items[0].fits.price);assert(p.errors.every(x=>x.measured&&x.available&&x.minSize));const rows=diagnosticRows({...p,errors:[...p.errors,...p.errors]});assert.equal(rows.length,3);assert(rows.every(x=>x.includes('Tag 1')&&x.includes('pt')));});

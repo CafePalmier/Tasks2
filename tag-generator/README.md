@@ -85,8 +85,9 @@ These are geometric limits, **not character limits**. Sizes step down by 0.5 pt,
 | Freezer title | 160.234 × 38 pt | 24–14 pt | 1–2 |
 | Provisions title, no subtitle | 101.732 × 64 pt | 24–14 pt | 1–2 |
 | Provisions title, with subtitle | 101.732 × 40 pt | 24–14 pt | 1–2 |
-| Pastry subtitle | 159.9674 × 20 pt | 14.5–8 pt | 1 |
-| Provisions subtitle | 101.732 × 20 pt | 10–8 pt | 1–2 |
+| Pastry subtitle | 159.9674 × 34 pt | 14.5–8 pt | 1–2 |
+| Freezer subtitle | 172.234 × 27 pt | 10–8 pt | 1–2 |
+| Provisions subtitle | 101.732 × 27 pt | 10–8 pt | 1–2 |
 | Pastry ingredients | 175.9674 × 126.5202 pt | 11–8 pt | wrapped, 1.3 em leading |
 
 Freezer title padding was tightened to x=26, y=22 after visual inspection showed that very wide two-line titles approached the rounded cream corners. Backgrounds, cut sizes, packing and prices are unchanged. Title/subtitle safe zones have a 4 pt vertical cushion. The original Provisions reference itself has a two-line Ruddy subtitle, which is now supported.
@@ -103,9 +104,9 @@ Subtitle comparisons:
 | --- | --- | --- |
 | Banane | 14.5 pt, 1 line | 10 pt, 1 line |
 | Citron & Framboises | 14.5 pt, 1 line | 10 pt, 1 line |
-| Canneberges & chocolat blanc | 10.5 pt, 1 line | 8.5 pt, 2 lines |
+| Canneberges & chocolat blanc | 14.5 pt, 2 lines | 10 pt, 2 lines |
 
-The minimum subtitle size is **8 pt**. Capacity depends on italic overhangs, letter widths, accents and line breaks, not a fixed number of characters.
+Subtitles try two lines at each size before stepping down. The minimum subtitle size is **8 pt**. Capacity depends on italic overhangs, letter widths, accents and line breaks.
 
 For the reproducible ingredient phrase `Flour, butter, sugar.` separated by spaces: 219 characters fit in 7 lines at 11 pt; 329 fit in 9 lines at 10.5 pt; 439 fit in 10 lines at 9 pt; 527 fit in 12 lines at 8 pt. The next repetition (549 characters) needs 13 lines / 131.8 pt and is rejected against the 126.5 pt height. These counts describe that test phrase only. A long unbroken word now tries every readable size before failing; previously a word too wide at 11 pt was immediately rejected even when it fit at 8 pt.
 

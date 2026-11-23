@@ -126,7 +126,11 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
      catch(e){if(!(e instanceof FitError))throw e;result.errors.push({field:name,message:e.message,code:e.code,measured:e.measured,available:e.available,minSize:e.minSize,missingGlyphs:e.missingGlyphs});}
    }
    field('title',()=>text.fit('lucidity',normalizeTitleText(t.title),{x:titleInset,y:top,w:w-titleInset*2,h:bottom-top-(sub?24:0)},t.type==='pastry'?36:24,14,2,'Title'));
-   if(sub)field('subtitle',()=>text.fit('ruddy',sub,{x:20,y:bottom-20,w:w-40,h:20},t.type==='pastry'?14.5:10,8,t.type==='provisions'?2:1,'Subtitle'));
+   if(sub)field('subtitle',()=>{
+     // Allow two lines near the reference size while leaving room for the title and its gap.
+     const height=t.type==='pastry'?34:27;
+     return text.fit('ruddy',sub,{x:20,y:bottom-height,w:w-40,h:height},t.type==='pastry'?14.5:10,8,2,'Subtitle');
+   });
    // Reposition the measured ink blocks as a single composition inside the cream.
    const title=result.fits.title, subtitle=result.fits.subtitle;
    if(title&&(!sub||subtitle)) {
