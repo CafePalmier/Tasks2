@@ -2,7 +2,7 @@ import {requestDirectPrint} from './print-view.mjs';
 import {createLibrary,canonical,identity} from './library.mjs';
 import {createSync} from './sync.mjs';
 import {sharedPresetsEnabled} from './sync-config.mjs';
-import {createOutput} from './output.mjs';
+import {createOutput,openPrintContext,showPdf,usesPdfPrint} from './output.mjs';
 import {presets,suggestions,findPreset,applyPreset,syncIngredients} from './presets.mjs';
 import {initializeEngine,staticDesigns} from './engine.mjs';
 import {diagnosticRows} from './diagnostics.mjs';
@@ -40,13 +40,54 @@ $('cancel-edit').onclick=()=>{editing=null;fill();save();render();};$('clear-all
 for(const s of ['front','back'])$('view-'+s).onclick=()=>{side=s;for(const v of ['front','back'])$('view-'+v).setAttribute('aria-pressed',String(s===v));render();};
 $('flip-edge').onchange=()=>render();
 function showAppError(message){$('app-status').textContent=message;$('app-status').hidden=false;}
-async function download(registration){try{$('app-status').hidden=true;const flipEdge=printOptions().flipEdge;const longEdge=project.duplex&&flipEdge==='long';const bytes=await output.bytes(tags,registration,flipEdge);const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=url;const now=new Date(),date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');a.download=`Cafe_Palmier_${registration?'Registration':'Tags'}${longEdge?'_Long_Edge':''}_${date}.pdf`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){showAppError(e.message);}}
-$('download-pdf').onclick=()=>download(false);$('download-test').onclick=()=>download(true);
+async function makePdf(registration=false) {
+  const flipEdge=printOptions().flipEdge;
+  const edgeSuffix=project.duplex&&flipEdge==='long'?'_Long_Edge':'';
+  const bytes=await output.bytes(tags,registration,flipEdge);
+  const now=new Date();
+  const date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  return {
+    url:URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),
+    name:`Cafe_Palmier_${registration?'Registration':'Tags'}${edgeSuffix}_${date}.pdf`
+  };
+}
+function downloadPdf({url,name}) {
+  const link=el('a','');
+  link.href=url;
+  link.download=name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+async function download(registration) {
+  $('app-status').hidden=true;
+  try{downloadPdf(await makePdf(registration));}catch(error){showAppError(error.message);}
+}
+$('download-pdf').onclick=()=>download(false);
+$('download-test').onclick=()=>download(true);
+
+const pdfPrint=usesPdfPrint();
+$('pdf-print-help').hidden=!pdfPrint;
+async function printPdf() {
+  let viewer,pdf;
+  try {
+    viewer=openPrintContext();
+    pdf=await makePdf();
+    if(showPdf(viewer,pdf.url))return;
+    downloadPdf(pdf);
+  } catch(error) {
+    viewer?.close();
+    if(pdf)URL.revokeObjectURL(pdf.url);
+    showAppError(error.message);
+  }
+}
 function selectPreset(p){if(p.origin){selectLibraryPreset(p);return;}const current=read();if(current.type==='freezer'){fill({...current,title:p.title,presetTitle:undefined,titleColor:undefined,recipeVerification:undefined,ingredientSync:false});save();if(engine)renderDraft();return;}const previous=presets.find(x=>x.title===metadata.presetTitle),proposal=applyPreset(current,p,previous);let tag=proposal.tag;if(proposal.conflicts.length){if(!confirm('Replace your edited '+proposal.conflicts.join(', ')+' with this preset’s defaults? Cancel keeps your edits.'))tag=proposal.tag;else tag=applyPreset(current,p,previous,true).tag;}fill(tag);save();if(engine)renderDraft();}
 $('print-tags').onclick=()=>{
   const p=engine.createProject(structuredClone(tags),printOptions()),problem=output.status(p);
   if(problem){showAppError(problem);return;}
   $('app-status').hidden=true;
+  if(pdfPrint){void printPdf();return;}
   try{requestDirectPrint(engine,p,$('tag-print-root'));}catch(error){showAppError(error.message);}
 };
 

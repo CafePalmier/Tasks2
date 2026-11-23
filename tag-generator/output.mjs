@@ -26,6 +26,10 @@ export function openPrintContext(browser=window) {
   if(viewer){viewer.document.title='Preparing Café Palmier PDF';viewer.document.body.textContent='Preparing your validated PDF…';}
   return viewer;
 }
+export function usesPdfPrint(device=navigator) {
+  return /iPad|iPhone|iPod/.test(device.userAgent) ||
+    (device.platform==='MacIntel' && device.maxTouchPoints>1);
+}
 export function showPdf(viewer,url) {
   if(!viewer||viewer.closed)return false;
   viewer.location.replace(url);return true;

@@ -10,6 +10,8 @@ Print US Letter landscape at **Actual size / 100%**. For a pastry job, match **D
 
 To print outside Safari on a Mac, download the PDF and open it in Preview. Select the printer, paper size, scale, and duplex setting in Preview's print dialog. If both apps use the same printer queue, the duplex options may be the same.
 
+On iPad and iPhone, **Print Tags** opens the landscape PDF with one page per printed side. Use **Share → Print** in the PDF viewer. If the browser blocks the viewer, the PDF downloads and can be opened from Files.
+
 ## Files and maintenance
 
 - `index.html`, `editor.css`, `editor.mjs`: touch editor, local persistence, collection, preview, download.
