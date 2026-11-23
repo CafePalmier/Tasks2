@@ -54,15 +54,15 @@ export function createTextLayout(fonts) {
     }
     overflow(field,box,{width:best.width,height:best.height},min,best.lines.length);
   }
-  function ingredients(text,box) {
+  function ingredients(text,box,minSize=8) {
     const original=fonts.ingredients;
     const needsFallback=[...text].some(c=>!['\n','\r'].includes(c)&&!original?.[c]);
     if(needsFallback&&fonts.ingredientFallback)fonts={...fonts,ingredients:fonts.ingredientFallback};
-    try{return fitIngredients(text,box);}finally{fonts={...fonts,ingredients:original};}
+    try{return fitIngredients(text,box,minSize);}finally{fonts={...fonts,ingredients:original};}
   }
-  function fitIngredients(text,box) {
+  function fitIngredients(text,box,minSize) {
     let best;
-    for(let size=11;size>=8;size-=.5) {
+    for(let size=11;size>=minSize;size-=.5) {
       const lines=[];let widestWord=0;
       for(const paragraph of text.split('\n')) {
         let line='';
@@ -76,10 +76,10 @@ export function createTextLayout(fonts) {
       const runs=lines.map(l=>measure('ingredients',l,size));
       const ascent=Math.max(size*.7,...runs.map(r=>-r.top)),descent=Math.max(0,...runs.map(r=>r.bottom));
       const step=Math.max(size*1.3,ascent+descent+size*.15),height=ascent+descent+(lines.length-1)*step;
-      best={width:Math.max(widestWord,...runs.map(r=>r.width)),height};
+      best={width:Math.max(widestWord,...runs.map(r=>r.width)),height,lines:lines.length};
       if(best.width<=box.w&&height<=box.h)return {size,lines,width:best.width,height,box,ops:runs.flatMap((r,i)=>draw(r,box.x-r.left,box.y+ascent+i*step,'#aaa69e'))};
     }
-    overflow('Ingredients',box,best,8,Math.ceil(best.height/(8*1.3)));
+    overflow('Ingredients',box,best,minSize,best.lines);
   }
   return {measure,draw,fit,ingredients};
 }

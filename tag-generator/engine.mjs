@@ -4,6 +4,7 @@ export const isStatic=t=>t.type==='napkin';
 export const tagSize=t=>isStatic(t)?[staticDesigns[t.design]?.width,staticDesigns[t.design]?.height]:SIZES[t.type];
 import {PRICE_CHARACTERS,priceGlyphIssues} from './price-glyphs.mjs';
 import {createTextLayout, FitError} from './text-layout.mjs';
+import {findPreset} from './presets.mjs';
 export const SIZES={pastry:[199.9674,154.5202],freezer:[212.234,101.503],provisions:[141.732,116.220]};
 export const normalizePrice=v=>{const s=String(v??'').trim().replace(/^\$\s*/,'');return /^\d{1,7}(?:[.,]\d{1,2})?$/.test(s)?'$'+Number(s.replace(',','.')).toFixed(2):null;};
 export const normalizeFrontText=v=>String(v??'').normalize('NFC').replace(/(?<![\p{L}\p{N}])et(?![\p{L}\p{N}])/gu,'&').trim();
@@ -157,7 +158,10 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
      if(!artwork.badges?.[key])result.errors.push({field:key,message:'Original dietary badge asset unavailable.',code:'missing-asset'});
      else result.front.push(...artwork.badges[key]);
    }
-   if(t.type==='pastry')field('ingredients',()=>text.ingredients(t.ingredients,{x:12,y:16,w:w-24,h:h-28}),'back');
+   if(t.type==='pastry')field('ingredients',()=>{
+     const minSize=findPreset(t.title)?.title==='Amandine'?7.5:8;
+     return text.ingredients(t.ingredients,{x:12,y:16,w:w-24,h:h-28},minSize);
+   },'back');
    return result;
  }
  function createProject(tags) {
