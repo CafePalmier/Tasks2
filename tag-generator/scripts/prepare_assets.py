@@ -8,6 +8,7 @@ from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.agl import toUnicode
+from prepare_ruddy_ntilde import add_ruddy_ntilde
 ROOT=Path(__file__).resolve().parents[1]
 def path(d,ox=0,oy=0,scale=1):
  out=[];last=None
@@ -63,6 +64,7 @@ ratio=statistics.median(ratios)
 for g in fonts['ruddy'].values():
  if g.get('path') and not g.get('metricSource'):
   g['advance']=(g['bounds'][2]-g['bounds'][0])*ratio;g['metricSource']='estimated from CFF width ratio'
+add_ruddy_ntilde(fonts['ruddy'])
 (ROOT/'typography/provisional.json').write_text(json.dumps(fonts))
 print('Prepared vector shapes and provisional lettering. Missing glyphs will be blocked, never substituted.')
 import runpy

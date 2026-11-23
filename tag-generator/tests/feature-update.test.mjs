@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import PDFLib from 'pdf-lib';
 import {pack,createEngine,validateGeometry,mirrored,staticDesigns,validateTag} from '../engine.mjs';
 import {findPreset,applyPreset,syncIngredients,presetIngredients} from '../presets.mjs';
+import {productHistory} from '../product-history.mjs';
 const types=['freezer','pastry','freezer','provisions','pastry','pastry','pastry','pastry'];
 const tag=(type,i)=>({id:String(i),type,title:'Pain',subtitle:'Banane',price:'9',ingredients:'Flour, butter.'});
 test('seven mixed tags plus pastry fit upright on one sheet; small tags exceed nine',()=>{
@@ -28,6 +29,17 @@ test('subtitle sync preserves literal terms, edits and dietary settings; reset i
  }
 });
 const art=JSON.parse(fs.readFileSync(new URL('../assets/artwork.json',import.meta.url)));
+test('Ruddy renders the original ñ outline in the Jalapeños subtitle and exports the tag',async()=>{
+ const fonts=JSON.parse(fs.readFileSync(new URL('../typography/approved.json',import.meta.url)));
+ const historicalTag=productHistory.find(p=>p.title==='Mac ’n Cheese'&&p.subtitle==='Jalapeños');
+ const engine=createEngine(art,fonts,PDFLib);
+ const project=engine.createProject([{...historicalTag,id:'jalapenos'}]);
+ assert.deepEqual(project.errors,[]);
+ const subtitle=project.sheets[0].items[0].fits.subtitle;
+ assert.equal(subtitle.lines.join(' '),'Jalapeños');
+ assert.ok(subtitle.ops.some(op=>op.path===fonts.ruddy['ñ'].path));
+ assert.equal((await PDFLib.PDFDocument.load(await engine.exportPdf(project))).getPageCount(),1);
+});
 let fonts;try{fonts=JSON.parse(fs.readFileSync(new URL('../typography/provisional.json',import.meta.url)));}catch{}
 test('static designs keep vectors, source geometry and all copies; no fields or backs',{skip:!fonts},async()=>{
  const engine=createEngine(art,fonts,PDFLib),tags=[{id:'side',type:'napkin',design:'side'},{id:'qr',type:'napkin',design:'qr'}];
