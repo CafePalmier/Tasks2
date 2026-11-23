@@ -11,14 +11,18 @@
   html[data-tag-print-orientation="portrait"],
   html[data-tag-print-orientation="portrait"] body { width: auto !important; }
   [data-tag-print-orientation="portrait"] #tag-print-root .tag-print-sheet {
-    /* Crop blank paper inside the 24 pt page margins. Leave 1 pt for pagination rounding. */
     width: 564pt;
-    height: 743pt;
-    overflow: hidden;
+    height: auto;
+    break-after: auto;
+    page-break-after: auto;
+  }
+  [data-tag-print-orientation="portrait"] #tag-print-root .tag-print-sheet + .tag-print-sheet {
+    break-before: page;
+    page-break-before: always;
   }
   [data-tag-print-orientation="portrait"] #tag-print-root .tag-print-sheet > svg {
-    width: 612pt;
-    height: 792pt;
-    margin: -24pt 0 0 -24pt;
+    width: 100%;
+    height: auto;
+    overflow: hidden;
   }
 }

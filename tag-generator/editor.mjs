@@ -1,10 +1,10 @@
-import {requestDirectPrint,usesPortraitPrint} from './print-view.mjs?v=2';
+import {requestDirectPrint,usesPortraitPrint,PORTRAIT_PRINT_MARGIN} from './print-view.mjs?v=3';
 import {createLibrary,canonical,identity} from './library.mjs';
 import {createSync} from './sync.mjs';
 import {sharedPresetsEnabled} from './sync-config.mjs';
 import {createOutput} from './output.mjs';
 import {presets,suggestions,findPreset,applyPreset,syncIngredients} from './presets.mjs';
-import {initializeEngine,staticDesigns} from './engine.mjs?v=2';
+import {initializeEngine,staticDesigns} from './engine.mjs?v=3';
 import {diagnosticRows} from './diagnostics.mjs';
 import {titleCaseIngredients} from './ingredient-case.mjs';
 const $=id=>document.getElementById(id),key='palmier-tags-v1',fields=['type','title','subtitle','price','ingredients','design'];let metadata={},tags=[],editing=null,side='front',engine,project,output,library,presetSync;
@@ -69,7 +69,7 @@ $('portrait-print-help').hidden=!portraitPrint;
 $('sheet-previews').dataset.orientation=orientation;
 if(portraitPrint){
   document.documentElement.dataset.tagPrintOrientation=orientation;
-  $('tag-print-page').textContent='@page { size: 612pt 792pt; margin: 24pt; }';
+  $('tag-print-page').textContent=`@page { size: 612pt 792pt; margin: ${PORTRAIT_PRINT_MARGIN}pt; }`;
   $('preview-format').textContent='US Letter portrait · artwork rotated for printing';
   $('print-settings').textContent='US Letter · Portrait · Actual size / 100%';
 }

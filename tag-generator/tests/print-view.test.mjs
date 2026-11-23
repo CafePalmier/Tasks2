@@ -17,12 +17,16 @@ test('iPad and iPhone use portrait printing, including iPad desktop mode',()=>{
 test('direct portrait printing sends a rotated front and back to the print dialog',()=>{
  const engine=createEngine(art,read('../typography/approved.json'),PDFLib);
  const project=engine.createProject([base],{orientation:'portrait',flipEdge:'long'});
+ const [{x}]=project.sheets[0].items;
+ const printableHeight=Math.ceil(792-x-24);
  const root={innerHTML:''};
  let calls=0;
  requestDirectPrint(engine,project,root,{
   print(){
    calls++;
-   assert.equal((root.innerHTML.match(/viewBox="0 0 612 792"/g)||[]).length,2);
+   const viewBoxes=Array.from(root.innerHTML.matchAll(/viewBox="([^"]*)"/g),match=>match[1]);
+   assert.deepEqual(viewBoxes,[`24 24 564 ${printableHeight}`,`24 24 564 ${printableHeight}`]);
+   assert.ok(printableHeight<744);
    assert.equal((root.innerHTML.match(/matrix\(0 -1 1 0 0 792\)/g)||[]).length,2);
    assert.match(root.innerHTML, /data-side="back"[^]*matrix\(0 -1 1 0 0 792\) translate\(792 612\) rotate\(180\)/);
    assert.ok(root.innerHTML.indexOf('data-side="front"')<root.innerHTML.indexOf('data-side="back"'));

@@ -1,4 +1,6 @@
-import {validateGeometry} from './engine.mjs?v=2';
+import {validateGeometry} from './engine.mjs?v=3';
+
+export const PORTRAIT_PRINT_MARGIN=24;
 
 export function usesPortraitPrint(device=navigator) {
   return /iPad|iPhone|iPod/.test(device.userAgent) ||
@@ -9,7 +11,11 @@ export function usesPortraitPrint(device=navigator) {
 export function printSheets(engine,project) {
   if(!engine.typographyStatus.ready)throw Error(engine.typographyStatus.message);
   if(!project.tags.length||project.errors.length||validateGeometry(project).length)throw Error('Resolve saved tag errors before printing.');
-  return project.sheets.flatMap((_,index)=>(project.duplex?['front','back']:['front']).map(side=>`<section class="tag-print-sheet" data-sheet="${index+1}" data-side="${side}">${engine.renderSheetSvg(project,index,side)}</section>`)).join('');
+  const printInset=project.orientation==='portrait'?PORTRAIT_PRINT_MARGIN:0;
+  const sides=project.duplex?['front','back']:['front'];
+  return project.sheets.flatMap((_,index)=>sides.map(side=>
+    `<section class="tag-print-sheet" data-sheet="${index+1}" data-side="${side}">${engine.renderSheetSvg(project,index,side,{printInset})}</section>`
+  )).join('');
 }
 export function requestDirectPrint(engine,project,root,browser=window) {
   const markup=printSheets(engine,project);

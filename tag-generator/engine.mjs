@@ -183,14 +183,15 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
  function shapes(p,side){if(isStatic(p.tag))return [];return side==='front'?[...artwork[p.tag.type].shapes.map(s=>({...s,x:0,y:0,scale:1})),...p.front]:p.back;}
  // The quarter-turn rotates the paper and artwork together, preserving their physical edges.
  const rotateBack=(project,side)=>project.duplex&&side==='back'&&project.flipEdge==='long';
- function renderSheetSvg(project,index,side='front') {
+ function renderSheetSvg(project,index,side='front',{printInset=0}={}) {
    const portrait=project.orientation==='portrait',rotate=rotateBack(project,side);
    const [width,height]=portrait?[612,792]:[792,612];
+   const {items}=project.sheets[index];
    const transforms=[
      ...(portrait?['matrix(0 -1 1 0 0 792)']:[]),
      ...(rotate?['translate(792 612) rotate(180)']:[])
    ];
-   const sheetArtwork=project.sheets[index].items.map((item,i)=>{
+   const sheetArtwork=items.map((item,i)=>{
      const p=side==='back'?mirrored(item):item;
      const staticFront=isStatic(item.tag)&&side==='front'
        ? staticDesigns[item.tag.design].svg.replace(/\bid="([^"]+)"/g,`id="n${index}_${i}_$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#n${index}_${i}_$1`)
@@ -200,7 +201,20 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
      return `<g transform="translate(${p.x} ${p.y})">${staticFront}${vectors}${notice}</g>`;
    }).join('');
    const content=transforms.length?`<g transform="${transforms.join(' ')}">${sheetArtwork}</g>`:sheetArtwork;
-   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Sheet ${index+1} ${side}"><rect width="${width}" height="${height}" fill="white"/>${content}</svg>`;
+   // Keep the page coordinates and scale. Clip trailing paper before Safari paginates the SVG.
+   let viewport=[0,0,width,height];
+   if(portrait&&printInset){
+     let bottom=printInset+1;
+     for(const item of items){
+       if(side==='back'&&!item.back.length)continue;
+       const edge=side==='front'||rotate?height-item.x:item.x+item.w;
+       bottom=Math.max(bottom,edge);
+     }
+     viewport=[printInset,printInset,width-2*printInset,Math.ceil(bottom-printInset)];
+   }
+   const [x,y,viewWidth,viewHeight]=viewport;
+   const offset=printInset&&portrait?` x="${x}" y="${y}"`:'';
+   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewport.join(' ')}" role="img" aria-label="Sheet ${index+1} ${side}"><rect${offset} width="${viewWidth}" height="${viewHeight}" fill="white"/>${content}</svg>`;
  }
  async function exportPdf(project,{registration=false}={}) {
    if(!ready||project.errors.length||validateGeometry(project).length||!project.tags.length)
