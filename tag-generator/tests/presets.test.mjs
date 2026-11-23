@@ -1,4 +1,18 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import PDFLib from 'pdf-lib';import {presets,freezerPresets,suggestions,findPreset,applyPreset} from '../presets.mjs';import {createEngine} from '../engine.mjs';
+import {createLibrary,identity} from '../library.mjs';
+test('all-caps ingredients use title case in built-in and historical presets',()=>{
+ const library=createLibrary({getItem:()=>null}).all();
+ for(const [title,expected] of [
+  ['Croissant',/Wheat flour, Charentes-Poitou PDO butter \(Milk\) 23%/],
+  ['Pain au chocolat',/Contains: Wheat, Milk, Soy, Eggs\. May Contain: Sesame, Tree Nuts\./],
+  ['Amandine',/^Dough \(Unbleached Enriched Wheat Flour/],
+  ['Épinard & Feta',/Spinach And Feta Filling/],
+ ]){
+  const preset=findPreset(title);
+  assert.match(preset.ingredients,expected);
+  assert.match(library.find(record=>identity(record)===identity(preset)).ingredients,expected);
+ }
+});
 test('dropdown lists all presets, filters accents and aliases without duplicate options',()=>{assert.equal(suggestions().length,presets.length);assert.equal(new Set(presets.map(p=>p.title)).size,presets.length);assert.equal(findPreset('Amanding').title,'Amandine');assert.equal(findPreset('Scones').title,'Scone');assert.equal(suggestions('epinard')[0].title,'Épinard & Feta');assert.equal(suggestions('unlisted').length,0);});
 test('freezer title dropdown provides saved titles and still filters',()=>{assert.deepEqual(freezerPresets.map(p=>p.title),['Tarte','Lasagna','Buscuits']);assert.deepEqual(suggestions('', 'freezer').map(p=>p.title),['Tarte','Lasagna','Buscuits']);assert.equal(suggestions('las','freezer')[0].title,'Lasagna');assert.equal(findPreset('buscuits','freezer').title,'Buscuits');assert.equal(findPreset('custom freezer title','freezer'),undefined);});
 test('defaults remain editable and prices independent; conflicts preserve edited data',()=>{for(const [name,v,g]of [['Muffin',true,true],['Poptart',true,false],['Power',true,true]]){const p=findPreset(name),r=applyPreset({price:'6.50'},p).tag;assert.equal(r.vegan,v);assert.equal(r.glutenFree,g);assert.equal(r.ingredients,p.ingredients);assert.equal(r.price,'6.50');}const old=findPreset('Muffin'),current={...old,ingredients:old.ingredients+' Added fruit.',vegan:false,price:'4'},next=findPreset('Poptart'),r=applyPreset(current,next,old);assert(r.conflicts.includes('ingredients'));assert.equal(r.tag.ingredients,current.ingredients);assert.equal(r.tag.vegan,false);assert.equal(applyPreset(current,next,old,true).tag.ingredients,next.ingredients);assert.equal(applyPreset({...old,price:'5'},next,old).tag.ingredients,next.ingredients);assert(!('price'in next));});

@@ -1,3 +1,5 @@
+import {titleCaseIngredients} from './ingredient-case.mjs';
+
 const recipes={
 Muffin:'Gluten Free flour blend, sugar, baking soda, baking powder, salt, cinnamon, soy milk, lemon juice, canola oil, lemon zest.',
 Poptart:'Vegan shortening, flour, sugar, salt, lemon juice, rotating fruit.',
@@ -12,7 +14,7 @@ Power:'Gluten free flour blend, oats, sunflower seeds, pumpkin seeds, coconut, f
 'Froot Loop':'Butter, sugar, glucose, eggs, vanilla, flour, skim milk powder, baking soda, cream of tartar, salt, froot loops, sprinkles.',
 Gingembre:'Butter, brown sugar, eggs, molasses, ginger, cinnamon, cloves, salt, baking soda, flour.'};
 const special=['Pépites de chocolat','Chocolat salée','Power','Froot Loop','Gingembre'];
-export const presets=[...new Set(['Carré','Petit pain','Pain','Sablé','Poptart','Scone','Barre','Brownie','Muffin','Galette','Blondie','Cupcake',...Object.keys(recipes)])].map(title=>({title,subtitle:'',ingredients:recipes[title]||'',vegan:['Muffin','Poptart','Power'].includes(title),glutenFree:['Muffin','Power'].includes(title),titleColor:special.includes(title)?'#c68b70':'#376438',aliases:title==='Amandine'?['Amanding']:title==='Scone'?['Scones']:[],recipeVerification:title==='Chocolat salée'}));
+export const presets=[...new Set(['Carré','Petit pain','Pain','Sablé','Poptart','Scone','Barre','Brownie','Muffin','Galette','Blondie','Cupcake',...Object.keys(recipes)])].map(title=>({title,subtitle:'',ingredients:titleCaseIngredients(recipes[title]||''),vegan:['Muffin','Poptart','Power'].includes(title),glutenFree:['Muffin','Power'].includes(title),titleColor:special.includes(title)?'#c68b70':'#376438',aliases:title==='Amandine'?['Amanding']:title==='Scone'?['Scones']:[],recipeVerification:title==='Chocolat salée'}));
 export const freezerPresets=['Tarte','Lasagna','Buscuits'].map(title=>({title,aliases:[]}));
 const key=s=>s.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();
 const optionsFor=type=>type==='freezer'?freezerPresets:presets;

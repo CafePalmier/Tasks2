@@ -6,10 +6,16 @@ import {createOutput} from './output.mjs';
 import {presets,suggestions,findPreset,applyPreset,syncIngredients} from './presets.mjs';
 import {initializeEngine,staticDesigns} from './engine.mjs';
 import {diagnosticRows} from './diagnostics.mjs';
+import {titleCaseIngredients} from './ingredient-case.mjs';
 let options=[],active=-1;
 const $=id=>document.getElementById(id),key='palmier-tags-v1',fields=['type','title','subtitle','price','ingredients','design'];let metadata={},tags=[],editing=null,side='front',engine,project,output;
-function read(){return {...metadata,id:editing||crypto.randomUUID(),...Object.fromEntries(fields.map(k=>[k,$('tag-'+k).value])),vegan:$('tag-vegan').checked,glutenFree:$('tag-gluten-free').checked};}
-function fill(t={type:'pastry'}){metadata={titleColor:t.titleColor,presetTitle:t.presetTitle,recipeVerification:t.recipeVerification,ingredientSync:t.ingredientSync===true};for(const k of fields)$('tag-'+k).value=t[k]||(k==='design'?'side':'');$('tag-vegan').checked=!!t.vegan;$('tag-gluten-free').checked=!!t.glutenFree;visibility();updateFieldControls();}
+function formatIngredients(tag){
+  return tag.type==='pastry'&&typeof tag.ingredients==='string'
+    ? {...tag,ingredients:titleCaseIngredients(tag.ingredients)}
+    : tag;
+}
+function read(){return formatIngredients({...metadata,id:editing||crypto.randomUUID(),...Object.fromEntries(fields.map(k=>[k,$('tag-'+k).value])),vegan:$('tag-vegan').checked,glutenFree:$('tag-gluten-free').checked});}
+function fill(t={type:'pastry'}){t=formatIngredients(t);metadata={titleColor:t.titleColor,presetTitle:t.presetTitle,recipeVerification:t.recipeVerification,ingredientSync:t.ingredientSync===true};for(const k of fields)$('tag-'+k).value=t[k]||(k==='design'?'side':'');$('tag-vegan').checked=!!t.vegan;$('tag-gluten-free').checked=!!t.glutenFree;visibility();updateFieldControls();}
 function visibility(){const type=$('tag-type').value,napkin=type==='napkin';for(const id of ['title-field','price-field','front-guidance'])$(id).hidden=napkin;$('napkin-field').hidden=!napkin;$('reset-ingredients').hidden=type!=='pastry'||!findPreset(metadata.presetTitle||'')?.ingredients;$('pastry-fields').hidden=type!=='pastry';$('title-options').hidden=!['pastry','freezer','provisions'].includes(type);if(!['pastry','freezer','provisions'].includes(type))closeSuggestions();$('subtitle-field').hidden=napkin;$('save-tag').textContent=editing?'Save Tag':'Add Tag';$('cancel-edit').hidden=!editing;}
 function save(){try{localStorage.setItem(key,JSON.stringify({version:1,tags,draft:read(),editing}));}catch{$('storage-notice').hidden=false;$('storage-notice').textContent='Device storage is unavailable or full. Keep this tab open until you download.';}}
 function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
@@ -30,7 +36,8 @@ for(const s of ['front','back'])$('view-'+s).onclick=()=>{side=s;for(const v of 
 function showAppError(message){$('app-status').textContent=message;$('app-status').hidden=false;}
 async function download(registration){try{$('app-status').hidden=true;const bytes=await output.bytes(tags,registration);const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=url;const now=new Date(),date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');a.download=`Cafe_Palmier_${registration?'Registration':'Tags'}_${date}.pdf`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){showAppError(e.message);}}
 $('download-pdf').onclick=()=>download(false);$('download-test').onclick=()=>download(true);
-try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved?.version===1&&Array.isArray(saved.tags)){tags=saved.tags.filter(t=>t&&typeof t.id==='string'&&['pastry','freezer','provisions','napkin'].includes(t.type));editing=saved.editing;fill(saved.draft);}}catch{$('storage-notice').hidden=false;$('storage-notice').textContent='Saved work could not be read. The stored copy has not been deleted.';}
+try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved?.version===1&&Array.isArray(saved.tags)){tags=saved.tags.filter(t=>t&&typeof t.id==='string'&&['pastry','freezer','provisions','napkin'].includes(t.type)).map(formatIngredients);editing=saved.editing;fill(saved.draft);}}catch{$('storage-notice').hidden=false;$('storage-notice').textContent='Saved work could not be read. The stored copy has not been deleted.';}
+$('tag-ingredients').onchange=event=>{event.target.value=titleCaseIngredients(event.target.value);};
 try{
   engine=await initializeEngine();
   output=createOutput(engine);

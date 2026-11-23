@@ -2,6 +2,7 @@ import {presets,freezerPresets} from './presets.mjs';
 import {productHistory} from './product-history.mjs';
 import {historical} from './historical.mjs';
 import {staffRecipeUpdates} from './staff-recipes.mjs';
+import {titleCaseIngredients} from './ingredient-case.mjs';
 export const canonical=s=>String(s||'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/[’']/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 export const identity=p=>[p.type||'pastry',canonical(p.title),canonical(p.subtitle)].join('|');
 const categories=new Set(['muffin','scone','poptart','sable','barre']);
@@ -16,7 +17,11 @@ export function createLibrary(storage){
   // Ingredient-only source improvements sit below every saved staff correction.
   for(const update of staffRecipeUpdates){const id=identity(update),old=map.get(id);if(old)map.set(id,{...old,ingredients:update.ingredients,ingredientEvidence:update.ingredientEvidence});}
   for(const p of state.records)map.set(identity(p),{...map.get(identity(p)),...p,priceConflict:false});
-  return [...map.values()].filter(p=>canonical(p.title)!=='scone scone'&&!(state.deleted||[]).includes(identity(p))).map(p=>({...p,price:p.type==='pastry'&&!p.individualPrice?state.prices[canonical(p.title)]||p.price:p.price}));
+  return [...map.values()].filter(p=>canonical(p.title)!=='scone scone'&&!(state.deleted||[]).includes(identity(p))).map(p=>({
+   ...p,
+   ...(typeof p.ingredients==='string'?{ingredients:titleCaseIngredients(p.ingredients)}:{}),
+   price:p.type==='pastry'&&!p.individualPrice?state.prices[canonical(p.title)]||p.price:p.price
+  }));
  };
  function remember(tag,confirm){
   const old=all().find(p=>identity(p)===identity(tag));
