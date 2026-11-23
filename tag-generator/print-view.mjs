@@ -1,4 +1,4 @@
-import {validateGeometry} from './engine.mjs';
+import {validateGeometry} from './engine.mjs?v=2';
 
 export function usesPortraitPrint(device=navigator) {
   return /iPad|iPhone|iPod/.test(device.userAgent) ||

@@ -181,9 +181,8 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
    return {tags:clean,sheets,layout,errors:unique,warnings:clean.some(t=>t.recipeVerification)?['Recipe verification required for Chocolat salée: supplied note mentions apple filling while the supplied recipe lists cocoa. Confirm before printing.']:clean.some(t=>t.type!=='pastry')?[`Tags may be rearranged to save paper. The cutting gap is at least ${gap} pt.`]:[],duplex:clean.some(t=>t.type==='pastry'),flipEdge,orientation};
  }
  function shapes(p,side){if(isStatic(p.tag))return [];return side==='front'?[...artwork[p.tag.type].shapes.map(s=>({...s,x:0,y:0,scale:1})),...p.front]:p.back;}
- // A quarter-turn swaps the long and short binding edges of the layout.
- const rotateBack=(project,side)=>project.duplex&&side==='back'&&
-   project.flipEdge===(project.orientation==='portrait'?'short':'long');
+ // The quarter-turn rotates the paper and artwork together, preserving their physical edges.
+ const rotateBack=(project,side)=>project.duplex&&side==='back'&&project.flipEdge==='long';
  function renderSheetSvg(project,index,side='front') {
    const portrait=project.orientation==='portrait',rotate=rotateBack(project,side);
    const [width,height]=portrait?[612,792]:[792,612];

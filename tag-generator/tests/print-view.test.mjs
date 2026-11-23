@@ -24,6 +24,7 @@ test('direct portrait printing sends a rotated front and back to the print dialo
    calls++;
    assert.equal((root.innerHTML.match(/viewBox="0 0 612 792"/g)||[]).length,2);
    assert.equal((root.innerHTML.match(/matrix\(0 -1 1 0 0 792\)/g)||[]).length,2);
+   assert.match(root.innerHTML, /data-side="back"[^]*matrix\(0 -1 1 0 0 792\) translate\(792 612\) rotate\(180\)/);
    assert.ok(root.innerHTML.indexOf('data-side="front"')<root.innerHTML.indexOf('data-side="back"'));
   },
   open(){throw Error('Print Tags should open the print dialog directly');}

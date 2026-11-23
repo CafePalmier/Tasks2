@@ -1,10 +1,10 @@
-import {requestDirectPrint,usesPortraitPrint} from './print-view.mjs';
+import {requestDirectPrint,usesPortraitPrint} from './print-view.mjs?v=2';
 import {createLibrary,canonical,identity} from './library.mjs';
 import {createSync} from './sync.mjs';
 import {sharedPresetsEnabled} from './sync-config.mjs';
 import {createOutput} from './output.mjs';
 import {presets,suggestions,findPreset,applyPreset,syncIngredients} from './presets.mjs';
-import {initializeEngine,staticDesigns} from './engine.mjs';
+import {initializeEngine,staticDesigns} from './engine.mjs?v=2';
 import {diagnosticRows} from './diagnostics.mjs';
 import {titleCaseIngredients} from './ingredient-case.mjs';
 const $=id=>document.getElementById(id),key='palmier-tags-v1',fields=['type','title','subtitle','price','ingredients','design'];let metadata={},tags=[],editing=null,side='front',engine,project,output,library,presetSync;

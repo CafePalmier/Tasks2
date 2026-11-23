@@ -136,13 +136,23 @@ test('portrait output rotates the artwork at full size and matches the selected 
       assert.deepEqual(page.getSize(), {width:612,height:792});
       assert.equal(page.getRotation().angle, 0);
     }
-    const backTurn = flipEdge==='short'?'-1 0 0 -1 792 612 cm\n':'';
+    const backTurn = flipEdge==='long'?'-1 0 0 -1 792 612 cm\n':'';
     assert.equal(pageCommands(portrait, 0), quarterTurn + pageCommands(landscape, 0) + 'Q\n');
     assert.equal(pageCommands(portrait, 1), quarterTurn + backTurn + pageCommands(landscape, 1) + 'Q\n');
     const project = engine.createProject(tags, {flipEdge, orientation:'portrait'});
     const back = engine.renderSheetSvg(project, 0, 'back');
     assert.match(back, /viewBox="0 0 612 792"/);
     assert.ok(back.includes(`transform="matrix(0 -1 1 0 0 792)${backTurn?' translate(792 612) rotate(180)':''}"`));
+    for (const {x,y} of project.sheets[0].items) {
+      // The registration cross is 8 pt in from opposite corners before the sheet turns.
+      const front = [y+8, 792-x-8];
+      const shortBack = [y+8, x+8];
+      const backMarker = back.includes('rotate(180)')
+        ? [612-shortBack[0], 792-shortBack[1]] : shortBack;
+      const throughPaper = flipEdge==='long'
+        ? [612-backMarker[0], backMarker[1]] : [backMarker[0], 792-backMarker[1]];
+      for (const axis of [0,1]) assert.ok(Math.abs(front[axis]-throughPaper[axis])<1e-6);
+    }
     const registration = await PDFDocument.load(await output.bytes(tags, true, flipEdge, 'portrait'));
     assert.ok(pageCommands(registration, 1).startsWith(quarterTurn + backTurn));
     assert.strictEqual(await output.bytes(tags, false, flipEdge, 'portrait'), bytes);
