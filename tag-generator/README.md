@@ -6,7 +6,9 @@ Open `http://localhost:8000/tag-generator/index.html` after `npm start`, or use 
 
 Choose a format, enter French front text and a real price, and add the tag. Pastries require English ingredients and offer independent V/SG checkboxes. Edit, duplicate, move or delete collection items. Clear All asks for confirmation. The collection and unfinished form are saved in this browser. Download the collection as vector PDF sheets. Front/back previews use the same measured path operations and placements as export.
 
-Print US Letter landscape at **Actual size / 100%**. For any pastry job select **double-sided, flip on short edge**. Every front is followed by a back, including blank backs when a sheet has no pastry. Without pastries, output is single-sided. Back positions use `792 - x - width`; letters themselves are not mirrored.
+Print US Letter landscape at **Actual size / 100%**. For a pastry job, match **Double-sided flip** in the editor to the printer's duplex setting. **Long edge** is the editor default for Safari's standard double-sided setting. Select **Short edge** in the editor if your printer is set to flip on the short edge. Print a registration test before the batch. Long-edge output turns the entire back artwork 180° so it aligns after the printer flips the sheet. Every front is followed by a back, including blank backs when a sheet has no pastry. Jobs without pastries print single-sided.
+
+To print outside Safari on a Mac, download the PDF and open it in Preview. Select the printer, paper size, scale, and duplex setting in Preview's print dialog. If both apps use the same printer queue, the duplex options may be the same.
 
 ## Files and maintenance
 

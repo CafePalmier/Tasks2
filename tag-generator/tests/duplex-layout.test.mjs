@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import PDFLib from 'pdf-lib';
 import {createEngine} from '../engine.mjs';
 import {printSheets} from '../print-view.mjs';
+import {createOutput} from '../output.mjs';
 
 const read = path => JSON.parse(readFileSync(new URL(path, import.meta.url)));
 const artwork = read('../assets/artwork.json');
@@ -86,4 +87,36 @@ test('asymmetric mixed sheets export matching short-edge fronts and backs in ord
     assert.equal(pageCommands(pdf, index * 2 + 1), pageCommands(reference, index),
       'back has only the expected upright pastry ingredients in mirrored positions');
   }
+});
+
+test('long-edge duplex rotates only the back artwork in print, PDF and registration output', async () => {
+  const engine = createEngine(artwork, read('../typography/approved.json'), PDFLib);
+  const output = createOutput(engine);
+  const tags = [pastries[0], {type:'freezer', id:'f', title:'Tarte', price:'12'}];
+  const bytes = await output.bytes(tags, false, 'long');
+  const short = await PDFDocument.load(await output.bytes(tags));
+  const long = await PDFDocument.load(bytes);
+  const rotated = 'q\n-1 0 0 -1 792 612 cm\n';
+  assert.strictEqual(await output.bytes(tags, false, 'long'), bytes);
+  assert.equal(long.catalog.getOrCreateViewerPreferences().getDuplex(), Duplex.DuplexFlipLongEdge);
+  assert.equal(long.getPageCount(), 2);
+  assert.equal(long.getPage(1).getRotation().angle, 0);
+  assert.equal(pageCommands(long, 0), pageCommands(short, 0));
+  assert.equal(pageCommands(long, 1), rotated + pageCommands(short, 1) + 'Q\n');
+
+  const project = engine.createProject(tags, {flipEdge:'long'});
+  const front = engine.renderSheetSvg(project, 0);
+  const back = engine.renderSheetSvg(project, 0, 'back');
+  assert.doesNotMatch(front, /rotate\(180\)/);
+  assert.match(back, /translate\(792 612\) rotate\(180\)/);
+  assert.ok(printSheets(engine, project).includes(back));
+
+  const registration = await PDFDocument.load(await output.bytes(tags, true, 'long'));
+  assert.equal(registration.catalog.getOrCreateViewerPreferences().getDuplex(), Duplex.DuplexFlipLongEdge);
+  assert.ok(pageCommands(registration, 1).startsWith(rotated));
+  assert.ok(pageCommands(registration, 1).length > pageCommands(long, 1).length);
+
+  const simplex = await PDFDocument.load(await output.bytes(tags.slice(1), false, 'long'));
+  assert.equal(simplex.getPageCount(), 1);
+  assert.equal(simplex.catalog.getOrCreateViewerPreferences().getDuplex(), undefined);
 });

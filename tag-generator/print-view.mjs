@@ -8,7 +8,7 @@ export function printSheets(engine,project) {
 export function requestDirectPrint(engine,project,root,browser=window) {
   const markup=printSheets(engine,project);
   root.innerHTML=markup;
-  if(typeof browser.print!=='function')throw Error('Direct printing is unavailable here. Use Print PDF instead.');
+  if(typeof browser.print!=='function')throw Error('Direct printing is unavailable here. Download the PDF and open it in your print app.');
   // No await, popup, iframe, PDF plugin, external image or font load between tap and print.
   browser.print();
 }

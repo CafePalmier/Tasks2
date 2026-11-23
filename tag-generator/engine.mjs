@@ -168,7 +168,7 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
    },'back');
    return result;
  }
- function createProject(tags) {
+ function createProject(tags,{flipEdge='short'}={}) {
    const errors=[],clean=tags.filter(t=>isStatic(t)?!!staticDesigns[t.design]:SIZES[t.type]).map(t=>({...t}));
    for(const t of tags)errors.push(...validateTag(t).map(e=>({...e,id:t.id})));
    const sheets=pack(clean,layout);
@@ -178,11 +178,51 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
    }
    errors.push(...validateGeometry({sheets,layout}));
    const unique=[...new Map(errors.map(e=>[`${e.id}:${e.field}`,e])).values()];
-   return {tags:clean,sheets,layout,errors:unique,warnings:clean.some(t=>t.recipeVerification)?['Recipe verification required for Chocolat salée: supplied note mentions apple filling while the supplied recipe lists cocoa. Confirm before printing.']:clean.some(t=>t.type!=='pastry')?[`Tags may be rearranged to save paper. The cutting gap is at least ${gap} pt.`]:[],duplex:clean.some(t=>t.type==='pastry')};
+   return {tags:clean,sheets,layout,errors:unique,warnings:clean.some(t=>t.recipeVerification)?['Recipe verification required for Chocolat salée: supplied note mentions apple filling while the supplied recipe lists cocoa. Confirm before printing.']:clean.some(t=>t.type!=='pastry')?[`Tags may be rearranged to save paper. The cutting gap is at least ${gap} pt.`]:[],duplex:clean.some(t=>t.type==='pastry'),flipEdge};
  }
  function shapes(p,side){if(isStatic(p.tag))return [];return side==='front'?[...artwork[p.tag.type].shapes.map(s=>({...s,x:0,y:0,scale:1})),...p.front]:p.back;}
- function renderSheetSvg(project,index,side='front'){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612" role="img" aria-label="Sheet ${index+1} ${side}"><rect width="792" height="612" fill="white"/>`+project.sheets[index].items.map(item=>{const p=side==='back'?mirrored(item):item;return `<g transform="translate(${p.x} ${p.y})">`+(isStatic(item.tag)&&side==='front'?staticDesigns[item.tag.design].svg.replace(/\bid="([^"]+)"/g,`id="n${index}_${project.sheets[index].items.indexOf(item)}_$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#n${index}_${project.sheets[index].items.indexOf(item)}_$1`):'')+shapes(item,side).map(s=>`<path d="${s.path}" fill="${s.color}" transform="translate(${s.x} ${s.y}) scale(${s.scale})"/>`).join('')+(!ready&&side==='front'?`<text x="20" y="50" font-size="10">Typography unavailable</text>`:'')+`</g>`;}).join('')+'</svg>';}
- async function exportPdf(project,{registration=false}={}){if(!ready||project.errors.length||validateGeometry(project).length||!project.tags.length)throw Error('Resolve the tag errors before exporting.');const {PDFDocument,rgb,PrintScaling,Duplex}=PDFLib;const pdf=await PDFDocument.create();const embedded={};for(const design of new Set(project.tags.filter(isStatic).map(t=>t.design))){const bytes=Uint8Array.from(atob(staticDesigns[design].pdf),c=>c.charCodeAt(0));[embedded[design]]=await pdf.embedPdf(bytes,[0]);}pdf.setTitle('Café Palmier Tags');const prefs=pdf.catalog.getOrCreateViewerPreferences();prefs.setPrintScaling(PrintScaling.None);if(project.duplex)prefs.setDuplex(Duplex.DuplexFlipShortEdge);for(const sheet of project.sheets)for(const side of project.duplex?['front','back']:['front']){const page=pdf.addPage([792,612]);for(const item of sheet.items){const p=side==='back'?mirrored(item):item;if(isStatic(item.tag)&&side==='front')page.drawPage(embedded[item.tag.design],{x:p.x,y:612-p.y-p.h,width:p.w,height:p.h});for(const s of shapes(item,side)){const color=s.color.match(/\w\w/g).map(v=>parseInt(v,16)/255);page.drawSvgPath(s.path,{x:p.x+s.x,y:612-p.y-s.y,scale:s.scale,color:rgb(...color)});}if(registration){const x=side==='back'?p.x+p.w-8:p.x+8;page.drawLine({start:{x:x-3,y:612-p.y-8},end:{x:x+3,y:612-p.y-8},thickness:.5});page.drawLine({start:{x,y:612-p.y-5},end:{x,y:612-p.y-11},thickness:.5});}}if(registration){page.drawLine({start:{x:36,y:20},end:{x:108,y:20},thickness:1});page.drawText(`${side} - 1 inch - SHORT EDGE - 100%`,{x:120,y:16,size:9});}}return pdf.save();}
+ // Turning the short-edge back 180° makes it line up through a long-edge flip.
+ const rotateBack=(project,side)=>project.duplex&&side==='back'&&project.flipEdge==='long';
+ function renderSheetSvg(project,index,side='front'){const rotate=rotateBack(project,side);return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612" role="img" aria-label="Sheet ${index+1} ${side}"><rect width="792" height="612" fill="white"/>`+(rotate?'<g transform="translate(792 612) rotate(180)">':'')+project.sheets[index].items.map(item=>{const p=side==='back'?mirrored(item):item;return `<g transform="translate(${p.x} ${p.y})">`+(isStatic(item.tag)&&side==='front'?staticDesigns[item.tag.design].svg.replace(/\bid="([^"]+)"/g,`id="n${index}_${project.sheets[index].items.indexOf(item)}_$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#n${index}_${project.sheets[index].items.indexOf(item)}_$1`):'')+shapes(item,side).map(s=>`<path d="${s.path}" fill="${s.color}" transform="translate(${s.x} ${s.y}) scale(${s.scale})"/>`).join('')+(!ready&&side==='front'?`<text x="20" y="50" font-size="10">Typography unavailable</text>`:'')+`</g>`;}).join('')+(rotate?'</g>':'')+'</svg>';}
+ async function exportPdf(project,{registration=false}={}) {
+   if(!ready||project.errors.length||validateGeometry(project).length||!project.tags.length)
+     throw Error('Resolve the tag errors before exporting.');
+   const {PDFDocument,rgb,PrintScaling,Duplex,pushGraphicsState,popGraphicsState,concatTransformationMatrix}=PDFLib;
+   const pdf=await PDFDocument.create(),embedded={};
+   for(const design of new Set(project.tags.filter(isStatic).map(t=>t.design))) {
+     const bytes=Uint8Array.from(atob(staticDesigns[design].pdf),c=>c.charCodeAt(0));
+     [embedded[design]]=await pdf.embedPdf(bytes,[0]);
+   }
+   pdf.setTitle('Café Palmier Tags');
+   const prefs=pdf.catalog.getOrCreateViewerPreferences();
+   prefs.setPrintScaling(PrintScaling.None);
+   if(project.duplex) prefs.setDuplex(project.flipEdge==='long'?Duplex.DuplexFlipLongEdge:Duplex.DuplexFlipShortEdge);
+   for(const sheet of project.sheets)for(const side of project.duplex?['front','back']:['front']) {
+     const page=pdf.addPage([792,612]),rotate=rotateBack(project,side);
+     // Transform the artwork itself so print apps see ordinary landscape pages.
+     if(rotate) page.pushOperators(pushGraphicsState(),concatTransformationMatrix(-1,0,0,-1,792,612));
+     for(const item of sheet.items) {
+       const p=side==='back'?mirrored(item):item;
+       if(isStatic(item.tag)&&side==='front')page.drawPage(embedded[item.tag.design],{x:p.x,y:612-p.y-p.h,width:p.w,height:p.h});
+       for(const s of shapes(item,side)) {
+         const color=s.color.match(/\w\w/g).map(v=>parseInt(v,16)/255);
+         page.drawSvgPath(s.path,{x:p.x+s.x,y:612-p.y-s.y,scale:s.scale,color:rgb(...color)});
+       }
+       if(registration) {
+         const x=side==='back'?p.x+p.w-8:p.x+8;
+         page.drawLine({start:{x:x-3,y:612-p.y-8},end:{x:x+3,y:612-p.y-8},thickness:.5});
+         page.drawLine({start:{x,y:612-p.y-5},end:{x,y:612-p.y-11},thickness:.5});
+       }
+     }
+     if(registration) {
+       const mode=project.duplex?(project.flipEdge==='long'?'LONG EDGE':'SHORT EDGE'):'SINGLE SIDED';
+       page.drawLine({start:{x:36,y:20},end:{x:108,y:20},thickness:1});
+       page.drawText(`${side} - 1 inch - ${mode} - 100%`,{x:120,y:16,size:9});
+     }
+     if(rotate) page.pushOperators(popGraphicsState());
+   }
+   return pdf.save();
+ }
  const message=!ready
   ? 'This site could not load approved typography. You can still edit and save tags. Preview lettering, PDF download, and printing require the approved font assets.'
   : publicTypography ? '' : 'Development typography uses source outlines and provisional spacing.';

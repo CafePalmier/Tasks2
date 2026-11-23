@@ -37,7 +37,16 @@
         <div class="tg-output-actions"><button class="tg-button tg-primary" id="download-pdf" type="button" disabled>Download PDF</button>
         <button class="tg-button tg-primary" id="print-tags" type="button" disabled>Print Tags</button></div>
       </header>
-      <p class="tg-help">US Letter · Landscape · Actual size / 100%. Pastry ingredients: double-sided, flip on short edge. Other tags: single-sided. Select these settings in the print dialog; the browser cannot enforce them.</p>
+      <p class="tg-help">Print on US Letter in landscape at actual size (100%). To print from another app, download the PDF and open it there.</p>
+      <div id="duplex-options" hidden>
+        <label class="tg-field tg-duplex-field" for="flip-edge">Double-sided flip
+          <select id="flip-edge" aria-describedby="flip-edge-help">
+            <option value="long" selected>Long edge</option>
+            <option value="short">Short edge</option>
+          </select>
+        </label>
+        <p class="tg-help" id="flip-edge-help">Use Long edge if Safari only shows Double-sided On. Choose Short edge here if your print dialog uses it. Run a registration test before the batch.</p>
+      </div>
       <p id="app-status" class="tg-status" role="alert" hidden></p>
       <p id="typography-notice" class="tg-notice" role="status" hidden></p>
       <div id="storage-notice" class="tg-notice" role="alert" hidden></div>
@@ -109,14 +118,14 @@
               <button class="tg-button" type="button" id="view-back" aria-pressed="false">Back</button>
             </div>
           </div>
-          <p class="tg-help">US Letter landscape · exact tag proportions · no rotation</p>
+          <p class="tg-help">US Letter landscape · exact tag proportions</p>
           <p id="draft-notice" class="tg-notice" hidden></p>
           <div id="project-errors" class="tg-notice tg-error-notice" role="alert" hidden></div>
           <div id="project-warnings" class="tg-notice" hidden></div>
           <div id="sheet-previews" class="tg-sheets"><div class="tg-empty-sheet"><p>Your printable sheets will appear here.</p><span>11 × 8.5 inches</span></div></div>
-          <div class="tg-print-note"><h3>Print settings</h3><p id="print-settings">US Letter · Landscape · Actual size / 100%</p><p id="duplex-settings">Pastry tags need double-sided printing with flip on short edge. Print a test sheet to check alignment before a full batch.</p></div>
+          <div class="tg-print-note"><h3>Print settings</h3><p id="print-settings">US Letter · Landscape · Actual size / 100%</p><p id="duplex-settings">Print single-sided.</p></div>
           <details class="tg-print-check"><summary>Check your printer’s alignment</summary>
-            <p>Download a registration test using your current tags. Print at 100%, double-sided, flip on short edge. Hold it to a light: each asymmetric back marker should align with the matching front marker. Confirm that the text reads normally and the 1-inch ruler measures exactly 1 inch. Adjust printer settings and repeat before cutting.</p>
+            <p>Print the registration test at 100% using the same duplex setting as your batch. Hold the sheet up to a light to check that the back markers align with the front markers. Check that the back reads upright when you turn the sheet on the selected edge and that the ruler measures exactly 1 inch.</p>
             <button class="tg-button" id="download-test" type="button" disabled>Download registration test</button>
           </details>
         </section>
