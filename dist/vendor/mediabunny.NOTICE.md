@@ -1,0 +1,1 @@
+Mediabunny 1.66.4 is distributed under the Mozilla Public License 2.0. The browser bundle is copied unmodified from the npm package. The [matching source release](https://github.com/Vanilagy/mediabunny/tree/v1.66.4) and [npm source tarball](https://registry.npmjs.org/mediabunny/-/mediabunny-1.66.4.tgz) are available upstream.

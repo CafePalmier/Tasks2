@@ -1,3 +1,5 @@
+import { formatMediaSize, prepareTutorialFile, TutorialMediaSizeError, tutorialVideoHint } from './tutorial-video.mjs?v=1';
+
 const TUTORIAL_DB_NAME = 'cafe-palmier-tutorials';
 const TUTORIAL_STORE_NAME = 'videos';
 const TUTORIAL_BUCKET = 'cafe-tutorial-videos';
@@ -40,7 +42,11 @@ async function sharedRequest(path, options = {}) {
   if (!supabaseConfig?.url || !supabaseConfig?.publishableKey) throw new Error('Shared tutorial storage is not configured.');
   const response = await fetch(`${supabaseConfig.url}${path}`, { ...options, headers: supabaseHeaders(options.headers) });
   const responseText = await response.text();
-  if (!response.ok) throw new Error(responseText || `Request failed with ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(responseText || `Request failed with ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
   return responseText ? JSON.parse(responseText) : null;
 }
 
@@ -101,13 +107,13 @@ async function uploadTutorialMedia(tutorialId, slideId, file) {
   const storagePath = `${tutorialId}/${slideId}-${crypto.randomUUID()}.${mediaExtension(file)}`;
   await sharedRequest(`/storage/v1/object/${TUTORIAL_BUCKET}/${encodedStoragePath(storagePath)}`, {
     method: 'POST',
-    headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true', 'Cache-Control': '3600' },
+    headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true', 'Cache-Control': 'max-age=3600' },
     body: file
   });
   return { storage_path: storagePath, media_type: publicMediaType(file) };
 }
 
-async function saveSharedTutorial({ id, title, tags, slides, previousTutorial = null }) {
+async function saveSharedTutorial({ id, title, tags, slides, previousTutorial = null, onStatus = () => {} }) {
   if (!slides?.length) throw new Error('Add at least one photo or video slide.');
   const uploadedPaths = [];
   const savedSlides = [];
@@ -117,7 +123,24 @@ async function saveSharedTutorial({ id, title, tags, slides, previousTutorial = 
       const slideId = String(slide.id || `slide-${index + 1}`);
       let media = { storage_path: slide.storage_path, media_type: slide.media_type };
       if (slide.file) {
-        media = await uploadTutorialMedia(id, slideId, slide.file);
+        const label = `slide ${index + 1} of ${slides.length}`;
+        let file;
+        try {
+          let lastPercent = -1;
+          file = await prepareTutorialFile(slide.file, progress => {
+            const percent = Math.floor(progress * 100);
+            if (percent === lastPercent) return;
+            lastPercent = percent;
+            onStatus(`Compressing ${label}… ${percent}%`);
+          });
+          const original = file === slide.file ? '' : `, down from ${formatMediaSize(slide.file.size)}`;
+          onStatus(`Uploading ${label} (${formatMediaSize(file.size)}${original})…`);
+          media = await uploadTutorialMedia(id, slideId, file);
+        } catch (error) {
+          if (error instanceof TutorialMediaSizeError) throw new TutorialMediaSizeError(`Slide ${index + 1}. ${error.message}`);
+          if (error.status === 413) throw new TutorialMediaSizeError(`Supabase rejected the size of slide ${index + 1}. Choose a smaller file or shorten the video.`);
+          throw error;
+        }
         uploadedPaths.push(media.storage_path);
       }
       if (!media.storage_path) throw new Error(`Slide ${index + 1} needs a photo or video.`);
@@ -499,7 +522,7 @@ function slideEditorMarkup(slide = {}, index = 0, isNew = false) {
   return `<div class="tutorial-slide-editor" data-slide-editor data-existing-path="${escapeTutorialText(normalized.storage_path)}" data-existing-type="${escapeTutorialText(normalized.media_type)}">
     <div class="tutorial-slide-editor-header"><strong>Slide ${index + 1}</strong><button type="button" class="icon-btn" data-remove-tutorial-slide>Remove</button></div>
     <div class="tutorial-slide-preview" data-slide-preview>${renderTutorialEditorPreview(normalized)}</div>
-    <label class="tutorial-file-field"><span>${isNew || !normalized.storage_path ? 'Add photo or video' : 'Replace photo or video'}</span><input type="file" accept="image/*,video/*" data-slide-file ${isNew || !normalized.storage_path ? 'required' : ''} /><small>${normalized.storage_path ? 'Choose a new file only if you want to replace this slide.' : 'Your preview will appear here immediately.'}</small></label>
+    <label class="tutorial-file-field"><span>${isNew || !normalized.storage_path ? 'Add photo or video' : 'Replace photo or video'}</span><input type="file" accept="image/*,video/*" data-slide-file ${isNew || !normalized.storage_path ? 'required' : ''} /><small>${normalized.storage_path ? 'Choose a new file to replace this slide.' : 'For video, aim for one step in 15–45 seconds.'}</small></label>
     <label><span>Slide title <small>(optional)</small></span><input type="text" data-slide-title value="${escapeTutorialText(normalized.title)}" placeholder="e.g. Lock the patio door" /></label>
     <label><span>Written description <small>(optional)</small></span><textarea rows="3" data-slide-description placeholder="Add the detail someone needs to complete this step.">${escapeTutorialText(normalized.description)}</textarea></label>
   </div>`;
@@ -682,7 +705,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       ? `<video src="${previewUrl}" controls preload="metadata" muted playsinline aria-label="Preview of ${label}"></video>`
       : `<img src="${previewUrl}" alt="Preview of ${label}" />`;
     const hint = fileInput.closest('.tutorial-file-field')?.querySelector('small');
-    if (hint) hint.textContent = `${file.name} selected and ready to upload.`;
+    if (hint) {
+      const video = preview.querySelector('video');
+      hint.textContent = video ? tutorialVideoHint(file) : `${file.name} · ${formatMediaSize(file.size)}`;
+      video?.addEventListener('loadedmetadata', () => { hint.textContent = tutorialVideoHint(file, video.duration); }, { once: true });
+    }
   });
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -693,20 +720,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     event.preventDefault();
     const status = form.querySelector('[data-tutorial-status]');
     const submit = form.querySelector('[type="submit"]');
+    if (submit.disabled) return;
     const payload = collectTutorialForm();
     if (!payload.title || !payload.slides.length) return;
     submit.disabled = true;
-    status.textContent = `Uploading ${payload.slides.length} slide${payload.slides.length === 1 ? '' : 's'} for everyone…`;
+    status.textContent = 'Preparing tutorial…';
     try {
       const previousTutorial = tutorialState.items.find((item) => item.id === payload.id) || null;
-      await saveSharedTutorial({ ...payload, previousTutorial });
+      await saveSharedTutorial({ ...payload, previousTutorial, onStatus: message => { status.textContent = message; } });
       form.reset();
       status.textContent = '';
       setTutorialModal(false);
       await renderTutorials();
     } catch (error) {
       console.error('Could not save tutorial', error);
-      status.textContent = 'This tutorial could not be saved. Check the shared Supabase setup, file size, and connection.';
+      status.textContent = error instanceof TutorialMediaSizeError ? error.message :
+        'This tutorial could not be saved. Check the shared Supabase setup and connection.';
     } finally {
       submit.disabled = false;
     }

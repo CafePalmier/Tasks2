@@ -14,6 +14,8 @@ The project deliberately uses the Supabase publishable key and public database p
 
 Tutorials always use the shared Supabase video library, including on `localhost`. Task pages intentionally use the local Node task store on `localhost`, so production task edits will not appear there and local testing cannot accidentally change the live board. Use the deployed site when you need to inspect the current shared task data.
 
+Tutorial uploads show video length and suggest 15–45 second clips, with one action per slide. On browsers that support the required video codecs, the editor tries to compress videos over 5 MB to MP4 before upload. It uploads the smaller version when possible and keeps the original if it fits and compression is unavailable. Files that still exceed 50 MB need a shorter clip or smaller export.
+
 Run `npm start`, then open `http://localhost:8000/index.html` for the local task board.
 
 ## Home-screen app and favourite icon
