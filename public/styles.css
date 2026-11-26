@@ -476,10 +476,9 @@ h1 {
 }
 
 .tutorial-file-field {
-  padding: 0.9rem;
-  border: 1px dashed rgba(55, 100, 56, 0.38);
-  border-radius: 14px;
-  background: rgba(55, 100, 56, 0.04);
+  display: grid;
+  justify-items: start;
+  gap: 0.42rem;
 }
 
 .tutorial-file-field small,
@@ -3021,16 +3020,46 @@ body[data-page="tutorials"] .tutorial-empty h2 {
   object-fit: cover;
 }
 
-.tutorial-slide-preview-empty {
-  display: grid;
-  gap: 0.28rem;
+.tutorial-form .tutorial-file-picker {
+  position: relative;
+  min-height: 44px;
+  padding: 0.6rem 0.9rem;
   place-items: center;
-  color: var(--muted);
-  font-size: 0.78rem;
+  align-content: center;
+  border: 1px dashed rgba(55, 100, 56, 0.38);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
   text-align: center;
 }
 
-.tutorial-slide-preview-empty span:first-child {
+.tutorial-file-picker:hover {
+  border-color: var(--forest);
+}
+
+.tutorial-file-picker:focus-within {
+  outline: 2px solid var(--forest);
+  outline-offset: 2px;
+}
+
+.tutorial-file-picker input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tutorial-slide-preview[hidden] + .tutorial-file-field .tutorial-file-picker {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+}
+
+.tutorial-file-picker-icon {
+  display: none;
+}
+
+.tutorial-slide-preview[hidden] + .tutorial-file-field .tutorial-file-picker-icon {
   display: grid;
   width: 2rem;
   height: 2rem;
@@ -3043,10 +3072,6 @@ body[data-page="tutorials"] .tutorial-empty h2 {
 
 .tutorial-slide-editor-header strong {
   color: var(--forest-deep);
-}
-
-.tutorial-slide-editor .tutorial-file-field {
-  background: rgba(255, 255, 255, 0.55);
 }
 
 .tutorial-slide-editor textarea {

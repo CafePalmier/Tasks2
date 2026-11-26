@@ -1,13 +1,15 @@
 const FREE_FILE_LIMIT = 50_000_000;
 const OPTIMIZE_ABOVE = 5_000_000;
-const TARGET_VIDEO_BITRATE = 1_100_000;
+const SHORT_CLIP_SECONDS = 45;
+const SHORT_VIDEO_BITRATE = 1_100_000;
+const LONG_VIDEO_BITRATE = 550_000;
 const AUDIO_BITRATE_ALLOWANCE = 256_000;
 
 export const formatMediaSize = bytes => `${(bytes / 1_000_000).toFixed(1)} MB`;
 
 export function tutorialVideoHint(file, duration) {
   const length = Number.isFinite(duration) && duration > 0 ? ` · ${Math.ceil(duration)} seconds` : '';
-  const tip = duration > 45
+  const tip = duration > SHORT_CLIP_SECONDS
     ? 'Try one action per 15–45 second clip. Split longer walkthroughs into slides, or use a photo for a still step.'
     : 'Aim for one action per clip, around 15–45 seconds.';
   const sizeHint = file.size > FREE_FILE_LIMIT
@@ -18,7 +20,7 @@ export function tutorialVideoHint(file, duration) {
 export class TutorialMediaSizeError extends Error {}
 
 export async function prepareTutorialFile(file, onProgress) {
-  if (file.type.startsWith('video/') && file.size > OPTIMIZE_ABOVE &&
+  if (file.type.startsWith('video/') &&
       typeof VideoEncoder !== 'undefined' && typeof VideoDecoder !== 'undefined') {
     try {
       const smaller = await compressVideo(file, onProgress);
@@ -41,17 +43,26 @@ async function compressVideo(file, onProgress) {
   try {
     const video = await input.getPrimaryVideoTrack();
     if (!video) return null;
-    const [width, height, duration] = await Promise.all([
+    const [width, height, metadataDuration] = await Promise.all([
       video.getDisplayWidth(), video.getDisplayHeight(), input.getDurationFromMetadata()
     ]);
     if (width < 2 || height < 2) return null;
+    const duration = metadataDuration > 0 && Number.isFinite(metadataDuration)
+      ? metadataDuration
+      : await input.computeDuration();
+    const isLong = duration > SHORT_CLIP_SECONDS;
+    const targetBitrate = isLong ? LONG_VIDEO_BITRATE : SHORT_VIDEO_BITRATE;
+    const maxLongEdge = isLong ? 854 : 1280;
+    const maxShortEdge = isLong ? 480 : 720;
+    const scale = Math.min(1, maxLongEdge / Math.max(width, height), maxShortEdge / Math.min(width, height));
+    if (scale === 1 && file.size <= OPTIMIZE_ABOVE) return null;
+
     // Leave headroom for the container and audio when bringing large clips under the upload limit.
     const bitrate = file.size > FREE_FILE_LIMIT && duration > 0
-      ? Math.min(TARGET_VIDEO_BITRATE, Math.floor(42_000_000 * 8 / duration) - AUDIO_BITRATE_ALLOWANCE)
-      : TARGET_VIDEO_BITRATE;
-    if (bitrate < 650_000) return null;
+      ? Math.min(targetBitrate, Math.floor(42_000_000 * 8 / duration) - AUDIO_BITRATE_ALLOWANCE)
+      : targetBitrate;
+    if (bitrate < 200_000) return null;
 
-    const scale = Math.min(1, 1280 / Math.max(width, height), 720 / Math.min(width, height));
     const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
     const conversion = await Conversion.init({
       input, output, showWarnings: false,

@@ -1,4 +1,4 @@
-import { formatMediaSize, prepareTutorialFile, TutorialMediaSizeError, tutorialVideoHint } from './tutorial-video.mjs?v=1';
+import { formatMediaSize, prepareTutorialFile, TutorialMediaSizeError, tutorialVideoHint } from './tutorial-video.mjs?v=2';
 
 const TUTORIAL_DB_NAME = 'cafe-palmier-tutorials';
 const TUTORIAL_STORE_NAME = 'videos';
@@ -262,7 +262,7 @@ function renderSlideMedia(slide, tutorial) {
 }
 
 function renderTutorialEditorPreview(slide = {}) {
-  if (!slide.storage_path) return '<div class="tutorial-slide-preview-empty"><span aria-hidden="true">＋</span><span>Choose a photo or video</span></div>';
+  if (!slide.storage_path) return '';
   const url = `${publicMediaUrl(slide.storage_path)}${slide.media_type === 'video' ? '#t=0.1' : ''}`;
   if (slide.media_type === 'video') return `<video src="${escapeTutorialText(url)}" controls preload="metadata" muted playsinline aria-label="Tutorial slide preview"></video>`;
   return `<img src="${escapeTutorialText(url)}" alt="Tutorial slide preview" />`;
@@ -517,12 +517,20 @@ function bindTutorialSearch() {
   syncClearButton();
 }
 
-function slideEditorMarkup(slide = {}, index = 0, isNew = false) {
+function slideEditorMarkup(slide = {}, index = 0) {
   const normalized = normalizeSlide(slide, index);
+  const hasMedia = Boolean(normalized.storage_path);
   return `<div class="tutorial-slide-editor" data-slide-editor data-existing-path="${escapeTutorialText(normalized.storage_path)}" data-existing-type="${escapeTutorialText(normalized.media_type)}">
     <div class="tutorial-slide-editor-header"><strong>Slide ${index + 1}</strong><button type="button" class="icon-btn" data-remove-tutorial-slide>Remove</button></div>
-    <div class="tutorial-slide-preview" data-slide-preview>${renderTutorialEditorPreview(normalized)}</div>
-    <label class="tutorial-file-field"><span>${isNew || !normalized.storage_path ? 'Add photo or video' : 'Replace photo or video'}</span><input type="file" accept="image/*,video/*" data-slide-file ${isNew || !normalized.storage_path ? 'required' : ''} /><small>${normalized.storage_path ? 'Choose a new file to replace this slide.' : 'For video, aim for one step in 15–45 seconds.'}</small></label>
+    <div class="tutorial-slide-preview" data-slide-preview ${hasMedia ? '' : 'hidden'}>${renderTutorialEditorPreview(normalized)}</div>
+    <div class="tutorial-file-field">
+      <label class="tutorial-file-picker">
+        <span class="tutorial-file-picker-icon" aria-hidden="true">＋</span>
+        <span data-slide-file-label>${hasMedia ? 'Replace photo or video' : 'Choose a photo or video'}</span>
+        <input type="file" accept="image/*,video/*" data-slide-file ${hasMedia ? '' : 'required'} />
+      </label>
+      <small>For video, aim for one step in 15–45 seconds.</small>
+    </div>
     <label><span>Slide title <small>(optional)</small></span><input type="text" data-slide-title value="${escapeTutorialText(normalized.title)}" placeholder="e.g. Lock the patio door" /></label>
     <label><span>Written description <small>(optional)</small></span><textarea rows="3" data-slide-description placeholder="Add the detail someone needs to complete this step.">${escapeTutorialText(normalized.description)}</textarea></label>
   </div>`;
@@ -530,7 +538,7 @@ function slideEditorMarkup(slide = {}, index = 0, isNew = false) {
 
 function renderSlideEditors(slides = [{ id: 'slide-1' }]) {
   const list = document.querySelector('[data-tutorial-slide-editor-list]');
-  list.innerHTML = slides.map((slide, index) => slideEditorMarkup(slide, index, !slide.storage_path)).join('');
+  list.innerHTML = slides.map((slide, index) => slideEditorMarkup(slide, index)).join('');
   updateSlideEditorLabels();
 }
 
@@ -673,7 +681,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       event.preventDefault();
       const list = document.querySelector('[data-tutorial-slide-editor-list]');
       if (list) {
-        list.insertAdjacentHTML('beforeend', slideEditorMarkup({ id: `slide-${list.children.length + 1}` }, list.children.length, true));
+        list.insertAdjacentHTML('beforeend', slideEditorMarkup({ id: `slide-${list.children.length + 1}` }, list.children.length));
         updateSlideEditorLabels();
         tutorialEditorState.slideIndex = list.children.length - 1;
         renderTutorialEditorNavigation();
@@ -704,7 +712,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     preview.innerHTML = file.type.startsWith('video/')
       ? `<video src="${previewUrl}" controls preload="metadata" muted playsinline aria-label="Preview of ${label}"></video>`
       : `<img src="${previewUrl}" alt="Preview of ${label}" />`;
-    const hint = fileInput.closest('.tutorial-file-field')?.querySelector('small');
+    preview.hidden = false;
+    const field = fileInput.closest('.tutorial-file-field');
+    field.querySelector('[data-slide-file-label]').textContent = 'Replace photo or video';
+    const hint = field.querySelector('small');
     if (hint) {
       const video = preview.querySelector('video');
       hint.textContent = video ? tutorialVideoHint(file) : `${file.name} · ${formatMediaSize(file.size)}`;
