@@ -61,6 +61,7 @@
 .tg-sheet figcaption { font-size: .875rem; color: var(--muted); margin-bottom: .45rem; }
 .tg-sheet-surface { background: white; box-shadow: 0 2px 12px #312c2422; border: 1px solid #d6d5d1; width: 100%; aspect-ratio: 792 / 612; overflow: hidden; }
 .tg-sheet-surface > svg { display: block; width: 100%; height: 100%; }
+.tg-sheet-portrait { aspect-ratio: 612 / 792; margin-inline: auto; width: 77.27%; }
 .tg-empty-sheet { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: .65rem; width: 100%; aspect-ratio: 792 / 612; min-height: 190px; padding: 1.5rem; background: #fff; border: 1px dashed #bcbab1; color: var(--muted); }
 .tg-empty-sheet span { font-size: .875rem; }
 .tg-print-note { border-top: 1px solid var(--border); margin-top: 1.4rem; padding-top: 1rem; }
@@ -109,3 +110,14 @@ button.tg-option { display:block; width:100%; border:0; background:transparent; 
 
 .tg-output-actions { display:flex; flex-wrap:wrap; gap:.6rem; }
 .tg-duplex-field { max-width:14rem; margin-bottom:.35rem; }
+
+.menu-hint { margin-top: .55rem; }
+.menu-row { padding: 0; min-width: 0; margin: .85rem 0 0; border: 0; }
+.menu-row + .menu-row { border-top: 1px solid var(--border); }
+.menu-row legend { color: var(--forest-deep); font-size: .875rem; font-weight: 650; padding: 0 .4rem 0 0; }
+.menu-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(5rem, 25%); gap: .6rem; }
+.menu-pair .tg-field, .menu-description { margin-top: .4rem; }
+.menu-row .tg-field { font-size: .875rem; }
+.menu-price-field { grid-template-columns: minmax(0, 1fr) minmax(5rem, 25%); align-items: center; gap: .6rem; }
+.menu-remove { font-size: .84rem; }
+#add-menu-row { margin-top: .8rem; }

@@ -33,7 +33,7 @@ export function createTextLayout(fonts) {
   function overflow(field,box,measured,min,lines) {
     throw new FitError(`${field} needs ${measured.width.toFixed(1)} × ${measured.height.toFixed(1)} pt at ${min} pt (${lines} line${lines===1?'':'s'}); available space is ${box.w.toFixed(1)} × ${box.h.toFixed(1)} pt. Please shorten this field.`, {code:'overflow',measured,available:box,minSize:min});
   }
-  function fit(font,text,box,max,min,maxLines=2,field='Text') {
+  function fit(font,text,box,max,min,maxLines=2,field='Text',{align='center',color=font==='ruddy'?'#c68b70':'#376438',lineGap}={}) {
     const candidates=[[text]], words=text.split(/[ \t\r\n]+/);
     if(maxLines===2)for(let i=1;i<words.length;i++)candidates.push([words.slice(0,i).join(' '),words.slice(i).join(' ')]);
     let best;
@@ -43,12 +43,13 @@ export function createTextLayout(fonts) {
         const runs=lines.map(l=>measure(font,l,size));
         const ascent=Math.max(...runs.map(r=>-r.top)),descent=Math.max(...runs.map(r=>r.bottom));
         const originalStep=Math.max(size*1.05,ascent+descent+size*.15);
-        const step=font==='lucidity'?ascent+descent+(originalStep-ascent-descent)/2:originalStep;
+        const step=lineGap!==undefined?ascent+descent+size*lineGap:
+          font==='lucidity'?ascent+descent+(originalStep-ascent-descent)/2:originalStep;
         return {lines,runs,ascent,descent,step,width:Math.max(...runs.map(r=>r.width)),height:ascent+descent+(lines.length-1)*step};
       }).sort((a,b)=>a.lines.length-b.lines.length||a.width-b.width);
       for(const o of options)if(o.width<=box.w&&o.height<=box.h) {
         const baseline=box.y+(box.h-o.height)/2+o.ascent;
-        return {size,lines:o.lines,width:o.width,height:o.height,box,ops:o.runs.flatMap((r,i)=>draw(r,box.x+(box.w-r.width)/2-r.left,baseline+i*o.step,font==='ruddy'?'#c68b70':'#376438'))};
+        return {size,lines:o.lines,width:o.width,height:o.height,box,ops:o.runs.flatMap((r,i)=>draw(r,box.x+(align==='left'?0:(box.w-r.width)/2)-r.left,baseline+i*o.step,color))};
       }
       if(size===min)best=options.sort((a,b)=>Math.max(a.width/box.w,a.height/box.h)-Math.max(b.width/box.w,b.height/box.h))[0];
     }

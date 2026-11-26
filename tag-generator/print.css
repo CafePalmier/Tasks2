@@ -11,8 +11,10 @@
   html[data-tag-print-orientation="portrait"],
   html[data-tag-print-orientation="portrait"] body { width: auto !important; }
   [data-tag-print-orientation="portrait"] #tag-print-root .tag-print-sheet {
-    width: 564pt;
+    width: auto;
     height: auto;
+    padding-top: var(--tag-print-top);
+    overflow: hidden;
     break-after: auto;
     page-break-after: auto;
   }
@@ -20,9 +22,13 @@
     break-before: page;
     page-break-before: always;
   }
+  /* Percentage dimensions stay tied to the Letter print area across Safari print DPI changes. */
   [data-tag-print-orientation="portrait"] #tag-print-root .tag-print-sheet > svg {
-    width: 100%;
+    width: var(--tag-print-width);
     height: auto;
+    margin-inline: auto;
     overflow: hidden;
   }
+
+  .tag-print-help { padding: 24pt; }
 }

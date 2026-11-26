@@ -1,19 +1,30 @@
 import {staticDesigns} from './assets/static-designs.mjs';
+import {menuArtwork} from './assets/menu-artwork.mjs';
+import {createMenuLayout, menuFront, validateMenu} from './menu-layout.mjs?v=2';
+import {PRICE_CHARACTERS,normalizePrice,priceGlyphIssues} from './price-glyphs.mjs';
 export {staticDesigns};
+export {normalizePrice};
 export const isStatic=t=>t.type==='napkin';
-export const tagSize=t=>isStatic(t)?[staticDesigns[t.design]?.width,staticDesigns[t.design]?.height]:SIZES[t.type];
-import {PRICE_CHARACTERS,priceGlyphIssues} from './price-glyphs.mjs';
+export const isMenu=t=>t.type==='menu';
+export const isFullLetterMenu=t=>isMenu(t)&&t.design==='tea';
+const itemArtwork=t=>{
+ const assets=isMenu(t)?menuArtwork:isStatic(t)?staticDesigns:null;
+ return assets&&Object.hasOwn(assets,t.design)?assets[t.design]:undefined;
+};
+export const tagSize=t=>{
+ const asset=itemArtwork(t);
+ return asset?[asset.width,asset.height]:Object.hasOwn(SIZES,t.type)?SIZES[t.type]:undefined;
+};
 import {createTextLayout, FitError} from './text-layout.mjs';
 import {findPreset} from './presets.mjs';
 export const SIZES={pastry:[199.9674,154.5202],freezer:[212.234,101.503],provisions:[141.732,116.220]};
-export const normalizePrice=v=>{const s=String(v??'').trim().replace(/^\$\s*/,'');return /^\d{1,7}(?:[.,]\d{1,2})?$/.test(s)?'$'+Number(s.replace(',','.')).toFixed(2):null;};
 export const normalizeFrontText=v=>String(v??'').normalize('NFC').replace(/(?<![\p{L}\p{N}])et(?![\p{L}\p{N}])/gu,'&').trim();
 function normalizeQuotedText(value){
  let opening=true;
  return normalizeFrontText(value).replace(/["“”]/g,char=>{const left=char==='“'||(char==='"'&&opening);opening=!left;return left?'«':'»';}).replace(/«\s*/g,'«\u00a0').replace(/\s*»/g,'\u00a0»');
 }
 export const normalizeTitleText=normalizeQuotedText;
-export function validateTag(t){const e=[];if(isStatic(t))return staticDesigns[t.design]?[]:[{field:'design',message:'Choose a Napkin Holder design.'}];if(!SIZES[t.type])e.push({field:'type',message:'Choose a tag format.'});if(!String(t.title??'').trim())e.push({field:'title',message:'Enter a French title.'});if(!normalizePrice(t.price))e.push({field:'price',code:'invalid-price',message:'Enter a valid non-negative price.'});if(t.type==='pastry'&&!String(t.ingredients??'').trim())e.push({field:'ingredients',message:'Enter the English ingredients.'});return e;}
+export function validateTag(t){const e=[];if(isMenu(t))return validateMenu(t);if(isStatic(t))return staticDesigns[t.design]?[]:[{field:'design',message:'Choose a Napkin Holder design.'}];if(!SIZES[t.type])e.push({field:'type',message:'Choose a tag format.'});if(!String(t.title??'').trim())e.push({field:'title',message:'Enter a French title.'});if(!normalizePrice(t.price))e.push({field:'price',code:'invalid-price',message:'Enter a valid non-negative price.'});if(t.type==='pastry'&&!String(t.ingredients??'').trim())e.push({field:'ingredients',message:'Enter the English ingredients.'});return e;}
 export const CUT_GAP=1;
 export const SHEET_MARGIN=10*72/25.4;
 const EPSILON=1e-7;
@@ -60,11 +71,17 @@ function packOrder(items, area, gap, bestFit) {
  return sheets.map(({items})=>({items}));
 }
 
-export function pack(tags, {margin=SHEET_MARGIN, gap=CUT_GAP}={}) {
- if(!Number.isFinite(margin)||margin<0||margin>=306||!Number.isFinite(gap)||gap<0)
+export function pack(tags, {margin=SHEET_MARGIN, marginX=margin, marginY=margin, gap=CUT_GAP}={}) {
+ if(!Number.isFinite(marginX)||marginX<0||marginX>=396||
+    !Number.isFinite(marginY)||marginY<0||marginY>=306||!Number.isFinite(gap)||gap<0)
   throw new RangeError('Sheet margin and cutting gap must fit within Letter paper.');
  if(!tags.length)return [];
- const width=792-2*margin, height=612-2*margin;
+ const fullSheets=tags.filter(isFullLetterMenu);
+ if(fullSheets.length){
+  const packed=pack(tags.filter(t=>!isFullLetterMenu(t)),{marginX,marginY,gap});
+  return [...packed,...fullSheets.map(tag=>({items:[{tag,x:0,y:0,w:792,h:612}]}))];
+ }
+ const width=792-2*marginX, height=612-2*marginY;
  const [pw,ph]=SIZES.pastry;
  // Preserve the centered pastry-only grid when it fits. Its nine slots are
  // already the maximum for upright pastries on Letter with the default margins.
@@ -84,7 +101,7 @@ export function pack(tags, {margin=SHEET_MARGIN, gap=CUT_GAP}={}) {
  });
  // Pad each rectangle, and extend the packing area by the same gap. This
  // reserves space between cuts without adding a gap to the paper margins.
- const area={x:margin,y:margin,w:width+gap,h:height+gap};
+ const area={x:marginX,y:marginY,w:width+gap,h:height+gap};
  const total=items.reduce((sum,p)=>sum+(p.w+gap)*(p.h+gap),0);
  const minimum=Math.ceil(total/(area.w*area.h)-EPSILON);
  let best=packOrder(items,area,gap,false);
@@ -101,22 +118,31 @@ export function pack(tags, {margin=SHEET_MARGIN, gap=CUT_GAP}={}) {
 }
 export const mirrored=p=>({...p,x:792-p.x-p.w});
 export function validateGeometry(project) {
- const {margin=0,gap=CUT_GAP}=project.layout||{};
+ const {margin=0,marginX=margin,marginY=margin,gap=CUT_GAP}=project.layout||{};
  const errors=[];
  for(const sheet of project.sheets)for(const [i,p] of sheet.items.entries()) {
   const size=tagSize(p.tag),back=mirrored(p);
-  if(!size||![p.x,p.y,p.w,p.h].every(Number.isFinite)||p.w!==size[0]||p.h!==size[1]||p.x<margin-EPSILON||p.y<margin-EPSILON||p.x+p.w>792-margin+EPSILON||p.y+p.h>612-margin+EPSILON||Math.abs(back.x+p.x+p.w-792)>1e-6)
+  const fullPage=isFullLetterMenu(p.tag),insetX=fullPage?0:marginX,insetY=fullPage?0:marginY;
+  if(!size||![p.x,p.y,p.w,p.h].every(Number.isFinite)||p.w!==size[0]||p.h!==size[1]||p.x<insetX-EPSILON||p.y<insetY-EPSILON||p.x+p.w>792-insetX+EPSILON||p.y+p.h>612-insetY+EPSILON||Math.abs(back.x+p.x+p.w-792)>1e-6)
    errors.push({id:p.tag.id,field:'geometry',code:'geometry',message:'Tag or reverse placement exceeds the printable area. Reload the generator before exporting.'});
   for(const q of sheet.items.slice(i+1))if(p.x<q.x+q.w+gap-EPSILON&&q.x<p.x+p.w+gap-EPSILON&&p.y<q.y+q.h+gap-EPSILON&&q.y<p.y+p.h+gap-EPSILON)errors.push({id:p.tag.id,field:'geometry',code:'geometry',message:`Tags overlap or have less than the ${gap} pt cutting gap. Reload the generator before exporting.`});
  }
  return errors;
 }
-export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_GAP,publicTypography=false}={}){
- const layout=Object.freeze({margin,gap});
+export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,marginX=margin,marginY=margin,gap=CUT_GAP,publicTypography=false}={}){
+ const layout=Object.freeze({margin,marginX,marginY,gap});
  const ready=!!fonts;
  const text=createTextLayout(fonts);
+ let layoutMenu;
  function content(t) {
    if(isStatic(t))return {front:[],back:[],fits:{},errors:[]};
+   if(isMenu(t)){
+     const invalidRows=validateMenu(t).some(error=>error.field==='rows');
+     if(invalidRows)return {front:[],back:[],fits:{},errors:[]};
+     layoutMenu??=createMenuLayout(fonts);
+     const fitted=layoutMenu(t.design,t.rows);
+     return {front:menuFront(t.design,fitted,menuArtwork[t.design].bounds),back:[],fits:{},errors:fitted.errors};
+   }
    const [w,h]=SIZES[t.type], sub=normalizeQuotedText(t.subtitle);
    const subtitleSize=t.type==='pastry'?14.5:10;
    const reserveSubtitle=t.type==='pastry'&&!sub&&
@@ -175,7 +201,7 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
    return result;
  }
  function createProject(tags,{flipEdge='short',orientation='landscape'}={}) {
-   const errors=[],clean=tags.filter(t=>isStatic(t)?!!staticDesigns[t.design]:SIZES[t.type]).map(t=>({...t}));
+   const errors=[],clean=tags.filter(t=>tagSize(t)?.every(Number.isFinite)).map(t=>({...t}));
    for(const t of tags)errors.push(...validateTag(t).map(e=>({...e,id:t.id})));
    const sheets=pack(clean,layout);
    for(const s of sheets)for(const p of s.items) {
@@ -186,57 +212,53 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
    const unique=[...new Map(errors.map(e=>[`${e.id}:${e.field}`,e])).values()];
    return {tags:clean,sheets,layout,errors:unique,warnings:clean.some(t=>t.recipeVerification)?['Recipe verification required for Chocolat salée: supplied note mentions apple filling while the supplied recipe lists cocoa. Confirm before printing.']:clean.some(t=>t.type!=='pastry')?[`Tags may be rearranged to save paper. The cutting gap is at least ${gap} pt.`]:[],duplex:clean.some(t=>t.type==='pastry'),flipEdge,orientation};
  }
- function shapes(p,side){if(isStatic(p.tag))return [];return side==='front'?[...artwork[p.tag.type].shapes.map(s=>({...s,x:0,y:0,scale:1})),...p.front]:p.back;}
+ function shapes(p,side){
+   if(side==='back')return p.back;
+   if(itemArtwork(p.tag))return p.front;
+   return [...artwork[p.tag.type].shapes.map(s=>({...s,x:0,y:0,scale:1})),...p.front];
+ }
  // The quarter-turn rotates the paper and artwork together, preserving their physical edges.
  const rotateBack=(project,side)=>project.duplex&&side==='back'&&project.flipEdge==='long';
- function renderSheetSvg(project,index,side='front',{printInset=0}={}) {
-   const portrait=project.orientation==='portrait',rotate=rotateBack(project,side);
+ const rotateSheet=(project,sheet,side)=>rotateBack(project,side)||
+   (project.orientation==='portrait'&&side==='front'&&sheet.items.some(item=>isFullLetterMenu(item.tag)));
+ function renderSheetSvg(project,index,side='front',{idPrefix='preview',viewport}={}) {
+   const sheet=project.sheets[index];
+   const portrait=project.orientation==='portrait',rotate=rotateSheet(project,sheet,side);
    const [width,height]=portrait?[612,792]:[792,612];
-   const {items}=project.sheets[index];
+   const {items}=sheet;
    const transforms=[
      ...(portrait?['matrix(0 -1 1 0 0 792)']:[]),
      ...(rotate?['translate(792 612) rotate(180)']:[])
    ];
    const sheetArtwork=items.map((item,i)=>{
      const p=side==='back'?mirrored(item):item;
-     const staticFront=isStatic(item.tag)&&side==='front'
-       ? staticDesigns[item.tag.design].svg.replace(/\bid="([^"]+)"/g,`id="n${index}_${i}_$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#n${index}_${i}_$1`)
+     const prefix=isMenu(item.tag)?`${idPrefix}_${index}_${i}_`:`n${index}_${i}_`;
+     const staticFront=side==='front'
+       ? itemArtwork(item.tag)?.svg.replace(/\bid="([^"]+)"/g,`id="${prefix}$1"`).replace(/#(font_[^" )]+|clip_[^" )]+)/g,`#${prefix}$1`) ?? ''
        : '';
-     const vectors=shapes(item,side).map(s=>`<path d="${s.path}" fill="${s.color}" transform="translate(${s.x} ${s.y}) scale(${s.scale})"/>`).join('');
+     const vectors=shapes(item,side).map(s=>`<path d="${s.path}" fill="${s.color}" transform="translate(${s.x} ${s.y})${s.rotation?` rotate(${-s.rotation})`:''} scale(${s.scale})"/>`).join('');
      const notice=!ready&&side==='front'?'<text x="20" y="50" font-size="10">Typography unavailable</text>':'';
      return `<g transform="translate(${p.x} ${p.y})">${staticFront}${vectors}${notice}</g>`;
    }).join('');
    const content=transforms.length?`<g transform="${transforms.join(' ')}">${sheetArtwork}</g>`:sheetArtwork;
-   // Keep the page coordinates and scale. Clip trailing paper before Safari paginates the SVG.
-   let viewport=[0,0,width,height];
-   if(portrait&&printInset){
-     let bottom=printInset+1;
-     for(const item of items){
-       if(side==='back'&&!item.back.length)continue;
-       const edge=side==='front'||rotate?height-item.x:item.x+item.w;
-       bottom=Math.max(bottom,edge);
-     }
-     viewport=[printInset,printInset,width-2*printInset,Math.ceil(bottom-printInset)];
-   }
-   const [x,y,viewWidth,viewHeight]=viewport;
-   const offset=printInset&&portrait?` x="${x}" y="${y}"`:'';
-   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewport.join(' ')}" role="img" aria-label="Sheet ${index+1} ${side}"><rect${offset} width="${viewWidth}" height="${viewHeight}" fill="white"/>${content}</svg>`;
+   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(viewport??[0,0,width,height]).join(' ')}" role="img" aria-label="Sheet ${index+1} ${side}"><rect width="${width}" height="${height}" fill="white"/>${content}</svg>`;
  }
  async function exportPdf(project,{registration=false}={}) {
    if(!ready||project.errors.length||validateGeometry(project).length||!project.tags.length)
      throw Error('Resolve the tag errors before exporting.');
-   const {PDFDocument,rgb,PrintScaling,Duplex,pushGraphicsState,popGraphicsState,concatTransformationMatrix}=PDFLib;
-   const pdf=await PDFDocument.create(),embedded={};
-   for(const design of new Set(project.tags.filter(isStatic).map(t=>t.design))) {
-     const bytes=Uint8Array.from(atob(staticDesigns[design].pdf),c=>c.charCodeAt(0));
-     [embedded[design]]=await pdf.embedPdf(bytes,[0]);
+   const {PDFDocument,rgb,cmyk,degrees,PrintScaling,Duplex,pushGraphicsState,popGraphicsState,concatTransformationMatrix}=PDFLib;
+   const pdf=await PDFDocument.create(),embedded=new Map();
+   for(const asset of new Set(project.tags.map(itemArtwork).filter(Boolean))) {
+     const bytes=Uint8Array.from(atob(asset.pdf),c=>c.charCodeAt(0));
+     const [page]=await pdf.embedPdf(bytes,[0]);
+     embedded.set(asset,page);
    }
    pdf.setTitle('Café Palmier Tags');
    const prefs=pdf.catalog.getOrCreateViewerPreferences();
    prefs.setPrintScaling(PrintScaling.None);
    if(project.duplex) prefs.setDuplex(project.flipEdge==='long'?Duplex.DuplexFlipLongEdge:Duplex.DuplexFlipShortEdge);
    for(const sheet of project.sheets)for(const side of project.duplex?['front','back']:['front']) {
-     const portrait=project.orientation==='portrait',rotate=rotateBack(project,side);
+     const portrait=project.orientation==='portrait',rotate=rotateSheet(project,sheet,side);
      const page=pdf.addPage(portrait?[612,792]:[792,612]);
      // Rotate the vectors inside the page so AirPrint sees a plain portrait Letter page.
      if(portrait||rotate)page.pushOperators(pushGraphicsState());
@@ -244,10 +266,11 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
      if(rotate)page.pushOperators(concatTransformationMatrix(-1,0,0,-1,792,612));
      for(const item of sheet.items) {
        const p=side==='back'?mirrored(item):item;
-       if(isStatic(item.tag)&&side==='front')page.drawPage(embedded[item.tag.design],{x:p.x,y:612-p.y-p.h,width:p.w,height:p.h});
+       const background=embedded.get(itemArtwork(item.tag));
+       if(background&&side==='front')page.drawPage(background,{x:p.x,y:612-p.y-p.h,width:p.w,height:p.h});
        for(const s of shapes(item,side)) {
-         const color=s.color.match(/\w\w/g).map(v=>parseInt(v,16)/255);
-         page.drawSvgPath(s.path,{x:p.x+s.x,y:612-p.y-s.y,scale:s.scale,color:rgb(...color)});
+         const color=s.cmyk?cmyk(...s.cmyk):rgb(...s.color.match(/\w\w/g).map(v=>parseInt(v,16)/255));
+         page.drawSvgPath(s.path,{x:p.x+s.x,y:612-p.y-s.y,scale:s.scale,color,...(s.rotation?{rotate:degrees(s.rotation)}:{})});
        }
        if(registration) {
          const x=side==='back'?p.x+p.w-8:p.x+8;
@@ -269,7 +292,7 @@ export function createEngine(artwork,fonts,PDFLib,{margin=SHEET_MARGIN,gap=CUT_G
   : publicTypography ? '' : 'Development typography uses source outlines and provisional spacing.';
  return {normalizePrice,normalizeFrontText,validateTag,createProject,renderSheetSvg,exportPdf,typographyStatus:{ready,provisional:ready&&!publicTypography,message}};
 }
-export async function initializeEngine(){
+export async function initializeEngine(layoutOptions){
  const get=async path=>{
   const response=await fetch(new URL(path,import.meta.url));
   if(!response.ok)throw Error('Could not load '+path);
@@ -298,5 +321,5 @@ export async function initializeEngine(){
   }
  }
  await import('./vendor/pdf-lib.min.js');
- return createEngine(art,fonts,globalThis.PDFLib,{publicTypography:!local});
+ return createEngine(art,fonts,globalThis.PDFLib,{...layoutOptions,publicTypography:!local});
 }

@@ -1,13 +1,16 @@
-import {requestDirectPrint,usesPortraitPrint,PORTRAIT_PRINT_MARGIN} from './print-view.mjs?v=4';
+import {AIRPRINT_LAYOUT,requestDirectPrint,requiresPrintPdf,usesPortraitPrint} from './print-view.mjs?v=8';
 import {createLibrary,canonical,identity} from './library.mjs';
 import {createSync} from './sync.mjs';
 import {sharedPresetsEnabled} from './sync-config.mjs';
 import {createOutput} from './output.mjs';
 import {presets,suggestions,findPreset,applyPreset,syncIngredients} from './presets.mjs';
-import {initializeEngine,staticDesigns} from './engine.mjs?v=4';
-import {diagnosticRows} from './diagnostics.mjs';
+import {initializeEngine,staticDesigns,isMenu,isFullLetterMenu} from './engine.mjs?v=8';
+import {createMenuEditor} from './menu-editor.mjs?v=2';
+import {menus} from './menu-layout.mjs?v=2';
+import {diagnosticRows} from './diagnostics.mjs?v=2';
 import {titleCaseIngredients} from './ingredient-case.mjs';
 const $=id=>document.getElementById(id),key='palmier-tags-v1',fields=['type','title','subtitle','price','ingredients','design'];let metadata={},tags=[],editing=null,side='front',engine,project,output,library,presetSync;
+const formatLabels=Object.fromEntries(Array.from($('tag-type').options,option=>[option.value,option.textContent]));
 function formatIngredients(tag){
   return tag.type==='pastry'&&typeof tag.ingredients==='string'
     ? {...tag,ingredients:titleCaseIngredients(tag.ingredients)}
@@ -18,9 +21,42 @@ function newTagId() {
   return crypto.randomUUID?.() ||
     Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
 }
-function read(){return formatIngredients({...metadata,id:editing||newTagId(),...Object.fromEntries(fields.map(k=>[k,$('tag-'+k).value])),vegan:$('tag-vegan').checked,glutenFree:$('tag-gluten-free').checked});}
-function fill(t={type:'pastry'}){titleSuggestions.close();subtitleSuggestions.close();t=formatIngredients(t);metadata={titleColor:t.titleColor,presetTitle:t.presetTitle,recipeVerification:t.recipeVerification,ingredientSync:t.ingredientSync===true};for(const k of fields)$('tag-'+k).value=t[k]||(k==='design'?'side':'');$('tag-vegan').checked=!!t.vegan;$('tag-gluten-free').checked=!!t.glutenFree;visibility();updateFieldControls();}
-function visibility(){const type=$('tag-type').value,napkin=type==='napkin';for(const id of ['title-field','price-field','front-guidance'])$(id).hidden=napkin;$('napkin-field').hidden=!napkin;$('reset-ingredients').hidden=type!=='pastry'||!findPreset(metadata.presetTitle||'')?.ingredients;$('pastry-fields').hidden=type!=='pastry';$('subtitle-field').hidden=napkin;$('save-tag').textContent=editing?'Save Tag':'Add Tag';$('cancel-edit').hidden=!editing;}
+const menuEditor = createMenuEditor({
+  select: $('menu-design'), container: $('menu-fields'), add: $('add-menu-row'),
+  teaHelp: $('menu-tea-help'), onChange: queueDraftPreview,
+});
+let draftTimer;
+
+function read() {
+  const id = editing || newTagId();
+  if ($('tag-type').value === 'menu') return {id, type:'menu', ...menuEditor.read()};
+  return formatIngredients({...metadata,id,...Object.fromEntries(fields.map(k=>[k,$('tag-'+k).value])),vegan:$('tag-vegan').checked,glutenFree:$('tag-gluten-free').checked});
+}
+function fill(t={type:'pastry'}) {
+  titleSuggestions.close();
+  subtitleSuggestions.close();
+  t=formatIngredients(t);
+  metadata={titleColor:t.titleColor,presetTitle:t.presetTitle,recipeVerification:t.recipeVerification,ingredientSync:t.ingredientSync===true};
+  for (const k of fields) $('tag-'+k).value=t[k]||(k==='design'?'side':'');
+  if (isMenu(t)) menuEditor.fill(t.design,t.rows);
+  $('tag-vegan').checked=!!t.vegan;
+  $('tag-gluten-free').checked=!!t.glutenFree;
+  visibility();
+  updateFieldControls();
+}
+function visibility() {
+  const type=$('tag-type').value, napkin=type==='napkin', menu=type==='menu';
+  for (const id of ['title-field','price-field','subtitle-field','front-guidance']) $(id).hidden=napkin||menu;
+  $('napkin-field').hidden=!napkin;
+  $('menu-editor').hidden=!menu;
+  $('reset-ingredients').hidden=type!=='pastry'||!findPreset(metadata.presetTitle||'')?.ingredients;
+  $('pastry-fields').hidden=type!=='pastry';
+  if ((menu||napkin)&&$('historical-price-options')) $('historical-price-options').hidden=true;
+  $('editor-heading').textContent=menu?(editing?'Edit menu':'New menu'):(editing?'Edit tag':'New tag');
+  $('save-tag').textContent=(editing?'Save ':'Add ')+(menu?'Menu':'Tag');
+  $('clear-draft').textContent=menu?'Reset menu fields':'Clear tag';
+  $('cancel-edit').hidden=!editing;
+}
 function save(){try{localStorage.setItem(key,JSON.stringify({version:1,tags,draft:read(),editing}));}catch{$('storage-notice').hidden=false;$('storage-notice').textContent='Device storage is unavailable or full. Keep this tab open until you download.';}}
 function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
 
@@ -36,31 +72,162 @@ const printOptions=()=>({flipEdge:$('flip-edge').value,orientation});
 const printButton=$('print-tags');
 let printPending=false;
 function updatePrintButton() {
-  printButton.disabled=printPending||document.readyState!=='complete'||!project?.tags.length||
-    !!project.errors.length||!engine.typographyStatus.ready;
+  const pdfRequired=project&&requiresPrintPdf(project);
+  $('full-sheet-print-help').hidden=!pdfRequired;
+  $('portrait-print-help').hidden=!portraitPrint||!!pdfRequired;
+  printButton.disabled=printPending||document.readyState!=='complete'||
+    !project||!!pdfRequired||!!output.status(project);
 }
 window.addEventListener('load',updatePrintButton,{once:true});
-function renderSheetPreviews(p,draft=false) {
-  // Show both sides upright. Keep the print project's orientation and binding settings for output.
-  const preview={...p,orientation:'landscape',flipEdge:'short'};
+function renderSheetPreviews(projectToShow,draft=false) {
+  const preview={...projectToShow,orientation:'landscape',flipEdge:'short'};
   const container=$('sheet-previews');
   container.replaceChildren();
-  preview.sheets.forEach((_,i)=>{
+  if (!preview.sheets.length) {
+    container.append(el('div','Your printable sheets will appear here.','tg-empty-sheet'));
+  }
+  preview.sheets.forEach((sheet,i)=>{
+    const letterMenu=sheet.items.some(item=>isFullLetterMenu(item.tag));
     const figure=el('figure','','tg-sheet');
     figure.append(el('figcaption',`Sheet ${i+1} · ${side}${draft?' · draft preview':''}`));
     const surface=el('div','','tg-sheet-surface');
-    surface.innerHTML=engine.renderSheetSvg(preview,i,side);
+    if (letterMenu) surface.classList.add('tg-sheet-portrait');
+    surface.innerHTML=engine.renderSheetSvg(letterMenu?{...preview,orientation:'portrait'}:preview,i,side);
     figure.append(surface);
     container.append(figure);
   });
 }
-function render(){$('draft-notice').hidden=true;project=engine.createProject(tags,printOptions());$('tag-collection').replaceChildren();tags.forEach((t,i)=>{const li=el('li','','tg-collection-item');li.append(el('div',t.type,'tg-tag-type'),el('strong',t.type==='napkin'?staticDesigns[t.design]?.label:t.title+' · '+t.price),el('div',t.type!=='napkin'?t.subtitle:''));const actions=el('div','','tg-item-actions');for(const [name,fn] of [['Edit',()=>{editing=t.id;fill(t);$(t.type==='napkin'?'tag-design':'tag-title').focus();}],['Duplicate',()=>tags.splice(i+1,0,{...t,id:newTagId()})],['Delete',()=>{tags.splice(i,1);if(editing===t.id){editing=null;fill();}}]]){const b=el('button',name,'tg-button');b.type='button';b.onclick=()=>{fn();save();render();};actions.append(b);}li.append(actions);$('tag-collection').append(li);});$('collection-count').textContent=tags.length;$('collection-empty').hidden=!!tags.length;$('clear-all').disabled=!tags.length;$('sheet-count').textContent=`${tags.length} tags · ${project.sheets.length} sheets`;renderSheetPreviews(project);showErrors(project);$('project-warnings').textContent=project.warnings.join(' ');$('project-warnings').hidden=!project.warnings.length;for(const id of ['download-pdf','download-test'])$(id).disabled=!tags.length||!!project.errors.length||!engine.typographyStatus.ready;updatePrintButton();$('duplex-options').hidden=!project.duplex;$('duplex-settings').textContent=project.duplex?`Print double-sided and flip on the ${project.flipEdge} edge. Every sheet has a paired back. Test registration first.`:'Print single-sided.';}
-$('tag-type').onchange=()=>{const type=$('tag-type').value;editing=null;fill({type});if($('historical-price-options'))$('historical-price-options').hidden=true;save();render();};let draftTimer; $('tag-form').oninput=event=>{if(event.target===$('tag-ingredients'))metadata.ingredientSync=false;if(event.target===$('tag-subtitle')){const t=syncIngredients(read(),findPreset(metadata.presetTitle||''));$('tag-ingredients').value=t.ingredients;}save();clearTimeout(draftTimer);draftTimer=setTimeout(()=>{if(engine)renderDraft();},180);};
-function renderDraft(force=false){const draft=read();if(!force&&draft.type!=='napkin'&&!draft.title&&!draft.price&&!draft.ingredients&&!draft.subtitle){render();return;}const list=tags.filter(t=>t.id!==editing);list.push(draft);const p=engine.createProject(list,printOptions());$('draft-notice').hidden=false;$('draft-notice').textContent='Preview includes your unsaved draft. Add or Save Tag to include it in the PDF.';renderSheetPreviews(p,true);showErrors(p,true);}
 
-$('tag-form').onsubmit=e=>{e.preventDefault();const match=$('tag-type').value==='pastry'?findPreset($('tag-title').value):null;if(match&&match.title!==metadata.presetTitle)selectPreset(match);const t=read(),errors=engine.validateTag(t);if(errors.length){renderDraft(true);return;}if(t.type==='napkin'){for(const field of ['title','subtitle','price','ingredients'])delete t[field];delete t.presetTitle;delete t.ingredientSync;delete t.titleColor;delete t.recipeVerification;}else{t.subtitle=t.subtitle;t.price=engine.normalizePrice(t.price);}if(t.type!=='pastry'){t.ingredients='';t.vegan=t.glutenFree=false;}const i=tags.findIndex(x=>x.id===editing);if(i>=0)tags[i]=t;else tags.push(t);editing=null;fill({type:t.type});save();render();};
-$('cancel-edit').onclick=()=>{editing=null;fill();save();render();};$('clear-all').onclick=()=>{if(confirm('Clear all tags and the current draft on this device?')){tags=[];editing=null;fill();save();render();}};
-for(const s of ['front','back'])$('view-'+s).onclick=()=>{side=s;for(const v of ['front','back'])$('view-'+v).setAttribute('aria-pressed',String(s===v));render();};
+function render() {
+  clearTimeout(draftTimer);
+  if (!engine) return;
+  $('draft-notice').hidden=true;
+  project=engine.createProject(tags,printOptions());
+  const collection=$('tag-collection');
+  collection.replaceChildren();
+  tags.forEach((t,i)=>{
+    const menu=isMenu(t);
+    const item=el('li','','tg-collection-item');
+    const title=menu?menus[t.design]?.label:t.type==='napkin'?staticDesigns[t.design]?.label:t.title+' · '+t.price;
+    item.append(el('div',menu?'Menu':formatLabels[t.type],'tg-tag-type'),el('strong',title));
+    if (t.subtitle) item.append(el('div',t.subtitle));
+    const actions=el('div','','tg-item-actions');
+    for (const [name,fn] of [
+      ['Edit',()=>{editing=t.id;fill(t);$(menu?'menu-design':t.type==='napkin'?'tag-design':'tag-title').focus();}],
+      ['Duplicate',()=>tags.splice(i+1,0,{...t,id:newTagId()})],
+      ['Delete',()=>{tags.splice(i,1);if(editing===t.id){editing=null;fill();}}],
+    ]) {
+      const button=el('button',name,'tg-button');
+      button.type='button';
+      button.onclick=()=>{fn();save();render();};
+      actions.append(button);
+    }
+    item.append(actions);
+    collection.append(item);
+  });
+  $('collection-count').textContent=tags.length;
+  $('collection-empty').hidden=!!tags.length;
+  $('clear-all').disabled=!tags.length;
+  const itemLabel=tags.some(isMenu)?'item':'tag';
+  $('sheet-count').textContent=`${tags.length} ${itemLabel}${tags.length===1?'':'s'} · ${project.sheets.length} sheet${project.sheets.length===1?'':'s'}`;
+  renderSheetPreviews(project);
+  showErrors(project);
+  $('project-warnings').textContent=project.warnings.join(' ');
+  $('project-warnings').hidden=!project.warnings.length;
+  for (const id of ['download-pdf','download-test']) $(id).disabled=!!output.status(project);
+  updatePrintButton();
+  $('duplex-options').hidden=!project.duplex;
+  $('duplex-settings').textContent=project.duplex
+    ? `Print double-sided and flip on the ${project.flipEdge} edge. Every sheet has a paired back. Test registration first.`
+    : 'Print single-sided.';
+}
+function queueDraftPreview() {
+  save();
+  clearTimeout(draftTimer);
+  draftTimer=setTimeout(()=>{if(engine)renderDraft();},180);
+}
+$('tag-type').onchange=()=>{
+  const type=$('tag-type').value;
+  editing=null;
+  fill({type});
+  if ($('historical-price-options')) $('historical-price-options').hidden=true;
+  save();
+  render();
+  if (type==='menu'&&engine) renderDraft();
+};
+$('tag-form').oninput=event=>{
+  if ($('menu-editor').contains(event.target)) return;
+  if (event.target===$('tag-ingredients')) metadata.ingredientSync=false;
+  if (event.target===$('tag-subtitle')) {
+    const t=syncIngredients(read(),findPreset(metadata.presetTitle||''));
+    $('tag-ingredients').value=t.ingredients;
+  }
+  queueDraftPreview();
+};
+
+function renderDraft(force=false) {
+  const draft=read();
+  const menu=isMenu(draft);
+  if (!force&&!menu&&draft.type!=='napkin'&&!draft.title&&!draft.price&&!draft.ingredients&&!draft.subtitle) {
+    render();
+    return;
+  }
+  const list=[...tags];
+  const index=list.findIndex(t=>t.id===editing);
+  if(index>=0) list[index]=draft;
+  else list.push(draft);
+  const p=engine.createProject(list,printOptions());
+  $('draft-notice').hidden=false;
+  $('draft-notice').textContent=menu
+    ? 'Preview includes your menu draft. Add or save the menu to include it in the PDF.'
+    : 'Preview includes your unsaved draft. Add or Save Tag to include it in the PDF.';
+  renderSheetPreviews(p,true);
+  showErrors(p,true);
+  for (const input of $('menu-fields').querySelectorAll('input')) {
+    input.setAttribute('aria-invalid',String(p.errors.some(error=>error.id===draft.id&&input.id==='menu-'+error.field)));
+  }
+}
+
+$('tag-form').onsubmit=e=>{
+  e.preventDefault();
+  if (!engine) return;
+  const match=$('tag-type').value==='pastry'?findPreset($('tag-title').value):null;
+  if (match&&match.title!==metadata.presetTitle) selectPreset(match);
+  const t=read();
+  const menu=isMenu(t);
+  const errors=menu?engine.createProject([t]).errors:engine.validateTag(t);
+  if (errors.length) {renderDraft(true);return;}
+  if (!menu) {
+    if (t.type==='napkin') {
+      for (const field of ['title','subtitle','price','ingredients','presetTitle','ingredientSync','titleColor','recipeVerification']) delete t[field];
+    } else t.price=engine.normalizePrice(t.price);
+    if (t.type!=='pastry') {t.ingredients='';t.vegan=t.glutenFree=false;}
+  }
+  const i=tags.findIndex(x=>x.id===editing);
+  if (i>=0) tags[i]=t;
+  else tags.push(t);
+  editing=null;
+  fill({type:t.type,design:t.design,...(menu?{rows:t.rows}:{})});
+  save();
+  render();
+};
+$('cancel-edit').onclick=()=>{editing=null;fill();save();render();};
+$('clear-all').onclick=()=>{
+  if (confirm('Clear all tags, menus and the current draft on this device?')) {
+    if ($('tag-type').value==='menu') menuEditor.reset();
+    tags=[];
+    editing=null;
+    fill();
+    save();
+    render();
+  }
+};
+for (const s of ['front','back']) $('view-'+s).onclick=()=>{
+  side=s;
+  for (const v of ['front','back']) $('view-'+v).setAttribute('aria-pressed',String(s===v));
+  if (!$('draft-notice').hidden&&engine) renderDraft();
+  else render();
+};
 $('flip-edge').onchange=()=>render();
 function showAppError(message){$('app-status').textContent=message;$('app-status').hidden=false;}
 async function download(registration) {
@@ -86,10 +253,9 @@ async function download(registration) {
 $('download-pdf').onclick=()=>download(false);
 $('download-test').onclick=()=>download(true);
 
-$('portrait-print-help').hidden=!portraitPrint;
 if(portraitPrint){
   document.documentElement.dataset.tagPrintOrientation=orientation;
-  $('tag-print-page').textContent=`@page { size: 612pt 792pt; margin: ${PORTRAIT_PRINT_MARGIN}pt; }`;
+  $('tag-print-page').textContent='@page { size: 612pt 792pt; margin: 0; }';
   $('print-settings').textContent='US Letter · Portrait · Actual size / 100%';
 }
 function selectPreset(p){if(p.origin){selectLibraryPreset(p);return;}const current=read();if(current.type==='freezer'){fill({...current,title:p.title,presetTitle:undefined,titleColor:undefined,recipeVerification:undefined,ingredientSync:false});save();if(engine)renderDraft();return;}const previous=presets.find(x=>x.title===metadata.presetTitle),proposal=applyPreset(current,p,previous);let tag=proposal.tag;if(proposal.conflicts.length){if(!confirm('Replace your edited '+proposal.conflicts.join(', ')+' with this preset’s defaults? Cancel keeps your edits.'))tag=proposal.tag;else tag=applyPreset(current,p,previous,true).tag;}fill(tag);save();if(engine)renderDraft();}
@@ -166,7 +332,7 @@ $('tag-subtitle').onchange = () => {
   if (preset) selectLibraryPreset(preset);
 };
 const oldSubmit=$('tag-form').onsubmit;
-$('tag-form').onsubmit=e=>{const before=read();if(engine.validateTag(before).length){oldSubmit(e);return;}if(before.type==='pastry'&&library)metadata.presetTitle=before.title;oldSubmit(e);const saved=tags.find(t=>t.id===before.id)||tags.at(-1);if(saved&&saved.type!=='napkin'&&identity(saved)===identity(before)&&!engine.validateTag(saved).length){try{library?.remember(saved,confirm);}catch(error){showAppError('Tag saved, but preset storage failed: '+error.message);}}};
+$('tag-form').onsubmit=e=>{const before=read();if(!engine||isMenu(before)||engine.validateTag(before).length){oldSubmit(e);return;}if(before.type==='pastry'&&library)metadata.presetTitle=before.title;oldSubmit(e);const saved=tags.find(t=>t.id===before.id)||tags.at(-1);if(saved&&saved.type!=='napkin'&&identity(saved)===identity(before)&&!engine.validateTag(saved).length){try{library?.remember(saved,confirm);}catch(error){showAppError('Tag saved, but preset storage failed: '+error.message);}}};
 $('ingredients-help').textContent='Please verify ingredients and allergens before printing.';
 function updateFieldControls() {
   for (const field of ['title', 'subtitle']) {
@@ -305,8 +471,8 @@ for (const field of ['price', 'ingredients']) {
   };
 }
 updateFieldControls();
-const clearDraft=el('button','Clear tag','tg-button');clearDraft.type='button';$('save-tag').after(clearDraft);
-clearDraft.onclick=()=>{clearTimeout(draftTimer);const type=$('tag-type').value;editing=null;fill({type});if($('historical-price-options'))$('historical-price-options').hidden=true;$('app-status').hidden=true;save();render();};
+const clearDraft=el('button','Clear tag','tg-button');clearDraft.type='button';clearDraft.id='clear-draft';$('save-tag').after(clearDraft);
+clearDraft.onclick=()=>{clearTimeout(draftTimer);const type=$('tag-type').value;editing=null;if(type==='menu')menuEditor.reset();fill({type});if($('historical-price-options'))$('historical-price-options').hidden=true;$('app-status').hidden=true;save();render();};
 
 function showHistoricalPrices(p){
  let panel=$('historical-price-options');if(!panel){panel=document.createElement('label');panel.id='historical-price-options';panel.className='tg-field';$('tag-price').closest('label').after(panel);}
@@ -319,10 +485,15 @@ function showHistoricalPrices(p){
 
 const conflictControls=el('div','');conflictControls.id='preset-conflict';conflictControls.hidden=true;conflictControls.append(el('p','Another device changed presets. Choose which version to keep.'));
 for(const [label,local]of [['Keep this device’s version',true],['Use shared version',false]]){const b=el('button',label,'tg-button');b.type='button';b.onclick=()=>{if(confirm('Resolve this conflict using '+(local?'this device’s':'the shared')+' version?'))presetSync.resolve(local);};conflictControls.append(b);} $('tag-form').after(conflictControls);
-try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved?.version===1&&Array.isArray(saved.tags)){tags=saved.tags.filter(t=>t&&typeof t.id==='string'&&['pastry','freezer','provisions','napkin'].includes(t.type)).map(formatIngredients);editing=saved.editing;fill(saved.draft);}}catch{$('storage-notice').hidden=false;$('storage-notice').textContent='Saved work could not be read. The stored copy has not been deleted.';}
+try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved?.version===1&&Array.isArray(saved.tags)){tags=saved.tags.filter(t=>t&&typeof t.id==='string'&&['pastry','freezer','provisions','napkin','menu'].includes(t.type)).map(formatIngredients);editing=saved.editing;fill(saved.draft);}}catch{$('storage-notice').hidden=false;$('storage-notice').textContent='Saved work could not be read. The stored copy has not been deleted.';}
+const openMenus=new URLSearchParams(location.search).get('format')==='menus';
+if(openMenus&&$('tag-type').value!=='menu'){
+  editing=null;
+  fill({type:'menu'});
+}
 $('tag-ingredients').onchange=event=>{event.target.value=titleCaseIngredients(event.target.value);};
 try{
-  engine=await initializeEngine();
+  engine=await initializeEngine(portraitPrint?AIRPRINT_LAYOUT:undefined);
   output=createOutput(engine);
   if(!engine.typographyStatus.ready){
     const notice=$('typography-notice');
@@ -331,6 +502,11 @@ try{
   }
   visibility();
   render();
+  if($('tag-type').value==='menu'){
+    const {design,rows}=menuEditor.read();
+    const sameMenu=tags.some(t=>isMenu(t)&&t.design===design&&JSON.stringify(t.rows)===JSON.stringify(rows));
+    if(openMenus||editing||!sameMenu)renderDraft();
+  }
 }catch(e){showAppError('Could not load the generator: '+e.message);$('save-tag').disabled=true;}
 
 if(sharedPresetsEnabled&&presetSync){presetSync.tick();setInterval(()=>presetSync.tick(),10000);window.addEventListener('online',()=>presetSync.tick());}

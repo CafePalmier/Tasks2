@@ -6,11 +6,15 @@ Open `http://localhost:8000/tag-generator/index.html` after `npm start`, or use 
 
 Choose a format, enter French front text and a real price, and add the tag. Pastries require English ingredients and offer independent V/SG checkboxes. Edit, duplicate, move or delete collection items. Clear All asks for confirmation. The collection and unfinished form are saved in this browser. Download the collection as vector PDF sheets. Front/back previews use the same measured path operations and placements as export.
 
+Choose **Menus** under **Tag type**, select a design, and use **Add Menu** to include it in the same collection. Cocktails, Cold Drinks, and Soup pack alongside tags at their source cut sizes. Tea uses a full Letter sheet. Its three price fields update both languages. In jobs with pastries, menu-only sheets get blank paired backs.
+
+Cocktails and Cold Drinks accept up to five rows. You can remove any row. Extra Cold Drinks rows extend the beige panel over the top of the sun rays.
+
 Print US Letter at **Actual size / 100%** and use the orientation listed under **Print settings**. For a pastry job, match **Double-sided flip** in the editor to the printer's duplex setting. **Long edge** is the editor default for Safari's standard double-sided setting. Select **Short edge** in the editor if your printer is set to flip on the short edge. Print a registration test before the batch. Every front is followed by a back, including blank backs when a sheet has no pastry. Jobs without pastries print single-sided.
 
 To print outside Safari on a Mac, download the PDF and open it in Preview. Select the printer, paper size, scale, and duplex setting in Preview's print dialog. If both apps use the same printer queue, the duplex options may be the same.
 
-The on-screen sheet preview shows both sides upright in landscape. On iPad and iPhone, **Print Tags** opens AirPrint directly. Leave AirPrint on **Portrait**. The print artwork is rotated at full size, with one page per printed side. **Download PDF** also uses portrait Letter and can be printed from Files.
+The on-screen sheet preview shows both sides upright in landscape. On iPad and iPhone, **Print Tags** opens AirPrint directly. Use **US Letter**, **Portrait**, **100%** scaling, and the matching duplex flip. The generator allows extra room for Safari’s print margins and lays out each side on its own page, including blank paired backs. If a job includes a full-sheet Tea menu, use **Download PDF** for the original Letter dimensions.
 
 Leave the subtitle blank on a Muffin, Scone, or Sablé pastry tag to leave room for a handwritten flavour below the title.
 

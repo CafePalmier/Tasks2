@@ -1,4 +1,4 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import PDFLib from 'pdf-lib';import {createEngine,pack,validateGeometry,SIZES,mirrored} from '../engine.mjs';import {printSheets,requestDirectPrint,usesPortraitPrint} from '../print-view.mjs';
+import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import PDFLib from 'pdf-lib';import {createEngine,pack,validateGeometry,SIZES,mirrored} from '../engine.mjs';import {AIRPRINT_LAYOUT,printSheets,requestDirectPrint,requiresPrintPdf,usesPortraitPrint} from '../print-view.mjs';import {createOutput} from '../output.mjs';
 const read=p=>JSON.parse(fs.readFileSync(new URL(p,import.meta.url)));let fonts;try{fonts=read('../typography/provisional.json');}catch{}const art=read('../assets/artwork.json');const base={id:'one',type:'pastry',title:'Pain au chocolat',subtitle:'Banane',price:'9',ingredients:'Flour, butter, sugar.'};
 test('centred 3 by 3 grid has precisely 1 pt background gaps',()=>{const s=pack(Array.from({length:9},(_,i)=>({...base,id:String(i)})))[0];assert.equal(s.items.length,9);for(let i=0;i<9;i++){const p=s.items[i];if(i%3<2)assert(Math.abs(s.items[i+1].x-p.x-p.w-1)<1e-6);if(i<6)assert(Math.abs(s.items[i+3].y-p.y-p.h-1)<1e-6);}assert(Math.abs(s.items[0].x-(792-s.items[8].x-s.items[8].w))<1e-6);});
 test('mixed and multischeet minimum gaps, immutable sizes, mirrored separation',()=>{const tags=Array.from({length:90},(_,i)=>({...base,id:String(i),type:['pastry','freezer','provisions'][i%3]}));const sheets=pack(tags);assert(sheets.length>1);assert.deepEqual(validateGeometry({sheets}),[]);assert.deepEqual(validateGeometry({sheets:sheets.map(s=>({items:s.items.map(mirrored)}))}),[]);for(const s of sheets)for(const p of s.items)assert.deepEqual([p.w,p.h],SIZES[p.tag.type]);sheets[0].items[1].x=sheets[0].items[0].x+sheets[0].items[0].w+.5;assert(validateGeometry({sheets}).length);});
@@ -14,24 +14,67 @@ test('iPad and iPhone use portrait printing, including iPad desktop mode',()=>{
   assert.equal(usesPortraitPrint({userAgent:'Android Chrome',platform:'Linux armv8l',maxTouchPoints:5}),false);
 });
 
-test('direct portrait printing sends a rotated front and back to the print dialog',()=>{
- const engine=createEngine(art,read('../typography/approved.json'),PDFLib);
- const project=engine.createProject([base],{orientation:'portrait',flipEdge:'long'});
- const [{x}]=project.sheets[0].items;
- const printableHeight=Math.ceil(792-x-24);
- const root={innerHTML:''};
- let calls=0;
- requestDirectPrint(engine,project,root,{
-  print(){
-   calls++;
-   const viewBoxes=Array.from(root.innerHTML.matchAll(/viewBox="([^"]*)"/g),match=>match[1]);
-   assert.deepEqual(viewBoxes,[`24 24 564 ${printableHeight}`,`24 24 564 ${printableHeight}`]);
-   assert.ok(printableHeight<744);
-   assert.equal((root.innerHTML.match(/matrix\(0 -1 1 0 0 792\)/g)||[]).length,2);
-   assert.match(root.innerHTML, /data-side="back"[^]*matrix\(0 -1 1 0 0 792\) translate\(792 612\) rotate\(180\)/);
-   assert.ok(root.innerHTML.indexOf('data-side="front"')<root.innerHTML.indexOf('data-side="back"'));
-  },
-  open(){throw Error('Print Tags should open the print dialog directly');}
- });
- assert.equal(calls,1);
+
+test('iPad opens print settings directly with one guarded front and back for the mixed Scone job', async () => {
+  const engine = createEngine(art,read('../typography/approved.json'),PDFLib,AIRPRINT_LAYOUT);
+  const output = createOutput(engine);
+  const tags = [
+    {id:'scone',type:'pastry',title:'Scone',subtitle:'Ciboulettes & Fromage',price:'4.50',ingredients:'Flour, butter, cheese, chives.'},
+    {id:'cookies',type:'freezer',title:'Biscuits',subtitle:'Froot Loops',price:'18'},
+    {id:'scale',type:'provisions',title:'Balance à café',subtitle:'Timemore Black Mirror Basic 2',price:'85'},
+  ];
+  const project = engine.createProject(tags,{orientation:'portrait',flipEdge:'long'});
+  assert.deepEqual(project.errors,[]);
+  const properties = new Map();
+  const root = {innerHTML:'',style:{setProperty(key,value){properties.set(key,value);}}};
+  let calls = 0;
+  requestDirectPrint(engine,project,root,{
+    open(){assert.fail('iPad printing should stay in the editor');},
+    print(){
+      calls++;
+      assert.deepEqual([...root.innerHTML.matchAll(/viewBox="([^"]*)"/g)].map(match=>match[1]),[
+        '72 108 468 576','72 108 468 576',
+      ]);
+      assert.match(root.innerHTML,/data-side="front"[\s\S]*data-side="back"/);
+      assert.ok(Math.abs(parseFloat(properties.get('--tag-print-width'))*5.32-468)<1e-9);
+      assert.ok(Math.abs(parseFloat(properties.get('--tag-print-top'))*5.32-68)<1e-9);
+    },
+  });
+  assert.equal(calls,1);
+  const [{items}] = project.sheets;
+  assert.deepEqual(items.map(item=>item.back.length>0),[true,false,false]);
+  const pdf = await PDFLib.PDFDocument.load(await output.bytes(tags,false,'long','portrait'));
+  assert.equal(pdf.getPageCount(),2);
+  for(const page of pdf.getPages())assert.deepEqual(page.getSize(),{width:612,height:792});
+  const prefs = pdf.catalog.getOrCreateViewerPreferences();
+  assert.equal(prefs.getDuplex(),PDFLib.Duplex.DuplexFlipLongEdge);
+  assert.equal(prefs.getPrintScaling(),PDFLib.PrintScaling.None);
+});
+
+test('direct iPad printing refuses artwork outside its frame and preserves blank duplex backs', () => {
+  const fonts = read('../typography/approved.json');
+  const unrestricted = createEngine(art,fonts,PDFLib);
+  const unsafe = unrestricted.createProject([{...base,type:'freezer',ingredients:''}],{orientation:'portrait'});
+  const browser = {print(){assert.fail('The job must not reach the print dialog');}};
+  assert.throws(()=>requestDirectPrint(unrestricted,unsafe,{},browser),/does not fit/);
+
+  const engine = createEngine(art,fonts,PDFLib,AIRPRINT_LAYOUT);
+  const job = engine.createProject([
+    base,
+    ...Array.from({length:12},(_,i)=>({id:'freezer-'+i,type:'freezer',title:'Pain',price:'9'})),
+  ],{orientation:'portrait',flipEdge:'short'});
+  assert.deepEqual(job.errors,[]);
+  const sides = [...printSheets(engine,job,{airPrint:true}).matchAll(/data-sheet="(\d+)" data-side="(front|back)"/g)];
+  assert.equal(sides.length,job.sheets.length*2);
+  assert.ok(job.sheets.some(sheet=>sheet.items.every(item=>!item.back.length)));
+  sides.forEach((match,index)=>{
+    assert.equal(Number(match[1]),Math.floor(index/2)+1);
+    assert.equal(match[2],index%2?'back':'front');
+  });
+  const tea={id:'tea',type:'menu',design:'tea',rows:[
+    {price:'4.50'},{price:'4.50'},{price:'7.00'},
+  ]};
+  const teaJob=engine.createProject([base,tea],{orientation:'portrait'});
+  assert.equal(requiresPrintPdf(teaJob),true);
+  assert.throws(()=>requestDirectPrint(engine,teaJob,{},browser),/Download PDF/);
 });
